@@ -20,15 +20,12 @@ module.exports = promisePool;*/
 const mysql = require('mysql2/promise');
 
 let pool;
-if (process.env.MYSQL_PRIVATE_URL) {
-    pool = mysql.createPool(process.env.MYSQL_PRIVATE_URL);
-} else if (process.env.MYSQL_PUBLIC_URL) {
-    console.warn('Usando conexión pública (puede incurrir en costos)');
-    pool = mysql.createPool(process.env.MYSQL_PUBLIC_URL);
-} else if (process.env.MYSQL_URL) {
+if (process.env.MYSQL_URL) {
+    // Usar la URL completa (pública o privada)
     pool = mysql.createPool(process.env.MYSQL_URL);
+    console.log('Usando MYSQL_URL para conexión');
 } else {
-    // fallback para desarrollo local
+    // Fallback para desarrollo local
     pool = mysql.createPool({
         host: process.env.DB_HOST || 'localhost',
         user: process.env.DB_USER || 'root',
@@ -38,6 +35,7 @@ if (process.env.MYSQL_PRIVATE_URL) {
         connectionLimit: 10,
         queueLimit: 0
     });
+    console.log('Usando configuración local');
 }
 
 module.exports = pool;
