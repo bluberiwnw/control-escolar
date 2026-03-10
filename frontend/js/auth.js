@@ -1,6 +1,6 @@
 // auth.js - Versión completa
 
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://control-escolar-production-3bca.up.railway.app:8000';
 
 // Función para mostrar alertas
 function mostrarAlerta(mensaje, tipo = 'info') {
