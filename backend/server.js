@@ -6,8 +6,12 @@ require('dotenv').config();
 const app = express();
 
 // Middlewares
-app.use(cors({
+/*app.use(cors({
     origin: ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000'],
+    credentials: true
+}));*/
+app.use(cors({
+    origin: ['vmline.netlify.app', 'http://localhost:5500'],
     credentials: true
 }));
 app.use(express.json());
@@ -58,3 +62,4 @@ app.listen(PORT, () => {
     console.log(`📚 Documentación disponible en http://localhost:${PORT}`);
     console.log(`🔑 Credenciales: profesor@universidad.edu / profesor123`);
 });
+
