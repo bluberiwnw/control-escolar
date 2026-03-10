@@ -1,4 +1,4 @@
-const mysql = require('mysql2');
+/*const mysql = require('mysql2');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -15,7 +15,7 @@ async function initDatabase() {
     try {
         console.log('🗄️  Inicializando base de datos...');
         
-        // Leer archivo SQL
+         Leer archivo SQL
         const sql = fs.readFileSync(path.join(__dirname, 'init.sql'), 'utf8');
         
         // Ejecutar SQL
@@ -71,4 +71,37 @@ async function initDatabase() {
     }
 }
 
-initDatabase();
+initDatabase();*/
+
+// En init.js, reemplaza la creación de conexión con:
+const pool = require('./connection'); // Usa el pool configurado
+
+async function initDatabase() {
+    try {
+        // No necesitas crear la base de datos, solo úsala
+        const connection = await pool.getConnection();
+        console.log('🗄️  Conectado a MySQL. Inicializando base de datos...');
+
+        // Ejecutar SQL para crear tablas (sin CREATE DATABASE)
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS profesores (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                nombre VARCHAR(100) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(200) NOT NULL,
+                avatar VARCHAR(10) DEFAULT 'CR',
+                activo BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        // ... resto de tablas igual, pero con IF NOT EXISTS
+
+        // Insertar datos de prueba (con INSERT IGNORE para evitar duplicados)
+        // ... etc.
+
+        connection.release();
+        console.log('✅ Base de datos inicializada');
+    } catch (error) {
+        console.error('❌ Error:', error);
+    }
+}
