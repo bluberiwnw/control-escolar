@@ -18,27 +18,16 @@ const promisePool = pool.promise();
 module.exports = promisePool;*/
 
 const mysql = require('mysql2/promise');
-require('dotenv').config(); // Opcional, para entorno local
 
-let config;
-
-// Si Railway provee MYSQL_URL (cadena completa)
-if (process.env.MYSQL_URL) {
-    config = { uri: process.env.MYSQL_URL };
-} else {
-    // Variables individuales (Railway o locales)
-    config = {
-        host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
-        user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
-        password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
-        database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'control_escolar_buap',
-        port: process.env.MYSQLPORT || 3306,
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0
-    };
-}
-
-const pool = mysql.createPool(config);
+const pool = mysql.createPool({
+    host: process.env.MYSQLHOST,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
+    port: process.env.MYSQLPORT || 3306,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
 module.exports = pool;
