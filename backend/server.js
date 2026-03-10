@@ -11,7 +11,7 @@ const app = express();
     credentials: true
 }));*/
 app.use(cors({
-    origin: ['vmline.netlify.app', 'http://localhost:5500'],
+    origin: ['https://vmline.netlify.app', 'http://localhost:5500'],
     credentials: true
 }));
 app.use(express.json());
