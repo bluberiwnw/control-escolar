@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API</title>
+</head>
+<body>
+    <h2>Prueba de conexión al backend</h2>
+    <button onclick="testAPI()">Probar conexión</button>
+    <pre id="resultado"></pre>
+    <script>
+        async function testAPI() {
+            const resultado = document.getElementById('resultado');
+            resultado.textContent = 'Conectando...';
+            try {
+                const res = await fetch('http://localhost:8000');
+                const data = await res.json();
+                resultado.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultado.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
