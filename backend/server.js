@@ -55,11 +55,11 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Error en el servidor', error: err.message });
 });
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8000; // Usa el puerto de Railway o 8000 en local
 
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-    console.log(`📚 Documentación disponible en http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
+    console.log(`📚 Documentación disponible en http://0.0.0.0:${PORT}`);
     console.log(`🔑 Credenciales: profesor@universidad.edu / profesor123`);
 });
 
