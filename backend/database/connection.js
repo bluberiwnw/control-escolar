@@ -19,27 +19,30 @@ module.exports = promisePool;*/
 
 const mysql = require('mysql2/promise');
 
-const pool = mysql.createPool({
-    host: process.env.MYSQLHOST,
-    user: process.env.MYSQLUSER,
-    password: process.env.MYSQLPASSWORD,
-    database: process.env.MYSQLDATABASE,
-    port: parseInt(process.env.MYSQLPORT) || 3306,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    connectTimeout: 60000, // 60 segundos
-    acquireTimeout: 60000,
-    ssl: {
-        rejectUnauthorized: false // Acepta certificados autofirmados (Railway usa SSL)
-    }
-});
-
-console.log('🔌 Configuración de conexión:', {
-    host: process.env.MYSQLHOST,
-    user: process.env.MYSQLUSER,
-    database: process.env.MYSQLDATABASE,
-    port: process.env.MYSQLPORT
-});
+let pool;
+if (process.env.MYSQL_URL) {
+    // Usar la URL pública con SSL
+    pool = mysql.createPool({
+        uri: process.env.MYSQL_URL,
+        ssl: {
+            rejectUnauthorized: false // Aceptar certificados autofirmados
+        },
+        connectTimeout: 60000,
+        acquireTimeout: 60000
+    });
+    console.log('✅ Usando MYSQL_URL pública con SSL');
+} else {
+    // Fallback local
+    pool = mysql.createPool({
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'control_escolar_buap',
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+    });
+    console.log('ℹ️ Usando configuración local');
+}
 
 module.exports = pool;
