@@ -1,7 +1,7 @@
 // Configuración de la API
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8000'
-  : 'https://tu-backend.onrender.com';
+  : 'https://control-escolar-l3g0.onrender.com';
   
 // Función helper para hacer peticiones autenticadas
 async function apiRequest(endpoint, options = {}) {

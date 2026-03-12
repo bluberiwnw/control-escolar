@@ -11,7 +11,7 @@ const app = express();
     credentials: true
 }));*/
 app.use(cors({
-  origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'https://tu-frontend.onrender.com'], // luego reemplaza
+  origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'https://control-escolar-frontend.onrender.com'], 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
