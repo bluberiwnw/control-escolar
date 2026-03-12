@@ -11,12 +11,15 @@ const app = express();
     credentials: true
 }));*/
 app.use(cors({
-  origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'https://control-escolar-frontend.onrender.com'], 
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+    origin: [
+        'https://control-escolar-frontend.onrender.com',  // tu frontend en Render
+        'http://127.0.0.1:5500',
+        'http://localhost:5500'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.options('*', cors()); // Maneja preflight
 
 // Manejar preflight explícitamente (opcional pero recomendado)
 app.options('*', cors()); // Permite OPTIONS para todas las rutas
