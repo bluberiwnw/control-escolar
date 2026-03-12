@@ -30,7 +30,7 @@ const authController = {
             const token = jwt.sign(
                 { id: profesor.id, email: profesor.email, nombre: profesor.nombre },
                 process.env.JWT_SECRET,
-                { expiresIn: process.env.JWT_EXPIRE }
+                { expiresIn: process.env.JWT_EXPIRE || '30d' } // valor por defecto
             );
 
             res.json({
