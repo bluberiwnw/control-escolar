@@ -14,7 +14,7 @@ async function cargarMaterias() {
 
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:8000/materias', {
+        const response = await fetch(window.API_URL + '/materias', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 

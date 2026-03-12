@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function cargarMateriasSelect() {
     const select = document.getElementById('materiaSelect');
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:8000/materias', {
+    const res = await fetch(window.API_URL + '/materias', {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     const materias = await res.json();
@@ -43,7 +43,7 @@ async function cargarListaAsistencia() {
         estudiantesCargados = estudiantes;
 
         // Obtener asistencias ya guardadas para hoy (opcional)
-        const asistenciasRes = await fetch(`http://localhost:8000/asistencia/${materiaId}/${fecha}`, {
+        const asistenciasRes = await fetch(`${window.API_URL}/asistencia/${materiaId}/${fecha}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const asistencias = asistenciasRes.ok ? await asistenciasRes.json() : [];
@@ -109,7 +109,7 @@ async function guardarAsistencia() {
 
     try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:8000/asistencia/batch', {
+        const res = await fetch(window.API_URL + '/asistencia/batch', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

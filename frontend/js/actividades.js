@@ -16,7 +16,7 @@ async function cargarMateriasEnSelect() {
     if (!selectMateria || !selectFiltro) return;
 
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:8000/materias', {
+    const res = await fetch(window.API_URL + '/materias', {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     const materias = await res.json();
@@ -36,7 +36,7 @@ async function cargarActividades() {
 
     try {
         const token = localStorage.getItem('token');
-        let url = 'http://localhost:8000/actividades';
+        let url = window.API_URL + '/actividades';
         if (materiaFiltroActual !== 'todas') {
             url += `?materia_id=${materiaFiltroActual}`;
         }
@@ -56,7 +56,7 @@ async function cargarActividades() {
         }
 
         // Agrupar por materia (opcional)
-        const materias = await (await fetch('http://localhost:8000/materias', {
+        const materias = await (await fetch(window.API_URL + '/materias', {
             headers: { 'Authorization': `Bearer ${token}` }
         })).json();
 
@@ -133,7 +133,7 @@ async function guardarActividad() {
 
     try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:8000/actividades', {
+        const res = await fetch(window.API_URL + '/actividades', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -154,7 +154,7 @@ async function eliminarActividad(id) {
     if (!confirm('¿Eliminar actividad?')) return;
     try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:8000/actividades/${id}`, {
+        const res = await fetch(`${window.API_URL}/actividades/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });

@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function cargarMateriasCalificaciones() {
     const select = document.getElementById('materiaCalificaciones');
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:8000/materias', {
+    const res = await fetch(window.API_URL + '/materias', {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     const materias = await res.json();
@@ -55,8 +55,7 @@ async function procesarArchivo(input) {
 
     try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:8000/calificaciones/upload', {
-            method: 'POST',
+        const res = await fetch(window.API_URL + '/calificaciones/upload', {
             headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
@@ -80,7 +79,7 @@ async function cargarHistorialArchivos() {
     const container = document.getElementById('archivosSubidos');
     try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:8000/calificaciones/archivos', {
+        const res = await fetch(window.API_URL + '/calificaciones/archivos', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) throw new Error('Error al cargar historial');

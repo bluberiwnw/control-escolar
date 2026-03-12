@@ -4,7 +4,8 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
   ? 'http://localhost:8000'
   : 'https://control-escolar-l3g0.onrender.com';
 
-  
+window.API_URL = API_URL;
+
 // Función para mostrar alertas
 function mostrarAlerta(mensaje, tipo = 'info') {
     const alertContainer = document.getElementById('alertContainer');
