@@ -1,7 +1,10 @@
 // auth.js - Versión completa
 
-const API_URL = 'https://control-escolar-production-3bca.up.railway.app'; // sin :8000
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8000'
+  : 'https://tu-backend.onrender.com';
 
+  
 // Función para mostrar alertas
 function mostrarAlerta(mensaje, tipo = 'info') {
     const alertContainer = document.getElementById('alertContainer');

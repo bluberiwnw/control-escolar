@@ -11,11 +11,12 @@ const app = express();
     credentials: true
 }));*/
 app.use(cors({
-    origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'https://tu-sitio.netlify.app'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+  origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'https://tu-frontend.onrender.com'], // luego reemplaza
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+app.options('*', cors()); // Maneja preflight
 
 // Manejar preflight explícitamente (opcional pero recomendado)
 app.options('*', cors()); // Permite OPTIONS para todas las rutas
