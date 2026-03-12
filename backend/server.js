@@ -11,9 +11,14 @@ const app = express();
     credentials: true
 }));*/
 app.use(cors({
-    origin: ['https://vmline.netlify.app', 'http://localhost:5500'],
-    credentials: true
+    origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'https://tu-sitio.netlify.app'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Manejar preflight explícitamente (opcional pero recomendado)
+app.options('*', cors()); // Permite OPTIONS para todas las rutas
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
