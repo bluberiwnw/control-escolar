@@ -56,6 +56,7 @@ async function procesarArchivo(input) {
     try {
         const token = localStorage.getItem('token');
         const res = await fetch(window.API_URL + '/calificaciones/upload', {
+            method: 'POST', // <--- FALTABA ESTO
             headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });

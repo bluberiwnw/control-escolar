@@ -1,10 +1,10 @@
 // auth.js - Versión completa
 
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+/*const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8000'
-  : 'https://control-escolar-l3g0.onrender.com';
+  : 'https://control-escolar-l3g0.onrender.com';*/
 
-window.API_URL = API_URL;
+const API_URL = window.API_URL; 
 
 // Función para mostrar alertas
 function mostrarAlerta(mensaje, tipo = 'info') {
