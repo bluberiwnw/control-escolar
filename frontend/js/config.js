@@ -3,45 +3,22 @@ window.API_URL = (window.location.hostname === 'localhost' || window.location.ho
   ? 'http://localhost:8000'
   : 'https://control-escolar-l3g0.onrender.com';
 
-// Función helper para hacer peticiones autenticadas
+// Función para peticiones autenticadas
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('token');
-    
     const headers = {
         'Content-Type': 'application/json',
         ...options.headers
     };
-    
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const config = { ...options, headers };
+    const response = await fetch(`${window.API_URL}${endpoint}`, config);
+    if (response.status === 401) {
+        localStorage.clear();
+        window.location.href = '/login.html';
+        throw new Error('Sesión expirada');
     }
-    
-    const config = {
-        ...options,
-        headers
-    };
-    
-    try {
-        const response = await fetch(`${API_URL}${endpoint}`, config);
-        
-        if (response.status === 401) {
-            // Token expirado o inválido
-            localStorage.removeItem('token');
-            localStorage.removeItem('usuarioActual');
-            window.location.href = 'login.html';
-            throw new Error('Sesión expirada');
-        }
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.message || 'Error en la petición');
-        }
-        
-        return data;
-        
-    } catch (error) {
-        console.error('API Error:', error);
-        throw error;
-    }
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Error en la petición');
+    return data;
 }

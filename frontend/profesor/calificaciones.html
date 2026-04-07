@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calificaciones - Profesor</title>
+    <link rel="stylesheet" href="../css/estilo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+        <div class="sidebar">
+        <div class="sidebar-header"><div class="university-logo"><i class="fas fa-university"></i></div><h2>Portal del Profesor</h2><p>BUAP - FCC</p></div>
+        <div class="teacher-info"><div class="teacher-avatar"><i class="fas fa-chalkboard-teacher"></i></div><div class="teacher-details"><h3 id="userName">Cargando...</h3><p id="userEmail">...</p></div></div>
+        <div class="sidebar-menu">
+            <a href="dashboard.html" class="active"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="materias.html"><i class="fas fa-book"></i> Mis Materias</a>
+            <a href="actividades.html"><i class="fas fa-tasks"></i> Actividades</a>
+            <a href="asistencia.html"><i class="fas fa-calendar-check"></i> Asistencia</a>
+            <a href="calificaciones.html"><i class="fas fa-graduation-cap"></i> Calificaciones</a>
+            <a href="reportes.html"><i class="fas fa-chart-line"></i> Reportes</a>
+        </div>
+        <div class="sidebar-footer"><button onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button></div>
+    </div> 
+    <main class="main-content-profesor">
+        <div class="top-bar"><h1>Registro de Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
+        <div style="background:white; padding:20px; border-radius:12px; margin-bottom:20px;">
+            <div class="form-group"><label>Materia</label><select id="materiaSelect"></select></div>
+            <div class="form-group"><label>Tipo</label><select id="tipoSelect"><option value="tarea">Tarea</option><option value="proyecto">Proyecto</option><option value="examen">Examen</option></select></div>
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-cloud-upload-alt"></i><h3>Subir calificaciones</h3>
+                <p>Excel con columnas: Matrícula, Nombre, Calificación</p>
+                <input type="file" id="fileInput" style="display:none" accept=".xlsx,.xls" onchange="subirArchivo(this)">
+            </div>
+            <div id="resultadoUpload"></div>
+        </div>
+        <div class="historial-archivos"><h3>Archivos subidos</h3><div id="archivosList"></div></div>
+    </main>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="js/calificaciones.js"></script>
+</body>
+</html>

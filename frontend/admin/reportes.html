@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reportes Globales</title>
+    <link rel="stylesheet" href="../css/estilo.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header"><div class="university-logo"><i class="fas fa-university"></i></div><h2>Panel Administrador</h2><p>BUAP - FCC</p></div>
+        <div class="teacher-info"><div class="teacher-avatar"><i class="fas fa-user-cog"></i></div><div class="teacher-details"><h3 id="userName"></h3><p id="userEmail"></p></div></div>
+        <div class="sidebar-menu">
+            <a href="dashboard.html" class="active"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="usuarios.html"><i class="fas fa-users"></i> Usuarios</a>
+            <a href="materias.html"><i class="fas fa-book"></i> Materias</a>
+            <a href="actividades.html"><i class="fas fa-tasks"></i> Actividades</a>
+            <a href="asistencia.html"><i class="fas fa-calendar-check"></i> Asistencia</a>
+            <a href="calificaciones.html"><i class="fas fa-graduation-cap"></i> Calificaciones</a>
+            <a href="reportes.html"><i class="fas fa-chart-line"></i> Reportes</a>
+        </div>
+        <div class="sidebar-footer"><button onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button></div>
+    </div>    
+    <main class="main-content-profesor">
+        <div class="top-bar"><h1>Reportes de Rendimiento</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
+        <div class="stats-grid-profesor" id="reportesStats"></div>
+        <div class="reportes-grid" id="reportesGraficos"></div>
+    </main>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="js/reportes.js"></script>
+</body>
+</html>
