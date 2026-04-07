@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const materiaController = require('../controllers/materiaController');
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 router.use(authMiddleware);
 router.get('/', materiaController.getAll);

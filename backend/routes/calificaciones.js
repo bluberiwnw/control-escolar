@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const calificacionController = require('../controllers/calificacionController');
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 router.use(authMiddleware);
 router.post('/upload', calificacionController.uploadFile);
