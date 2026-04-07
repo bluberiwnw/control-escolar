@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const authMiddleware = require('../middleware/authMiddleware'); // ← sin 's', carpeta 'middleware'
+const authMiddleware = require('../middleware/authMiddleware'); // Ruta correcta
 
 // Rutas públicas
 router.post('/login', authController.login);
