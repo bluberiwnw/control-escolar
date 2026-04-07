@@ -5,7 +5,7 @@ const materiaController = {
         try {
             const result = await pool.query(
                 'SELECT * FROM materias WHERE profesor_id = $1 ORDER BY nombre',
-                [req.usuario.id] // Cambiado de req.profesor.id a req.usuario.id
+                [req.usuario.id]
             );
             res.json(result.rows);
         } catch (error) {
@@ -39,7 +39,6 @@ const materiaController = {
             if (materiaCheck.rows.length === 0) {
                 return res.status(404).json({ message: 'Materia no encontrada' });
             }
-            // Relación entre materias y estudiantes (puedes ajustar según tu esquema)
             const estudiantes = await pool.query('SELECT * FROM estudiantes LIMIT 10');
             res.json(estudiantes.rows);
         } catch (error) {

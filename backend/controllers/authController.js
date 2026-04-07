@@ -11,7 +11,7 @@ const authController = {
                 return res.status(400).json({ message: 'Email y contraseña son requeridos' });
             }
 
-            // Buscar en usuarios (profesores + administradores)
+            // Buscar en usuarios (incluye profesores y administradores)
             let result = await pool.query(
                 `SELECT id, nombre, email, password, avatar, rol, activo, 'profesor' as tipo 
                  FROM usuarios WHERE email = $1`,

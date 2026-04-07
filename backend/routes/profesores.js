@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const profesorController = require('../controllers/profesorController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware'); // ← corregido
 
-// Todas las rutas requieren autenticación
 router.use(authMiddleware);
-
 router.get('/materias', profesorController.getMaterias);
 router.get('/estadisticas', profesorController.getEstadisticas);
 
