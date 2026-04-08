@@ -3,117 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Sistema Escolar BUAP | Plataforma Académica</title>
+    <title>Portal Académico BUAP</title>
     <link rel="stylesheet" href="css/estilo.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <!-- Barra de navegación superior -->
-    <nav class="landing-nav">
-        <div class="nav-container">
-            <div class="logo">
+    <div class="spotify-login-container">
+        <div class="login-card">
+            <div class="logo-area">
                 <i class="fas fa-university"></i>
-                <span>BUAP · FCC</span>
+                <h1>BUAP</h1>
+                <p>Facultad de Ciencias de la Computación</p>
             </div>
-            <div class="nav-links">
-                <a href="#features">Características</a>
-                <a href="#about">Acerca de</a>
-                <a href="#contact">Contacto</a>
-                <button class="btn-login-nav" onclick="window.location.href='login.html'">
-                    <i class="fas fa-arrow-right-to-bracket"></i> Iniciar sesión
-                </button>
+            <form onsubmit="handleLogin(event)" class="login-form">
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" placeholder="Correo electrónico" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Contraseña" required>
+                </div>
+                <button type="submit" class="btn-login">Iniciar sesión <i class="fas fa-arrow-right"></i></button>
+            </form>
+            <div id="alertContainer" class="alert" style="display: none;"></div>
+            <div class="login-footer">
+                <p>© 2026 Benemérita Universidad Autónoma de Puebla</p>
             </div>
-            <div class="menu-icon" onclick="toggleMenu()">
-                <i class="fas fa-bars"></i>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Hero principal -->
-    <section class="hero">
-        <div class="hero-content">
-            <h1>Control académico <span class="highlight">inteligente</span></h1>
-            <p>Gestiona calificaciones, asistencias y reportes en una plataforma moderna, segura y accesible desde cualquier dispositivo.</p>
-            <div class="hero-buttons">
-                <button class="btn-primary" onclick="window.location.href='login.html'">
-                    Comenzar ahora <i class="fas fa-arrow-right"></i>
-                </button>
-                <button class="btn-secondary" onclick="scrollToFeatures()">
-                    Conocer más <i class="fas fa-chevron-down"></i>
-                </button>
+            <!-- Credenciales de prueba (solo desarrollo) -->
+            <div class="test-credentials">
+                <p>Admin: admin@universidad.edu / admin123</p>
+                <p>Profesor: profesor@universidad.edu / profesor123</p>
+                <p>Alumno: juan.perez@estudiante.edu / alumno123</p>
             </div>
         </div>
-        <div class="hero-image">
-            <i class="fas fa-chalkboard-user"></i>
-        </div>
-    </section>
-
-    <!-- Sección de características -->
-    <section id="features" class="features">
-        <div class="container">
-            <h2 class="section-title">Todo lo que necesitas en un solo lugar</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <i class="fas fa-file-excel"></i>
-                    <h3>Carga masiva</h3>
-                    <p>Importa listas de alumnos y calificaciones desde Excel con validación automática.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fas fa-qrcode"></i>
-                    <h3>Asistencia QR</h3>
-                    <p>Genera códigos QR para que los alumnos registren su asistencia al instante.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fas fa-chart-line"></i>
-                    <h3>Reportes dinámicos</h3>
-                    <p>Visualiza estadísticas de rendimiento y exporta a PDF o Excel.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fas fa-users"></i>
-                    <h3>Multirol</h3>
-                    <p>Paneles personalizados para administradores, profesores y alumnos.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Sección de vista previa (mockup) -->
-    <section class="preview">
-        <div class="container">
-            <div class="preview-content">
-                <div class="preview-text">
-                    <h2>Diseño intuitivo como <span class="highlight">Teams</span> y <span class="highlight">Spotify</span></h2>
-                    <p>Interfaz limpia, responsiva y moderna. Accede desde tu computadora, tablet o móvil sin complicaciones.</p>
-                    <ul>
-                        <li><i class="fas fa-check-circle"></i> Dashboard personalizado por rol</li>
-                        <li><i class="fas fa-check-circle"></i> Gestión de actividades y entregas</li>
-                        <li><i class="fas fa-check-circle"></i> Notificaciones por correo</li>
-                    </ul>
-                </div>
-                <div class="preview-image">
-                    <img src="https://via.placeholder.com/500x300?text=Vista+previa+del+sistema" alt="Vista previa" style="border-radius: 20px; width: 100%; box-shadow: 0 20px 30px rgba(0,0,0,0.2);">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>Benemérita Universidad Autónoma de Puebla - Facultad de Ciencias de la Computación</p>
-            <p>© 2026 - Sistema de Control Escolar</p>
-        </div>
-    </footer>
-
-    <script>
-        function toggleMenu() {
-            const navLinks = document.querySelector('.nav-links');
-            navLinks.classList.toggle('active');
-        }
-        function scrollToFeatures() {
-            document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
-        }
-    </script>
+    </div>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
 </body>
 </html>
