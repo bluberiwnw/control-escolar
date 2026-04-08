@@ -7,6 +7,315 @@
     <link rel="stylesheet" href="css/estilo.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Variables de color institucionales */
+        :root {
+            --primary: #003366;
+            --primary-dark: #002244;
+            --primary-light: #e6f0ff;
+            --secondary: #4a5568;
+            --bg-light: #f8fafc;
+            --card-bg: #ffffff;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        /* Navbar */
+        .landing-nav {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            padding: 16px 32px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .nav-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .logo i {
+            font-size: 28px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+        .nav-links a {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        .btn-login-nav {
+            background: var(--primary);
+            border: none;
+            border-radius: 40px;
+            padding: 10px 24px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-login-nav:hover {
+            background: var(--primary-dark);
+            transform: scale(1.02);
+        }
+        .menu-icon {
+            display: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--primary);
+        }
+
+        /* Hero */
+        .hero {
+            max-width: 1300px;
+            margin: 80px auto;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            gap: 60px;
+            flex-wrap: wrap;
+        }
+        .hero-content {
+            flex: 1;
+        }
+        .hero-content h1 {
+            font-size: 52px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+        .highlight {
+            color: var(--primary);
+        }
+        .hero-content p {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+        }
+        .btn-primary {
+            background: var(--primary);
+            border: none;
+            border-radius: 40px;
+            padding: 14px 32px;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: scale(1.02);
+        }
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--primary);
+            border-radius: 40px;
+            padding: 14px 32px;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-secondary:hover {
+            background: var(--primary-light);
+            border-color: var(--primary-dark);
+            color: var(--primary-dark);
+        }
+        .hero-image {
+            flex: 1;
+            text-align: center;
+        }
+        .hero-image i {
+            font-size: 280px;
+            color: rgba(0, 51, 102, 0.1);
+        }
+
+        /* Features */
+        .features {
+            background: var(--card-bg);
+            padding: 80px 32px;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 48px;
+            color: var(--text-dark);
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 40px;
+        }
+        .feature-card {
+            background: var(--bg-light);
+            border-radius: 32px;
+            padding: 32px;
+            text-align: center;
+            transition: transform 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        .feature-card i {
+            font-size: 48px;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+        .feature-card h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+        .feature-card p {
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Preview */
+        .preview {
+            padding: 80px 32px;
+            background: var(--bg-light);
+        }
+        .preview-content {
+            display: flex;
+            align-items: center;
+            gap: 60px;
+            flex-wrap: wrap;
+        }
+        .preview-text {
+            flex: 1;
+        }
+        .preview-text h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        .preview-text ul {
+            list-style: none;
+            margin-top: 24px;
+        }
+        .preview-text ul li {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .preview-text ul li i {
+            color: var(--primary);
+        }
+        .preview-image {
+            flex: 1;
+        }
+        .preview-image img {
+            border-radius: 20px;
+            width: 100%;
+            box-shadow: 0 20px 30px rgba(0,0,0,0.1);
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--primary-dark);
+            text-align: center;
+            padding: 40px 20px;
+            color: white;
+        }
+        .footer p {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 70px;
+                left: 0;
+                right: 0;
+                background: white;
+                padding: 20px;
+                gap: 20px;
+                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            }
+            .nav-links.active {
+                display: flex;
+            }
+            .menu-icon {
+                display: block;
+            }
+            .hero {
+                flex-direction: column;
+                text-align: center;
+            }
+            .hero-content h1 {
+                font-size: 36px;
+            }
+            .hero-buttons {
+                justify-content: center;
+            }
+            .preview-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Barra de navegación superior -->
@@ -78,7 +387,7 @@
         </div>
     </section>
 
-    <!-- Sección de vista previa (mockup) -->
+    <!-- Sección de vista previa -->
     <section class="preview">
         <div class="container">
             <div class="preview-content">
@@ -92,7 +401,7 @@
                     </ul>
                 </div>
                 <div class="preview-image">
-                    <img src="https://via.placeholder.com/500x300?text=Vista+previa+del+sistema" alt="Vista previa" style="border-radius: 20px; width: 100%; box-shadow: 0 20px 30px rgba(0,0,0,0.2);">
+                    <img src="https://via.placeholder.com/500x300?text=Vista+previa+del+sistema" alt="Vista previa">
                 </div>
             </div>
         </div>
