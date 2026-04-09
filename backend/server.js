@@ -26,6 +26,8 @@ try {
     app.use('/actividades', require('./routes/actividades'));
     app.use('/asistencia', require('./routes/asistencia'));
     app.use('/calificaciones', require('./routes/calificaciones'));
+    app.use('/admin', require('./routes/admin'));
+    app.use('/alumno', require('./routes/alumno'));
     console.log('✅ Rutas cargadas correctamente');
 } catch (err) {
     console.error('❌ Error cargando rutas:', err.message);
@@ -56,3 +58,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.error('❌ Error al iniciar el servidor:', err);
     process.exit(1);
 });
+

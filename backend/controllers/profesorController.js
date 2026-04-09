@@ -10,28 +10,32 @@ const profesorController = {
         }
     },
 
-    async getEstadisticas(req, res) {
-        try {
-            const materias = await pool.query('SELECT COUNT(*) as total FROM materias WHERE profesor_id = $1', [req.usuario.id]);
-            const estudiantes = await pool.query('SELECT SUM(estudiantes) as total FROM materias WHERE profesor_id = $1', [req.usuario.id]);
-            const promedios = await pool.query('SELECT AVG(promedio) as promedio FROM materias WHERE profesor_id = $1', [req.usuario.id]);
-            const actividades = await pool.query(
-                `SELECT COUNT(*) as total 
-                 FROM actividades a
-                 JOIN materias m ON a.materia_id = m.id
-                 WHERE m.profesor_id = $1 AND a.fecha_entrega >= CURRENT_DATE`,
-                [req.usuario.id]
-            );
-            res.json({
-                totalMaterias: parseInt(materias.rows[0].total),
-                totalEstudiantes: parseInt(estudiantes.rows[0].total) || 0,
-                promedioGeneral: parseFloat(promedios.rows[0].promedio) || 0,
-                actividadesActivas: parseInt(actividades.rows[0].total) || 0
-            });
-        } catch (error) {
-            res.status(500).json({ message: 'Error en el servidor', error: error.message });
+        async getEstadisticas(req, res) {
+            try {
+                const profesorId = req.usuario.id;
+                // Materias del profesor
+                const materias = await pool.query('SELECT id, estudiantes, promedio FROM materias WHERE profesor_id = $1', [profesorId]);
+                const totalMaterias = materias.rows.length;
+                const totalEstudiantes = materias.rows.reduce((sum, m) => sum + (m.estudiantes || 0), 0);
+                const promedioGeneral = materias.rows.length
+                    ? (materias.rows.reduce((sum, m) => sum + (m.promedio || 0), 0) / materias.rows.length).toFixed(1)
+                    : 0;
+                // Actividades activas (fecha_entrega >= hoy)
+                const activas = await pool.query(`
+                    SELECT COUNT(*) FROM actividades a
+                    JOIN materias m ON a.materia_id = m.id
+                    WHERE m.profesor_id = $1 AND a.fecha_entrega >= CURRENT_DATE
+                `, [profesorId]);
+                res.json({
+                    totalMaterias,
+                    totalEstudiantes,
+                    promedioGeneral,
+                    actividadesActivas: parseInt(activas.rows[0].count)
+                });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
         }
-    }
 };
 
 module.exports = profesorController;
