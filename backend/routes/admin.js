@@ -7,16 +7,26 @@ const { verificarRol } = require('../middleware/roleMiddleware');
 router.use(authMiddleware);
 router.use(verificarRol(['administrador']));
 
+// Estadísticas
 router.get('/stats', adminController.getStats);
-router.get('/usuarios', adminController.getUsuarios);
-router.post('/usuarios', adminController.crearUsuario);
-router.delete('/usuarios/:id', adminController.eliminarUsuario);
-router.get('/materias', adminController.getMaterias);
+
+// Usuarios
+router.get('/usuarios', adminController.listarUsuarios);
+router.post('/profesores', adminController.crearProfesor);
+router.post('/estudiantes', adminController.crearEstudiante);
+router.delete('/usuarios/:id/:tipo', adminController.eliminarUsuario);
+
+// Materias
+router.get('/materias', adminController.listarMaterias);
 router.delete('/materias/:id', adminController.eliminarMateria);
-router.get('/actividades', adminController.getActividades);
+
+// Actividades
+router.get('/actividades', adminController.listarActividades);
 router.delete('/actividades/:id', adminController.eliminarActividad);
-router.get('/asistencias', adminController.getAsistencias);
-router.get('/calificaciones', adminController.getCalificaciones);
+
+// Asistencias y calificaciones
+router.get('/asistencias', adminController.listarAsistencias);
+router.get('/calificaciones', adminController.listarCalificaciones);
 router.get('/reportes', adminController.getReportes);
 
 module.exports = router;
