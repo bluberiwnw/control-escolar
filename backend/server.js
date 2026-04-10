@@ -18,7 +18,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ✅ SERVIR FRONTEND ESTÁTICO (nueva línea)
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Rutas API
@@ -29,8 +28,8 @@ try {
     app.use('/actividades', require('./routes/actividades'));
     app.use('/asistencia', require('./routes/asistencia'));
     app.use('/calificaciones', require('./routes/calificaciones'));
-    app.use('/admin', require('./routes/admin'));
-    app.use('/alumno', require('./routes/alumno'));
+    // app.use('/admin', require('./routes/admin'));
+    // app.use('/alumno', require('./routes/alumno'));
     console.log('✅ Rutas API cargadas correctamente');
 } catch (err) {
     console.error('❌ Error cargando rutas API:', err.message);
