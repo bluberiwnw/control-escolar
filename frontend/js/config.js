@@ -1,5 +1,7 @@
-// Configuración de la API - usa rutas relativas (mismo origen)
-window.API_URL = '';  // Vacío para que las peticiones sean relativas
+// Configuración de la API
+window.API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:8000'
+  : 'https://control-escolar-l3g0.onrender.com';
 
 // Función para peticiones autenticadas
 async function apiRequest(endpoint, options = {}) {
@@ -10,8 +12,7 @@ async function apiRequest(endpoint, options = {}) {
     };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const config = { ...options, headers };
-    // Usa endpoint directamente (sin concatenar API_URL)
-    const response = await fetch(endpoint, config);
+    const response = await fetch(`${window.API_URL}${endpoint}`, config);
     if (response.status === 401) {
         localStorage.clear();
         window.location.href = '/login.html';
