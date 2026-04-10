@@ -18,7 +18,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Rutas (con try/catch para evitar que errores de importación detengan todo)
+// ✅ SERVIR FRONTEND ESTÁTICO (nueva línea)
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Rutas API
 try {
     app.use('/auth', require('./routes/auth'));
     app.use('/profesores', require('./routes/profesores'));
@@ -28,20 +31,20 @@ try {
     app.use('/calificaciones', require('./routes/calificaciones'));
     app.use('/admin', require('./routes/admin'));
     app.use('/alumno', require('./routes/alumno'));
-    console.log('✅ Rutas cargadas correctamente');
+    console.log('✅ Rutas API cargadas correctamente');
 } catch (err) {
-    console.error('❌ Error cargando rutas:', err.message);
+    console.error('❌ Error cargando rutas API:', err.message);
     process.exit(1);
 }
 
-// Ruta raíz
+// ✅ Ruta raíz - sirve el frontend (index.html)
 app.get('/', (req, res) => {
-    res.json({ message: 'API del Portal del Profesor - BUAP', version: '1.0.0' });
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// Manejador de errores 404
-app.use((req, res) => {
-    res.status(404).json({ message: 'Ruta no encontrada' });
+// Manejador de errores 404 para rutas API (no para frontend)
+app.use('/api/*', (req, res) => {
+    res.status(404).json({ message: 'Ruta API no encontrada' });
 });
 
 // Manejador de errores global
@@ -53,9 +56,9 @@ app.use((err, req, res, next) => {
 // Iniciar servidor
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
+    console.log(`📁 Frontend disponible en http://0.0.0.0:${PORT}`);
     console.log(`🔑 Credenciales: profesor@universidad.edu / profesor123`);
 }).on('error', (err) => {
     console.error('❌ Error al iniciar el servidor:', err);
     process.exit(1);
 });
-
