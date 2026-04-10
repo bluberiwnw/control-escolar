@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const profesorController = require('../controllers/profesorController');
-const authMiddleware = require('../middleware/authMiddleware'); // ← corregido
+const authMiddleware = require('../middleware/authMiddleware');
 
 router.use(authMiddleware);
 router.get('/materias', profesorController.getMaterias);

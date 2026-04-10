@@ -4,7 +4,6 @@ const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const { verificarRol } = require('../middleware/roleMiddleware');
 
-// Todas las rutas requieren autenticación y rol de administrador
 router.use(authMiddleware);
 router.use(verificarRol(['administrador']));
 
@@ -20,4 +19,4 @@ router.get('/asistencias', adminController.getAsistencias);
 router.get('/calificaciones', adminController.getCalificaciones);
 router.get('/reportes', adminController.getReportes);
 
-module.exports = router;  
+module.exports = router;
