@@ -1,5 +1,3 @@
-// auth.js - Versión completa
-
 /*const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8000'
   : 'https://control-escolar-l3g0.onrender.com';*/
@@ -21,6 +19,7 @@ async function handleLogin(event) {
         if (response.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('usuarioActual', JSON.stringify(data.usuario));
+            console.log('Token guardado:', data.token); 
             // Redirigir según rol
             if (data.usuario.rol === 'administrador') {
                 window.location.href = 'admin/dashboard.html';
