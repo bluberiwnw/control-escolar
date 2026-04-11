@@ -145,34 +145,35 @@ const adminController = {
 
     // Listar asistencias con filtros
     async listarAsistencias(req, res) {
-        try {
-            const { fecha, materia_id } = req.query;
-            let query = `
-                SELECT a.*, m.nombre as materia_nombre, e.nombre as estudiante_nombre 
-                FROM asistencias a
-                JOIN materias m ON a.materia_id = m.id
-                JOIN estudiantes e ON a.estudiante_id = e.id
-                WHERE 1=1
-            `;
-            const params = [];
-            let idx = 1;
-            if (fecha) {
-                query += ` AND a.fecha = $${idx}`;
-                params.push(fecha);
-                idx++;
-            }
-            if (materia_id) {
-                query += ` AND a.materia_id = $${idx}`;
-                params.push(materia_id);
-                idx++;
-            }
-            query += ' ORDER BY a.fecha DESC, m.nombre, e.nombre';
-            const result = await pool.query(query, params);
-            res.json(result.rows);
-        } catch (error) {
-            res.status(500).json({ error: error.message });
+    try {
+        const { fecha, materia_id } = req.query;
+        let query = `
+            SELECT a.id, a.materia_id, a.estudiante_id, a.fecha, a.estado,
+                   m.nombre as materia_nombre, e.nombre as estudiante_nombre
+            FROM asistencias a
+            JOIN materias m ON a.materia_id = m.id
+            JOIN estudiantes e ON a.estudiante_id = e.id
+            WHERE 1=1
+        `;
+        const params = [];
+        let idx = 1;
+        if (fecha) {
+            query += ` AND a.fecha = $${idx}`;
+            params.push(fecha);
+            idx++;
         }
-    },
+        if (materia_id) {
+            query += ` AND a.materia_id = $${idx}`;
+            params.push(materia_id);
+            idx++;
+        }
+        query += ' ORDER BY a.fecha DESC, m.nombre, e.nombre';
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+},
 
     // Listar calificaciones con filtros
     async listarCalificaciones(req, res) {

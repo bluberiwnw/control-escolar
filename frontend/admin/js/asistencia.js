@@ -17,16 +17,15 @@ async function cargarAsistencias() {
     if (materiaId) url += `&materia_id=${materiaId}`;
     const asistencias = await apiRequest(url);
     
-    // Generar tabla con columna de acciones
+    if (asistencias.length === 0) {
+        document.getElementById('asistenciasContainer').innerHTML = '<div class="alert alert-info">No hay asistencias para los filtros seleccionados.</div>';
+        return;
+    }
+    
     let html = `
         <table class="tabla-moderna">
             <thead>
-                <tr>
-                    <th>Materia</th>
-                    <th>Estudiante</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
+                <tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr>
             </thead>
             <tbody>
     `;
@@ -35,25 +34,22 @@ async function cargarAsistencias() {
             <tr data-id="${a.id}">
                 <td>${a.materia_nombre}</td>
                 <td>${a.estudiante_nombre}</td>
+                <td>${formatearFecha(a.fecha)}</td>
                 <td>${a.estado}</td>
-                <td>
-                    <button class="btn-small btn-danger" onclick="eliminarAsistencia(${a.id})">
-                        <i class="fas fa-trash"></i> Eliminar
-                    </button>
-                </td>
+                <td><button class="btn-small btn-danger" onclick="eliminarAsistencia(${a.id})">Eliminar</button></td>
             </tr>
         `;
     });
-    html += `</tbody></table>`;
+    html += `</tbody>~</div>`;
     document.getElementById('asistenciasContainer').innerHTML = html;
 }
 
 async function eliminarAsistencia(id) {
-    if (!confirm('¿Eliminar este registro de asistencia permanentemente?')) return;
+    if (!confirm('¿Eliminar este registro de asistencia?')) return;
     try {
         await apiRequest(`/admin/asistencias/${id}`, { method: 'DELETE' });
-        mostrarToast('Asistencia eliminada correctamente', 'success');
-        cargarAsistencias(); // recargar la tabla
+        mostrarToast('Asistencia eliminada', 'success');
+        cargarAsistencias(); // recargar
     } catch (error) {
         mostrarToast(error.message, 'error');
     }
