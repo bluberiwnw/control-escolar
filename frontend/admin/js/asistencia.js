@@ -16,9 +16,45 @@ async function cargarAsistencias() {
     let url = `/admin/asistencias?fecha=${fecha}`;
     if (materiaId) url += `&materia_id=${materiaId}`;
     const asistencias = await apiRequest(url);
-    document.getElementById('asistenciasContainer').innerHTML = `
-        <table><thead><tr><th>Materia</th><th>Estudiante</th><th>Estado</th></tr></thead><tbody>
-        ${asistencias.map(a => `<tr><td>${a.materia_nombre}</td><td>${a.estudiante_nombre}</td><td>${a.estado}</td></tr>`).join('')}
-        </tbody></table>
+    
+    // Generar tabla con columna de acciones
+    let html = `
+        <table class="tabla-moderna">
+            <thead>
+                <tr>
+                    <th>Materia</th>
+                    <th>Estudiante</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
     `;
+    asistencias.forEach(a => {
+        html += `
+            <tr data-id="${a.id}">
+                <td>${a.materia_nombre}</td>
+                <td>${a.estudiante_nombre}</td>
+                <td>${a.estado}</td>
+                <td>
+                    <button class="btn-small btn-danger" onclick="eliminarAsistencia(${a.id})">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    html += `</tbody></table>`;
+    document.getElementById('asistenciasContainer').innerHTML = html;
+}
+
+async function eliminarAsistencia(id) {
+    if (!confirm('¿Eliminar este registro de asistencia permanentemente?')) return;
+    try {
+        await apiRequest(`/admin/asistencias/${id}`, { method: 'DELETE' });
+        mostrarToast('Asistencia eliminada correctamente', 'success');
+        cargarAsistencias(); // recargar la tabla
+    } catch (error) {
+        mostrarToast(error.message, 'error');
+    }
 }

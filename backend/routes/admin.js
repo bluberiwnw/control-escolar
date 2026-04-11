@@ -19,5 +19,8 @@ router.delete('/actividades/:id', adminController.eliminarActividad);
 router.get('/asistencias', adminController.listarAsistencias);
 router.get('/calificaciones', adminController.listarCalificaciones);
 router.get('/reportes', adminController.getReportes);
+router.get('/actividades/:id', adminController.getActividadById);
+router.put('/actividades/:id', adminController.updateActividad);
+router.delete('/asistencias/:id', adminController.deleteAsistencia);
 
 module.exports = router;

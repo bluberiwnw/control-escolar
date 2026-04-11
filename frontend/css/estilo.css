@@ -558,3 +558,20 @@ body {
     box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
     outline: none;
 }
+
+.btn-small {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    margin: 0 3px;
+}
+.btn-danger {
+    background: var(--danger);
+}
+.btn-small:hover {
+    opacity: 0.9;
+}

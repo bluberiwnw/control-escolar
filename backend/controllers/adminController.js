@@ -227,7 +227,37 @@ const adminController = {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
-    }
+    },
+
+    // Obtener una actividad por ID (para editar)
+    async getActividadById(req, res) {
+        const { id } = req.params;
+        const result = await pool.query('SELECT * FROM actividades WHERE id = $1', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrada' });
+        res.json(result.rows[0]);
+    },
+
+    // Actualizar actividad
+    async updateActividad(req, res) {
+        const { id } = req.params;
+        const { titulo, descripcion, fecha_entrega, tipo, valor } = req.body;
+        await pool.query(
+            `UPDATE actividades SET titulo=$1, descripcion=$2, fecha_entrega=$3, tipo=$4, valor=$5 WHERE id=$6`,
+            [titulo, descripcion, fecha_entrega, tipo, valor, id]
+        );
+        res.json({ message: 'Actualizada' });
+    },
+    
+    // Eliminar asistencia por ID
+    async deleteAsistencia(req, res) {
+        try {
+            const { id } = req.params;
+            await pool.query('DELETE FROM asistencias WHERE id = $1', [id]);
+            res.json({ message: 'Asistencia eliminada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
 };
 
 module.exports = adminController;
