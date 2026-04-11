@@ -80,6 +80,33 @@ function mostrarFechaActual() {
     }
 }
 
+// Toggle modo oscuro/claro
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+// Cargar tema guardado
+function loadTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+}
+
+// Llamar a loadTheme al inicio
+document.addEventListener('DOMContentLoaded', () => {
+    loadTheme(); // primero aplicar tema
+    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.pathname === '/';
+    if (isLoginPage) return;
+    const usuario = verificarSesion();
+    if (usuario) {
+        mostrarInfoUsuario();
+        mostrarFechaActual();
+    }
+});
+
 // Inicialización al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     // Detectar si estamos en la página de login

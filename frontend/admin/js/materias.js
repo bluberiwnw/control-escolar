@@ -32,3 +32,23 @@ async function eliminarMateria(id) {
         cargarMaterias();
     }
 }
+
+async function mostrarModalMateria() {
+    const profesores = await apiRequest('/admin/usuarios?rol=profesor');
+    const modal = document.getElementById('modalMateria');
+    document.getElementById('selectProfesor').innerHTML = profesores.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+    modal.style.display = 'flex';
+}
+async function guardarMateria() {
+    const data = {
+        nombre: document.getElementById('nombreMateria').value,
+        clave: document.getElementById('claveMateria').value,
+        horario: document.getElementById('horarioMateria').value,
+        semestre: document.getElementById('semestreMateria').value,
+        color: document.getElementById('colorMateria').value,
+        profesor_id: parseInt(document.getElementById('selectProfesor').value)
+    };
+    await apiRequest('/admin/materias', { method: 'POST', body: JSON.stringify(data) });
+    cerrarModal();
+    cargarMaterias();
+}

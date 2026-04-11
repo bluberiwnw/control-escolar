@@ -16,27 +16,14 @@ async function cargarHistorial() {
 }
 
 function iniciarLectorQR() {
-    html5QrCode = new Html5Qrcode("reader");
+    const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start({ facingMode: "environment" }, { fps: 10 }, async (decodedText) => {
         const url = new URL(decodedText);
         const codigo = url.searchParams.get('code');
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${window.API_URL}/alumno/asistencia-qr`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ codigo })
-        });
-        const data = await res.json();
-        const mensajeDiv = document.getElementById('mensajeQR');
-        if (res.ok) {
-            mensajeDiv.className = 'alert alert-success';
-            mensajeDiv.textContent = '✅ Asistencia registrada';
-            cargarHistorial();
-        } else {
-            mensajeDiv.className = 'alert alert-error';
-            mensajeDiv.textContent = '❌ ' + (data.error || 'Error');
-        }
-        mensajeDiv.style.display = 'block';
-        setTimeout(() => mensajeDiv.style.display = 'none', 3000);
-        setTimeout(() => html5QrCode.stop(), 5000);
+        if (!codigo) { alert('QR no válido'); return; }
+        const data = await apiRequest('/qr/validar', { method: 'POST', body: JSON.stringify({ codigo }) });
+        mostrarToast(data.message || 'Asistencia registrada', 'success');
+        cargarHistorial();
+        html5QrCode.stop();
     }).catch(err => console.error(err));
 }
