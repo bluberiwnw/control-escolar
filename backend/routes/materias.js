@@ -10,5 +10,6 @@ router.get('/:id/estudiantes', materiaController.getEstudiantes);
 router.post('/', materiaController.create);
 router.put('/:id', materiaController.update);
 router.delete('/:id', materiaController.delete);
+router.get('/:id/estudiantes-inscritos', materiaController.getEstudiantesDeMateria);
 
 module.exports = router;

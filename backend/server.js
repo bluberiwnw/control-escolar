@@ -30,6 +30,7 @@ app.use('/calificaciones', require('./routes/calificaciones'));
 app.use('/admin', require('./routes/admin'));
 app.use('/alumno', require('./routes/alumno'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/qr', require('./routes/qr'));
 
 console.log('✅ Rutas API cargadas correctamente');
 
