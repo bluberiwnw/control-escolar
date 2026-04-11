@@ -7,17 +7,21 @@ const authController = {
     async login(req, res) {
         try {
             const { email, password } = req.body;
+            console.log('🔐 Intento de login para email:', email);
+
             if (!email || !password) {
+                console.log('❌ Email o contraseña vacíos');
                 return res.status(400).json({ message: 'Email y contraseña son requeridos' });
             }
 
-            // Buscar en usuarios (incluye profesores y administradores)
+            // Buscar en usuarios (profesores y administradores)
             let result = await pool.query(
                 `SELECT id, nombre, email, password, avatar, rol, activo, 'profesor' as tipo 
                  FROM usuarios WHERE email = $1`,
                 [email]
             );
             let usuario = result.rows[0];
+            console.log('🔍 Búsqueda en usuarios:', usuario ? 'Encontrado' : 'No encontrado');
 
             // Si no está en usuarios, buscar en estudiantes
             if (!usuario) {
@@ -27,18 +31,33 @@ const authController = {
                     [email]
                 );
                 usuario = result.rows[0];
+                console.log('🔍 Búsqueda en estudiantes:', usuario ? 'Encontrado' : 'No encontrado');
             }
 
             if (!usuario) {
+                console.log('❌ Usuario no encontrado en ninguna tabla');
                 return res.status(401).json({ message: 'Credenciales incorrectas' });
             }
 
+            console.log('👤 Usuario encontrado:', {
+                id: usuario.id,
+                email: usuario.email,
+                rol: usuario.rol,
+                activo: usuario.activo,
+                tipo: usuario.tipo
+            });
+
             if (usuario.activo === false) {
+                console.log('❌ Usuario inactivo');
                 return res.status(401).json({ message: 'Cuenta desactivada. Contacte al administrador.' });
             }
 
+            console.log('🔑 Comparando contraseña...');
             const validPassword = await bcrypt.compare(password, usuario.password);
+            console.log('✅ Contraseña válida:', validPassword);
+
             if (!validPassword) {
+                console.log('❌ Contraseña incorrecta');
                 return res.status(401).json({ message: 'Credenciales incorrectas' });
             }
 
@@ -54,6 +73,7 @@ const authController = {
                 { expiresIn: process.env.JWT_EXPIRE || '30d' }
             );
 
+            console.log('✅ Login exitoso, token generado');
             res.json({
                 message: 'Login exitoso',
                 token,
@@ -67,7 +87,7 @@ const authController = {
                 }
             });
         } catch (error) {
-            console.error('Error en login:', error);
+            console.error('🔥 Error en login:', error);
             res.status(500).json({ message: 'Error en el servidor', error: error.message });
         }
     },
