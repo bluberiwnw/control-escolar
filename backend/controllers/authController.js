@@ -7,14 +7,14 @@ const authController = {
     async login(req, res) {
         try {
             const { email, password } = req.body;
-            console.log('🔐 Intento de login para email:', email);
-
+            console.log('🔐 Intento de login para:', email);
+            
             if (!email || !password) {
                 console.log('❌ Email o contraseña vacíos');
                 return res.status(400).json({ message: 'Email y contraseña son requeridos' });
             }
 
-            // Buscar en usuarios (profesores y administradores)
+            // Buscar en usuarios
             let result = await pool.query(
                 `SELECT id, nombre, email, password, avatar, rol, activo, 'profesor' as tipo 
                  FROM usuarios WHERE email = $1`,
@@ -23,7 +23,6 @@ const authController = {
             let usuario = result.rows[0];
             console.log('🔍 Búsqueda en usuarios:', usuario ? 'Encontrado' : 'No encontrado');
 
-            // Si no está en usuarios, buscar en estudiantes
             if (!usuario) {
                 result = await pool.query(
                     `SELECT id, nombre, email, password, NULL as avatar, 'alumno' as rol, activo, 'alumno' as tipo 
@@ -35,26 +34,21 @@ const authController = {
             }
 
             if (!usuario) {
-                console.log('❌ Usuario no encontrado en ninguna tabla');
+                console.log('❌ Usuario no existe en ninguna tabla');
                 return res.status(401).json({ message: 'Credenciales incorrectas' });
             }
 
-            console.log('👤 Usuario encontrado:', {
-                id: usuario.id,
-                email: usuario.email,
-                rol: usuario.rol,
-                activo: usuario.activo,
-                tipo: usuario.tipo
-            });
+            console.log('📋 Usuario encontrado:', usuario.email, 'Rol:', usuario.rol, 'Activo:', usuario.activo);
+            console.log('🔑 Hash almacenado (primeros 20):', usuario.password.substring(0, 20));
 
             if (usuario.activo === false) {
-                console.log('❌ Usuario inactivo');
+                console.log('❌ Cuenta desactivada');
                 return res.status(401).json({ message: 'Cuenta desactivada. Contacte al administrador.' });
             }
 
-            console.log('🔑 Comparando contraseña...');
+            console.log('🔄 Comparando contraseña...');
             const validPassword = await bcrypt.compare(password, usuario.password);
-            console.log('✅ Contraseña válida:', validPassword);
+            console.log('✅ Resultado bcrypt.compare:', validPassword);
 
             if (!validPassword) {
                 console.log('❌ Contraseña incorrecta');
@@ -73,7 +67,7 @@ const authController = {
                 { expiresIn: process.env.JWT_EXPIRE || '30d' }
             );
 
-            console.log('✅ Login exitoso, token generado');
+            console.log('✅ Login exitoso para:', email);
             res.json({
                 message: 'Login exitoso',
                 token,
