@@ -28,3 +28,21 @@ function verMateria(id) {
     localStorage.setItem('materiaActual', id);
     window.location.href = 'actividades.html';
 }
+
+async function cargarGraficoProfesor() {
+    const materias = await apiRequest('/materias');
+    const labels = materias.map(m => m.nombre);
+    const promedios = materias.map(m => m.promedio || 0);
+    const ctx = document.getElementById('graficoProfesor').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Promedio por materia',
+                data: promedios,
+                backgroundColor: '#003366'
+            }]
+        }
+    });
+}

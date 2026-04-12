@@ -95,6 +95,34 @@ function loadTheme() {
     }
 }
 
+function ajustarMenuPorRol() {
+    const usuario = JSON.parse(localStorage.getItem('usuarioActual'));
+    if (!usuario) return;
+    const menuUsuarios = document.getElementById('menuUsuarios');
+    if (menuUsuarios) {
+        if (usuario.rol === 'administrador') {
+            menuUsuarios.style.display = 'block';
+        } else {
+            menuUsuarios.style.display = 'none';
+        }
+    }
+    // También ocultar "Reportes" para profesor? según requerimiento, profesor NO debe ver reportes generales.
+    // Se puede ocultar en profesor: 
+    if (usuario.rol === 'profesor') {
+        const menuReportes = document.querySelector('a[href="reportes.html"]');
+        if (menuReportes) menuReportes.style.display = 'none';
+    }
+}
+// Llamar en cada página después de mostrarInfoUsuario()
+
+
+function applyTheme() {
+    if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+    else document.body.classList.remove('dark-mode');
+}
+// Llamar en cada página después de DOMContentLoaded
+
+
 // Llamar a loadTheme al inicio
 document.addEventListener('DOMContentLoaded', () => {
     loadTheme(); // primero aplicar tema
@@ -123,5 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (usuario) {
         mostrarInfoUsuario();
         mostrarFechaActual();
+        ajustarMenuPorRol();      
+        applyTheme();             
     }
 });
+
+window.toggleTheme = function() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+};

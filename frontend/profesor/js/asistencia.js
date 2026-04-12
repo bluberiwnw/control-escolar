@@ -50,10 +50,27 @@ window.cambiarEstado = async (estudianteId, estado) => {
 async function generarQR() {
     const materiaId = document.getElementById('materiaSelect').value;
     const fecha = document.getElementById('fechaAsistencia').value;
-    if (!materiaId || !fecha) { alert('Selecciona materia y fecha'); return; }
+    if (!materiaId || !fecha) {
+        mostrarToast('Selecciona materia y fecha', 'error');
+        return;
+    }
     const hora_inicio = prompt('Hora inicio (HH:MM):', '08:00');
     const hora_fin = prompt('Hora fin (HH:MM):', '10:00');
     if (!hora_inicio || !hora_fin) return;
-    const data = await apiRequest('/qr/generar', { method: 'POST', body: JSON.stringify({ materia_id: parseInt(materiaId), fecha, hora_inicio, hora_fin }) });
-    document.getElementById('qrContainer').innerHTML = `<img src="${data.qrDataUrl}" style="max-width:200px;"><br><a href="${data.url}" target="_blank">Enlace para compartir</a>`;
+
+    const data = await apiRequest('/qr/generar', {
+        method: 'POST',
+        body: JSON.stringify({ materia_id: parseInt(materiaId), fecha, hora_inicio, hora_fin })
+    });
+
+    // Mostrar QR grande y botón de descarga
+    const container = document.getElementById('qrContainer');
+    container.innerHTML = `
+        <div style="background:white; padding:20px; display:inline-block; border-radius:20px;">
+            <img src="${data.qrDataUrl}" style="max-width:300px; width:100%;" alt="QR">
+            <br><br>
+            <a href="${data.qrDataUrl}" download="qr_asistencia.png" class="btn-login-buap">Descargar QR</a>
+            <p class="text-muted" style="margin-top:10px;">URL para compartir: <a href="${data.url}" target="_blank">${data.url}</a></p>
+        </div>
+    `;
 }

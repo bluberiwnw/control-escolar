@@ -575,3 +575,63 @@ body {
 .btn-small:hover {
     opacity: 0.9;
 }
+
+
+/* Responsive: convertir tablas en tarjetas en móviles */
+@media (max-width: 768px) {
+    .asistencia-tabla table,
+    .historial-archivos table,
+    .reportes-grid table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    /* Alternativa para convertir en tarjetas (mejor experiencia) */
+    .asistencia-tabla table,
+    .asistencia-tabla thead,
+    .asistencia-tabla tbody,
+    .asistencia-tabla th,
+    .asistencia-tabla td,
+    .asistencia-tabla tr {
+        display: block;
+    }
+    .asistencia-tabla thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    .asistencia-tabla tr {
+        border: 1px solid var(--border);
+        margin-bottom: 1rem;
+        border-radius: 12px;
+        padding: 10px;
+    }
+    .asistencia-tabla td {
+        border: none;
+        position: relative;
+        padding-left: 50%;
+        text-align: left;
+        white-space: normal;
+    }
+    .asistencia-tabla td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 15px;
+        font-weight: bold;
+        width: 45%;
+    }
+}
+
+/* Modo oscuro – ya definido en :root, pero forzar en elementos específicos */
+body.dark-mode .modal-content {
+    background: #1e293b;
+    color: #f1f5f9;
+}
+body.dark-mode .upload-area {
+    background: #1e293b;
+    border-color: #475569;
+}
+body.dark-mode .btn-secondary {
+    border-color: #64748b;
+    color: #cbd5e1;
+}

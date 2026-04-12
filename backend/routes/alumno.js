@@ -21,5 +21,6 @@ router.post('/entregas', upload.single('archivo'), alumnoController.subirEntrega
 router.get('/asistencias', alumnoController.getAsistencias);
 router.get('/calificaciones', alumnoController.getCalificaciones);
 router.get('/reportes', alumnoController.getReportes);
+router.delete('/entregas/:actividad_id', alumnoController.cancelarEntrega);
 
 module.exports = router;

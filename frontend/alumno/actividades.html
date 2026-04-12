@@ -22,17 +22,24 @@
     </div>    
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Actividades y Entregas</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
+        <div id="mensajeContainer" style="margin-bottom: 20px;"></div>
         <div id="actividadesContainer" class="actividades-container"></div>
     </main>
-    <!-- Modal para subir archivo -->
+    <!-- Modal para subir entrega -->
     <div id="modalEntrega" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="close" onclick="cerrarModal()">&times;</span>
             <h3>Subir entrega</h3>
             <form id="formEntrega" enctype="multipart/form-data">
-                <input type="file" name="archivo" required accept=".pdf,.doc,.docx,.zip">
-                <textarea name="comentario" placeholder="Comentario (opcional)"></textarea>
-                <button type="submit" class="btn-login-buap">Subir</button>
+                <div class="form-group">
+                    <label>Archivo (PDF, DOC, ZIP)</label>
+                    <input type="file" name="archivo" required accept=".pdf,.doc,.docx,.zip">
+                </div>
+                <div class="form-group">
+                    <label>Comentario (opcional)</label>
+                    <textarea name="comentario" placeholder="Comentario adicional..."></textarea>
+                </div>
+                <button type="submit" class="btn-login-buap">Subir trabajo</button>
             </form>
         </div>
     </div>

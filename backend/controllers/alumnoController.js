@@ -116,6 +116,23 @@ const alumnoController = {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
+    },
+
+    async cancelarEntrega(req, res) {
+        try {
+            const { actividad_id } = req.params;
+            const alumnoId = req.usuario.id;
+            const result = await pool.query(
+                'DELETE FROM entregas WHERE actividad_id = $1 AND estudiante_id = $2 RETURNING id',
+                [actividad_id, alumnoId]
+            );
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'No se encontró la entrega' });
+            }
+            res.json({ message: 'Entrega eliminada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
     
 };

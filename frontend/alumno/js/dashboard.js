@@ -23,3 +23,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) { console.error(error); }
 });
 function verMateria(id) { localStorage.setItem('materiaActual', id); window.location.href = 'actividades.html'; }
+
+async function cargarGraficoAlumno() {
+    const calificaciones = await apiRequest('/alumno/calificaciones');
+    const materias = [...new Set(calificaciones.map(c => c.materia_nombre))];
+    const promedios = materias.map(m => {
+        const notas = calificaciones.filter(c => c.materia_nombre === m).map(c => c.calificacion);
+        return notas.reduce((a,b) => a+b,0) / notas.length;
+    });
+    const ctx = document.getElementById('graficoAlumno').getContext('2d');
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: materias,
+            datasets: [{
+                label: 'Mi rendimiento',
+                data: promedios,
+                backgroundColor: 'rgba(0,51,102,0.2)',
+                borderColor: '#003366',
+                pointBackgroundColor: '#003366'
+            }]
+        }
+    });
+}

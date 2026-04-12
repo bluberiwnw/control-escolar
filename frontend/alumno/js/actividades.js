@@ -7,15 +7,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function cargarActividades() {
     const actividades = await apiRequest('/alumno/actividades');
-    document.getElementById('actividadesContainer').innerHTML = actividades.map(a => `
-        <div class="actividad-card">
-            <div class="actividad-tipo">${a.tipo.toUpperCase()}</div>
-            <div class="actividad-titulo">${a.titulo}</div>
-            <div class="actividad-descripcion">${a.descripcion}</div>
-            <div class="actividad-meta"><span><i class="fas fa-calendar"></i> Entrega: ${formatearFecha(a.fecha_entrega)}</span><span><i class="fas fa-star"></i> Valor: ${a.valor} pts</span></div>
-            ${a.entregado ? '<span class="badge" style="background:green;">Entregado</span>' : `<button class="btn-course" onclick="mostrarModalEntrega(${a.id})">Subir trabajo</button>`}
-        </div>
-    `).join('');
+    const hoy = new Date().toISOString().split('T')[0];
+    const container = document.getElementById('actividadesContainer');
+    if (!actividades.length) {
+        container.innerHTML = '<div class="alert alert-info">No hay actividades disponibles.</div>';
+        return;
+    }
+    let html = '';
+    for (const a of actividades) {
+        const fechaEntrega = a.fecha_entrega.split('T')[0];
+        const puedeCancelar = a.entregado && fechaEntrega >= hoy;
+        html += `
+            <div class="actividad-card">
+                <div class="actividad-tipo">${a.tipo.toUpperCase()}</div>
+                <div class="actividad-titulo">${a.titulo}</div>
+                <div class="actividad-descripcion">${a.descripcion || ''}</div>
+                <div class="actividad-meta">
+                    <span><i class="fas fa-calendar"></i> Entrega: ${formatearFecha(a.fecha_entrega)}</span>
+                    <span><i class="fas fa-star"></i> Valor: ${a.valor} pts</span>
+                </div>
+                <div class="actividad-actions">
+                    ${!a.entregado ? `<button class="btn-course" onclick="mostrarModalEntrega(${a.id})">Subir trabajo</button>` : ''}
+                    ${a.entregado ? `<span class="badge" style="background:green;">Entregado</span>` : ''}
+                    ${puedeCancelar ? `<button class="btn-small btn-danger" onclick="cancelarEntrega(${a.id})">Cancelar Entrega</button>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+async function cancelarEntrega(actividadId) {
+    if (!confirm('¿Cancelar la entrega? Podrás subir un nuevo archivo.')) return;
+    await apiRequest(`/alumno/entregas/${actividadId}`, { method: 'DELETE' });
+    mostrarToast('Entrega cancelada correctamente', 'success');
+    cargarActividades(); // recargar lista
 }
 
 function mostrarModalEntrega(actividadId) {
