@@ -635,24 +635,3 @@ body.dark-mode .btn-secondary {
     border-color: #64748b;
     color: #cbd5e1;
 }
-
-
-.theme-toggle-nav {
-    background: transparent;
-    border: none;
-    font-size: 1.3rem;
-    cursor: pointer;
-    color: var(--primary);
-    margin-left: 10px;
-    transition: transform 0.2s;
-}
-.theme-toggle-nav:hover {
-    transform: scale(1.1);
-}
-/* En móviles, mantener el mismo estilo */
-@media (max-width: 768px) {
-    .theme-toggle-nav {
-        margin-left: 0;
-        margin-top: 10px;
-    }
-}

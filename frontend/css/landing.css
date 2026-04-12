@@ -286,3 +286,31 @@ body {
         text-align: center;
     }
 }
+
+.theme-toggle-nav {
+    background: transparent;
+    border: 1px solid var(--text-muted);
+    border-radius: 40px;
+    padding: 8px 16px;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.theme-toggle-nav:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+body.dark-mode-landing {
+    --bg-dark: #1e1e2f;
+    --card-bg: #2a2a3a;
+    --text-light: #ffffff;
+}
+
+
+/* En móviles, mantener el mismo estilo */
+@media (max-width: 768px) {
+    .theme-toggle-nav {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+}
