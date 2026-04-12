@@ -170,11 +170,14 @@
 <body class="login-page">
     <div class="spotify-login-container">
         <div class="login-card">
-            <div class="logo-area">
-                <i class="fas fa-university"></i>
-                <h1>BUAP</h1>
-                <p>Facultad de Ciencias de la Computación</p>
-            </div>
+        <div class="logo-area">
+            <i class="fas fa-university"></i>
+            <h1>BUAP</h1>
+            <p>Facultad de Ciencias de la Computación</p>
+            <button class="theme-toggle-login" onclick="toggleTheme()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer;">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
             <form onsubmit="handleLogin(event)" class="login-form">
                 <div class="input-group">
                     <i class="fas fa-envelope"></i>

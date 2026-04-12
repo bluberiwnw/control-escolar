@@ -65,7 +65,12 @@
                 <a href="#about">Acerca de</a>
                 <a href="#contact">Contacto</a>
                 <button class="btn-login-nav" onclick="window.location.href='login.html'"><i class="fas fa-arrow-right-to-bracket"></i> Iniciar sesión</button>
+                <!-- Botón de modo oscuro agregado aquí -->
+                <button class="theme-toggle-nav" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
+            <div class="menu-icon" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
         </div>
     </nav>
 
@@ -123,9 +128,6 @@
         <p>© 2026 - Sistema de Control Escolar</p>
     </footer>
 
-    <button class="theme-toggle" onclick="toggleTheme()">
-    <i class="fas fa-moon"></i>
-    </button>
     <script>
         function toggleMenu() { document.querySelector('.nav-links').classList.toggle('active'); }
         function scrollToFeatures() { document.getElementById('features').scrollIntoView({ behavior: 'smooth' }); }
