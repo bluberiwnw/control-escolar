@@ -16,7 +16,8 @@ async function subirArchivo(input) {
     const file = input.files[0];
     const materia_id = document.getElementById('materiaSelect').value;
     const tipo = document.getElementById('tipoSelect').value;
-    if (!materia_id) { alert('Selecciona una materia'); return; }
+    if (!materia_id) { mostrarToast('Selecciona una materia', 'error'); return; }
+    if (!file) { mostrarToast('Selecciona un archivo', 'error'); return; }
     const formData = new FormData();
     formData.append('archivo', file);
     formData.append('materia_id', materia_id);
@@ -26,8 +27,14 @@ async function subirArchivo(input) {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
     });
     const data = await res.json();
-    document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo.detalles || ''}</div>`;
-    cargarHistorial();
+    if (res.ok) {
+        mostrarToast(data.message || 'Archivo subido', 'success');
+        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
+        cargarHistorial();
+    } else {
+        mostrarToast(data.message || 'Error al subir archivo', 'error');
+        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir archivo'}</div>`;
+    }
 }
 
 async function cargarHistorial() {
@@ -45,11 +52,19 @@ async function cargarHistorial() {
             </div>
             <div class="table-actions">
                 <a class="btn btn-secondary btn-sm" href="${a.archivo_url}" target="_blank" rel="noopener">Ver documento</a>
+                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivo(${a.id})">Eliminar</button>
                 <span class="badge">${a.estado}</span>
             </div>
         </div>`
         )
         .join('');
+}
+
+async function eliminarArchivo(id) {
+    if (!window.confirm('Eliminar archivo?')) return;
+    await apiRequest(`/calificaciones/archivos/${id}`, { method: 'DELETE' });
+    mostrarToast('Archivo eliminado', 'success');
+    await cargarHistorial();
 }
 
 
@@ -141,3 +156,5 @@ async function confirmarSubida() {
         document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir'}</div>`;
     }
 }
+
+window.eliminarArchivo = eliminarArchivo;

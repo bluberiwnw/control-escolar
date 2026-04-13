@@ -43,8 +43,8 @@ const generarQR = async (req, res) => {
   };
   const qrPayload = JSON.stringify(payload);
   const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 320, margin: 2 });
-  const legacyUrl = `${req.protocol}://${req.get('host')}/qr/validar?code=${codigo}`;
-  res.json({ qrDataUrl, codigo, payload, legacyUrl });
+  const url = `${req.protocol}://${req.get('host')}/qr/validar?code=${codigo}`;
+  res.json({ qrDataUrl, codigo, payload, url });
 };
 
 const registrarAsistenciaQR = async (req, res) => {

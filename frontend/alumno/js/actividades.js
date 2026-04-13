@@ -56,22 +56,53 @@ async function cerrarModal() {
 
 document.getElementById('formEntrega').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!actividadSeleccionadaId) {
+        mostrarToast('Selecciona una actividad para entregar', 'error');
+        return;
+    }
+    const fileInput = document.querySelector('input[name="archivo"]');
+    const comentario = document.querySelector('textarea[name="comentario"]').value.trim();
+    const file = fileInput.files[0];
+    if (!file) {
+        mostrarToast('Debes seleccionar un archivo', 'error');
+        return;
+    }
+    const allowed = ['.pdf', '.doc', '.docx', '.zip'];
+    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowed.includes(ext)) {
+        mostrarToast('Formato no permitido (PDF, DOC, DOCX, ZIP)', 'error');
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        mostrarToast('El archivo excede 10 MB', 'error');
+        return;
+    }
+    if (comentario.length > 500) {
+        mostrarToast('El comentario no puede exceder 500 caracteres', 'error');
+        return;
+    }
     const formData = new FormData();
     formData.append('actividad_id', actividadSeleccionadaId);
-    formData.append('archivo', document.querySelector('input[name="archivo"]').files[0]);
-    formData.append('comentario', document.querySelector('textarea[name="comentario"]').value);
+    formData.append('archivo', file);
+    formData.append('comentario', comentario);
     const token = localStorage.getItem('token');
     const res = await fetch(`${window.API_URL}/alumno/entregas`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
     });
+    let data = {};
+    try {
+        data = await res.json();
+    } catch (_) {
+        data = {};
+    }
     if (res.ok) {
         mostrarToast('Entrega subida correctamente', 'success');
         cerrarModal();
         cargarActividades();
     } else {
-        mostrarToast('Error al subir', 'error');
+        mostrarToast(data.error || data.message || 'Error al subir', 'error');
     }
 });
 

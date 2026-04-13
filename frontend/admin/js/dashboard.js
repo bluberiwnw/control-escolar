@@ -30,7 +30,7 @@ async function renderAdminChart(stats) {
             labels,
             datasets: [
                 {
-                    label: 'Alumnos por cohorte (matrícula)',
+                    label: 'Alumnos por grupo (matrícula)',
                     data,
                     backgroundColor: 'rgba(59, 130, 246, 0.65)',
                     borderRadius: 10,

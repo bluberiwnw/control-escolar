@@ -29,22 +29,18 @@
         <div class="panel-card">
         <div class="asistencia-header">
             <select id="materiaSelect"><option value="">Todas las materias</option></select>
-            <button class="btn btn-primary" onclick="cargarCalificaciones()">Filtrar</button>
+            <button type="button" class="btn btn-primary" onclick="cargarCalificaciones()">Filtrar</button>
         </div>
-        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <i class="fas fa-file-excel"></i>
-            <h3>Previsualizar archivo de calificaciones</h3>
-            <p>Formato esperado: Materia, Nombre, Calificacion</p>
-            <input type="file" id="fileInput" style="display:none" accept=".xlsx,.xls,.csv,.pdf" onchange="previsualizarArchivoAdmin(this)">
-        </div>
-        <div id="previewTable" style="margin-top: 16px;"></div>
         </div>
         <div class="asistencia-tabla" id="calificacionesContainer"></div>
+        <section class="panel-section">
+            <div class="panel-section__head"><h2>Archivos de calificaciones</h2></div>
+            <div id="archivosCalificacionesContainer" class="table-responsive-wrap"></div>
+        </section>
     </main>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/app-shell.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <script src="js/calificaciones.js"></script>
 </body>
 </html>

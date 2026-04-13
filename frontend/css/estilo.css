@@ -1079,6 +1079,27 @@ body.dark-mode .upload-area {
     gap: 10px;
     justify-content: space-between;
 }
+.course-footer {
+    padding: 0 1.5rem 1.25rem;
+}
+.course-footer .btn {
+    width: 100%;
+}
+@media (min-width: 640px) {
+    .course-footer .btn {
+        width: auto;
+    }
+}
+
+.asistencia-header select,
+.asistencia-header input[type="date"] {
+    min-height: 42px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 0 12px;
+}
 
 body.dark select option,
 body.dark-mode select option {

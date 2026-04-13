@@ -20,7 +20,13 @@ const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        const allowedTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/pdf'];
+        const allowedTypes = [
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/pdf',
+            'text/csv',
+            'application/csv',
+        ];
         if (allowedTypes.includes(file.mimetype)) cb(null, true);
         else cb(new Error('Tipo de archivo no permitido. Solo Excel y PDF'), false);
     }
@@ -111,6 +117,31 @@ const calificacionController = {
                 ...row,
                 archivo_url: `/uploads/${row.nombre_archivo}`,
             })));
+        } catch (error) {
+            res.status(500).json({ message: 'Error en el servidor', error: error.message });
+        }
+    },
+
+    async deleteArchivo(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await pool.query(
+                'DELETE FROM archivos_calificaciones WHERE id = $1 AND profesor_id = $2 RETURNING nombre_archivo',
+                [id, req.usuario.id]
+            );
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'Archivo no encontrado' });
+            }
+            const filename = result.rows[0].nombre_archivo;
+            const full = path.join(__dirname, '../uploads', filename);
+            if (fs.existsSync(full)) {
+                try {
+                    fs.unlinkSync(full);
+                } catch (_) {
+                    /* ignore */
+                }
+            }
+            res.json({ message: 'Archivo eliminado' });
         } catch (error) {
             res.status(500).json({ message: 'Error en el servidor', error: error.message });
         }

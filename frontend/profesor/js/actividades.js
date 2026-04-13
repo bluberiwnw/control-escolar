@@ -64,13 +64,33 @@ async function mostrarModalActividad(id = null) {
 
 async function guardarActividad(event) {
     event.preventDefault();
+    const titulo = document.getElementById('actividadTitulo').value.trim();
+    const descripcion = document.getElementById('actividadDescripcion').value.trim();
+    const fecha_entrega = document.getElementById('actividadFecha').value;
+    const valor = parseInt(document.getElementById('actividadValor').value, 10);
+    if (!titulo || !fecha_entrega || Number.isNaN(valor)) {
+        mostrarToast('Completa todos los campos obligatorios', 'error');
+        return;
+    }
+    if (titulo.length < 4 || titulo.length > 120) {
+        mostrarToast('El título debe tener entre 4 y 120 caracteres', 'error');
+        return;
+    }
+    if (descripcion.length > 600) {
+        mostrarToast('La descripción no puede exceder 600 caracteres', 'error');
+        return;
+    }
+    if (valor < 1 || valor > 100) {
+        mostrarToast('El valor debe estar entre 1 y 100', 'error');
+        return;
+    }
     const data = {
         materia_id: parseInt(document.getElementById('actividadMateria').value),
         tipo: document.getElementById('actividadTipo').value,
-        titulo: document.getElementById('actividadTitulo').value,
-        descripcion: document.getElementById('actividadDescripcion').value,
-        fecha_entrega: document.getElementById('actividadFecha').value,
-        valor: parseInt(document.getElementById('actividadValor').value)
+        titulo,
+        descripcion,
+        fecha_entrega,
+        valor,
     };
     if (actividadEditando) {
         await apiRequest(`/actividades/${actividadEditando.id}`, { method: 'PUT', body: JSON.stringify(data) });

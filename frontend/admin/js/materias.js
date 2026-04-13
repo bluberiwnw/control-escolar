@@ -85,28 +85,61 @@ function cerrarModalMateria() {
 }
 
 async function guardarMateria(ev) {
-    ev.preventDefault();
-    const id = document.getElementById('materiaIdEdit').value;
-    const profesorVal = document.getElementById('selectProfesor').value;
-    const data = {
-        nombre: document.getElementById('nombreMateria').value.trim(),
-        clave: document.getElementById('claveMateria').value.trim(),
-        horario: document.getElementById('horarioMateria').value.trim(),
-        semestre: document.getElementById('semestreMateria').value.trim(),
-        estudiantes: parseInt(document.getElementById('estudiantesMateria').value, 10) || 0,
-        bajas: parseInt(document.getElementById('bajasMateria').value, 10) || 0,
-        promedio: parseFloat(document.getElementById('promedioMateria').value) || 0,
-        profesor_id: profesorVal ? parseInt(profesorVal, 10) : null,
-    };
-    if (id) {
-        await apiRequest(`/admin/materias/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        mostrarToast('Materia actualizada', 'success');
-    } else {
-        await apiRequest('/admin/materias', { method: 'POST', body: JSON.stringify(data) });
-        mostrarToast('Materia creada', 'success');
+    try {
+        ev.preventDefault();
+        const id = document.getElementById('materiaIdEdit').value;
+        const profesorVal = document.getElementById('selectProfesor').value;
+        const nombre = document.getElementById('nombreMateria').value.trim();
+        const clave = document.getElementById('claveMateria').value.trim();
+        const horario = document.getElementById('horarioMateria').value.trim();
+        const semestre = document.getElementById('semestreMateria').value.trim();
+        const estudiantes = parseInt(document.getElementById('estudiantesMateria').value, 10) || 0;
+        const bajas = parseInt(document.getElementById('bajasMateria').value, 10) || 0;
+        const promedio = parseFloat(document.getElementById('promedioMateria').value) || 0;
+
+        if (!nombre || !clave || !horario || !semestre) {
+            mostrarToast('Completa todos los campos obligatorios', 'error');
+            return;
+        }
+        if (nombre.length < 4 || nombre.length > 120) {
+            mostrarToast('El nombre debe tener entre 4 y 120 caracteres', 'error');
+            return;
+        }
+        if (clave.length < 3 || clave.length > 20) {
+            mostrarToast('La clave debe tener entre 3 y 20 caracteres', 'error');
+            return;
+        }
+        if (estudiantes < 0 || bajas < 0 || bajas > estudiantes) {
+            mostrarToast('Los valores de estudiantes/bajas no son válidos', 'error');
+            return;
+        }
+        if (promedio < 0 || promedio > 10) {
+            mostrarToast('El promedio debe estar entre 0 y 10', 'error');
+            return;
+        }
+
+        const data = {
+            nombre,
+            clave,
+            horario,
+            semestre,
+            estudiantes,
+            bajas,
+            promedio,
+            profesor_id: profesorVal ? parseInt(profesorVal, 10) : null,
+        };
+        if (id) {
+            await apiRequest(`/admin/materias/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+            mostrarToast('Materia actualizada', 'success');
+        } else {
+            await apiRequest('/admin/materias', { method: 'POST', body: JSON.stringify(data) });
+            mostrarToast('Materia creada', 'success');
+        }
+        cerrarModalMateria();
+        cargarMaterias();
+    } catch (error) {
+        mostrarToast(error.message || 'No se pudo guardar la materia', 'error');
     }
-    cerrarModalMateria();
-    cargarMaterias();
 }
 
 window.abrirModalMateriaNueva = abrirModalMateriaNueva;

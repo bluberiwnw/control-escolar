@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion(); mostrarInfoUsuario(); mostrarFechaActual();
     await cargarMaterias();
     await cargarCalificaciones();
+    await cargarArchivosCalificaciones();
 });
 
 async function cargarMaterias() {
@@ -21,7 +22,7 @@ async function cargarCalificaciones() {
 }
 
 async function editarCalificacion(id, actual) {
-    const valor = prompt('Nueva calificación (0 - 10):', actual);
+    const valor = window.prompt('Nueva calificación (0 - 10):', actual);
     if (valor === null) return;
     const numero = parseFloat(valor);
     if (Number.isNaN(numero) || numero < 0 || numero > 10) {
@@ -36,44 +37,28 @@ async function editarCalificacion(id, actual) {
     await cargarCalificaciones();
 }
 
-function previsualizarArchivoAdmin(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (ext === '.pdf') {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-info">Función en desarrollo. Por favor use formato Excel por ahora.</div>';
+async function cargarArchivosCalificaciones() {
+    const archivos = await apiRequest('/admin/calificaciones/archivos');
+    const container = document.getElementById('archivosCalificacionesContainer');
+    if (!archivos.length) {
+        container.innerHTML = '<div class="empty-state">No hay archivos registrados.</div>';
         return;
     }
-    if (!['.xlsx', '.xls', '.csv'].includes(ext)) {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Formato inválido.</div>';
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet);
-        if (!rows.length) {
-            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Archivo vacío.</div>';
-            return;
-        }
-        const required = ['Materia', 'Nombre', 'Calificacion'];
-        const keys = Object.keys(rows[0]);
-        const exact = keys.length === 3 && required.every(k => keys.includes(k));
-        if (!exact) {
-            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Formato inválido.</div>';
-            return;
-        }
-        let html = '<h4>Vista previa (5 registros)</h4><div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Nombre</th><th>Calificacion</th></tr></thead><tbody>';
-        rows.slice(0, 5).forEach(r => {
-            html += `<tr><td>${r.Materia}</td><td>${r.Nombre}</td><td>${r.Calificacion}</td></tr>`;
-        });
-        html += '</tbody></table></div>';
-        document.getElementById('previewTable').innerHTML = html;
-    };
-    reader.readAsArrayBuffer(file);
+    container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Archivo</th><th>Profesor</th><th>Materia</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        ${archivos
+            .map(
+                (a) => `<tr><td data-label="Archivo">${a.nombre_archivo}</td><td data-label="Profesor">${a.profesor_nombre}</td><td data-label="Materia">${a.materia_nombre}</td><td data-label="Tipo">${a.tipo}</td><td data-label="Estado">${a.estado || 'Procesado'}</td><td data-label="Acciones" class="table-actions"><a class="btn btn-secondary btn-sm" target="_blank" rel="noopener" href="${a.archivo_url}">Ver</a><button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivoCalificacionAdmin(${a.id})">Eliminar</button></td></tr>`
+            )
+            .join('')}
+        </tbody></table></div>`;
 }
 
-window.previsualizarArchivoAdmin = previsualizarArchivoAdmin;
+async function eliminarArchivoCalificacionAdmin(id) {
+    if (!window.confirm('Eliminar archivo de calificaciones?')) return;
+    await apiRequest(`/admin/calificaciones/archivos/${id}`, { method: 'DELETE' });
+    mostrarToast('Archivo eliminado', 'success');
+    await cargarArchivosCalificaciones();
+}
+
 window.editarCalificacion = editarCalificacion;
+window.eliminarArchivoCalificacionAdmin = eliminarArchivoCalificacionAdmin;

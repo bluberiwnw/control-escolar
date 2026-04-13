@@ -8,6 +8,7 @@ router.use(authMiddleware);
 router.use(verificarRol(['profesor', 'administrador']));
 router.post('/upload', calificacionController.uploadFile);
 router.get('/archivos', calificacionController.getArchivos);
+router.delete('/archivos/:id', calificacionController.deleteArchivo);
 router.get('/materia/:materia_id', calificacionController.getByMateria);
 router.post('/', calificacionController.save);
 router.get('/estadisticas/:materia_id', calificacionController.getEstadisticas);

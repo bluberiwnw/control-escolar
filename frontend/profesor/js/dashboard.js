@@ -42,13 +42,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .map(
                     (m) => `
             <div class="course-card">
-                <div class="course-header" style="background:${m.color || 'var(--primary)'}"><h3>${m.nombre}</h3><p>${m.clave}</p></div>
+                <div class="course-header"><h3>${m.nombre}</h3><p>${m.clave}</p></div>
                 <div class="course-body">
                     <div class="course-detail"><i class="fas fa-clock"></i> ${m.horario || 'Horario por definir'}</div>
                     <div class="course-detail"><i class="fas fa-user-check"></i> ${m.estudiantes || 0} alumnos</div>
                     <div class="course-detail"><i class="fas fa-star"></i> Promedio: ${m.promedio ?? '—'}</div>
                 </div>
-                <div class="course-footer"><button type="button" class="btn-course" onclick="verMateria(${m.id})">Ver detalles</button></div>
+                <div class="course-footer course-footer--split"><button type="button" class="btn btn-primary btn-sm" onclick="verMateria(${m.id})">Ver detalles</button></div>
             </div>`
                 )
                 .join('');

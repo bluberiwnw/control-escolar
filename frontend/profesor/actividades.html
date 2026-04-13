@@ -48,11 +48,11 @@
             </div>
             <div class="form-group-modern">
                 <label>Título</label>
-                <input type="text" id="actividadTitulo" required>
+                <input type="text" id="actividadTitulo" required minlength="4" maxlength="120">
             </div>
             <div class="form-group-modern">
                 <label>Descripción</label>
-                <textarea id="actividadDescripcion" rows="3" required></textarea>
+                <textarea id="actividadDescripcion" rows="3" maxlength="600"></textarea>
             </div>
             <div class="form-group-modern">
                 <label>Fecha entrega</label>
@@ -60,7 +60,7 @@
             </div>
             <div class="form-group-modern">
                 <label>Valor (pts)</label>
-                <input type="number" id="actividadValor" min="0" max="100" required>
+                <input type="number" id="actividadValor" min="1" max="100" required>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>

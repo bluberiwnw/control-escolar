@@ -56,12 +56,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .map(
                         (m) => `
                 <div class="course-card">
-                    <div class="course-header" style="background:${m.color || 'var(--primary)'}"><h3>${m.nombre}</h3><p>${m.clave}</p></div>
+                    <div class="course-header"><h3>${m.nombre}</h3><p>${m.clave}</p></div>
                     <div class="course-body">
                         <div class="course-detail">Profesor: ${m.profesor_nombre || '—'}</div>
                         <div class="course-detail">Horario: ${m.horario || '—'}</div>
                     </div>
-                    <div class="course-footer"><button type="button" class="btn-course" onclick="verMateria(${m.id})">Ver actividades</button></div>
+                    <div class="course-footer course-footer--split"><button type="button" class="btn btn-primary btn-sm" onclick="verMateria(${m.id})">Ver detalles</button></div>
                 </div>`
                     )
                     .join('');

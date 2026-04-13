@@ -1,4 +1,6 @@
 const pool = require('../database/connection');
+const fs = require('fs');
+const path = require('path');
 
 const adminController = {
     // Estadísticas generales
@@ -389,6 +391,51 @@ const adminController = {
                 [estado, id]
             );
             res.json({ message: 'Asistencia actualizada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    async listarArchivosCalificaciones(req, res) {
+        try {
+            const result = await pool.query(
+                `SELECT a.*, m.nombre AS materia_nombre, u.nombre AS profesor_nombre
+                 FROM archivos_calificaciones a
+                 JOIN materias m ON a.materia_id = m.id
+                 JOIN usuarios u ON a.profesor_id = u.id
+                 ORDER BY a.created_at DESC`
+            );
+            res.json(
+                result.rows.map((row) => ({
+                    ...row,
+                    archivo_url: `/uploads/${row.nombre_archivo}`,
+                }))
+            );
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    async eliminarArchivoCalificacion(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await pool.query(
+                'DELETE FROM archivos_calificaciones WHERE id = $1 RETURNING nombre_archivo',
+                [id]
+            );
+            if (result.rowCount === 0) {
+                return res.status(404).json({ error: 'Archivo no encontrado' });
+            }
+            const fileName = result.rows[0].nombre_archivo;
+            const fullPath = path.join(__dirname, '../uploads', fileName);
+            if (fs.existsSync(fullPath)) {
+                try {
+                    fs.unlinkSync(fullPath);
+                } catch (_) {
+                    /* ignorar si no se puede borrar el archivo físico */
+                }
+            }
+            res.json({ message: 'Archivo eliminado' });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

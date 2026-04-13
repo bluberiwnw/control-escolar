@@ -113,9 +113,20 @@ const alumnoController = {
             const asisPercent = asistencias.rows[0].total > 0 
                 ? (asistencias.rows[0].presentes * 100 / asistencias.rows[0].total).toFixed(1)
                 : 0;
+            const distribucion = await pool.query(`
+                SELECT
+                    SUM(CASE WHEN calificacion >= 9 THEN 1 ELSE 0 END) AS rango_9_10,
+                    SUM(CASE WHEN calificacion >= 8 AND calificacion < 9 THEN 1 ELSE 0 END) AS rango_8_9,
+                    SUM(CASE WHEN calificacion >= 7 AND calificacion < 8 THEN 1 ELSE 0 END) AS rango_7_8,
+                    SUM(CASE WHEN calificacion >= 6 AND calificacion < 7 THEN 1 ELSE 0 END) AS rango_6_7,
+                    SUM(CASE WHEN calificacion < 6 THEN 1 ELSE 0 END) AS rango_menor_6
+                FROM calificaciones
+                WHERE estudiante_id = $1
+            `, [alumnoId]);
             res.json({
                 promedio_general: parseFloat(promedio.rows[0].promedio) || 0,
-                asistencia_global: asisPercent
+                asistencia_global: asisPercent,
+                distribucion: distribucion.rows[0] || {}
             });
         } catch (error) {
             res.status(500).json({ error: error.message });

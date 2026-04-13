@@ -29,5 +29,7 @@ router.put('/calificaciones/:id', adminController.actualizarCalificacion);
 router.get('/reportes', adminController.getReportes);
 router.delete('/asistencias/:id', adminController.deleteAsistencia);
 router.put('/asistencias/:id', adminController.actualizarAsistencia);
+router.get('/calificaciones/archivos', adminController.listarArchivosCalificaciones);
+router.delete('/calificaciones/archivos/:id', adminController.eliminarArchivoCalificacion);
 
 module.exports = router;
