@@ -98,6 +98,34 @@ const adminController = {
         }
     },
 
+    async actualizarProfesor(req, res) {
+        try {
+            const { id } = req.params;
+            const { nombre, email } = req.body;
+            await pool.query(
+                'UPDATE usuarios SET nombre = $1, email = $2 WHERE id = $3 AND rol = $4',
+                [nombre, email, id, 'profesor']
+            );
+            res.json({ message: 'Profesor actualizado' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    async actualizarEstudiante(req, res) {
+        try {
+            const { id } = req.params;
+            const { matricula, nombre, email } = req.body;
+            await pool.query(
+                'UPDATE estudiantes SET matricula = $1, nombre = $2, email = $3 WHERE id = $4',
+                [matricula, nombre, email, id]
+            );
+            res.json({ message: 'Estudiante actualizado' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
     // Listar todas las materias (con nombre del profesor)
     async listarMaterias(req, res) {
         try {

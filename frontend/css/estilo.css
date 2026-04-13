@@ -98,6 +98,40 @@ body {
     transform: scale(1.1);
 }
 
+.logout-btn {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 12px 14px;
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .2s ease, background .2s ease;
+}
+.logout-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.02);
+}
+
+.btn-login-buap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .2s ease;
+}
+.btn-login-buap:hover {
+    transform: scale(1.02);
+}
+
 /*     LOGIN (sin cambios, ya tenía sus propios estilos)     */
 /* ... mantén los estilos de login que ya tenías (no los repito) ... */
 

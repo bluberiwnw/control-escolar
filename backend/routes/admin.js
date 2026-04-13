@@ -11,6 +11,8 @@ router.get('/stats', adminController.getStats);
 router.get('/usuarios', adminController.listarUsuarios);
 router.post('/profesores', adminController.crearProfesor);
 router.post('/estudiantes', adminController.crearEstudiante);
+router.put('/profesores/:id', adminController.actualizarProfesor);
+router.put('/estudiantes/:id', adminController.actualizarEstudiante);
 router.delete('/usuarios/:id/:tipo', adminController.eliminarUsuario);
 router.get('/materias', adminController.listarMaterias);
 router.post('/materias', adminController.crearMateria);

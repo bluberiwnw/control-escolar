@@ -1,56 +1,42 @@
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener(''DOMContentLoaded'', async () => {
     verificarSesion(); mostrarInfoUsuario(); mostrarFechaActual();
     await cargarMaterias();
-    document.getElementById('fechaAsistencia').valueAsDate = new Date();
+    document.getElementById(''fechaAsistencia'').valueAsDate = new Date();
+    await cargarAsistencias();
 });
 
 async function cargarMaterias() {
-    const materias = await apiRequest('/admin/materias');
-    const select = document.getElementById('materiaSelect');
-    select.innerHTML = '<option value="">Todas las materias</option>' + materias.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    const materias = await apiRequest(''/admin/materias'');
+    const select = document.getElementById(''materiaSelect'');
+    select.innerHTML = ''<option value="">Todas las materias</option>'' + materias.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('''');
 }
 
 async function cargarAsistencias() {
-    const materiaId = document.getElementById('materiaSelect').value;
-    const fecha = document.getElementById('fechaAsistencia').value;
-    let url = `/admin/asistencias?fecha=${fecha}`;
-    if (materiaId) url += `&materia_id=${materiaId}`;
+    const materiaId = document.getElementById(''materiaSelect'').value;
+    const fecha = document.getElementById(''fechaAsistencia'').value;
+    let url = ''/admin/asistencias'';
+    const q = [];
+    if (fecha) q.push(`fecha=${fecha}`);
+    if (materiaId) q.push(`materia_id=${materiaId}`);
+    if (q.length) url += `?${q.join(''&'')}`;
     const asistencias = await apiRequest(url);
-    
-    if (asistencias.length === 0) {
-        document.getElementById('asistenciasContainer').innerHTML = '<div class="alert alert-info">No hay asistencias para los filtros seleccionados.</div>';
+    if (!asistencias.length) {
+        document.getElementById(''asistenciasContainer'').innerHTML = ''<div class="empty-state">No hay asistencias para los filtros.</div>'';
         return;
     }
-    
-    let html = `
-        <table class="tabla-moderna">
-            <thead>
-                <tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr>
-            </thead>
-            <tbody>
-    `;
+    let html = ''<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'';
     asistencias.forEach(a => {
-        html += `
-            <tr data-id="${a.id}">
-                <td>${a.materia_nombre}</td>
-                <td>${a.estudiante_nombre}</td>
-                <td>${formatearFecha(a.fecha)}</td>
-                <td>${a.estado}</td>
-                <td><button class="btn-small btn-danger" onclick="eliminarAsistencia(${a.id})">Eliminar</button></td>
-            </tr>
-        `;
+        html += `<tr><td data-label="Materia">${a.materia_nombre}</td><td data-label="Estudiante">${a.estudiante_nombre}</td><td data-label="Fecha">${formatearFecha(a.fecha)}</td><td data-label="Estado">${a.estado}</td><td data-label="Acciones"><button class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button></td></tr>`;
     });
-    html += `</tbody>~</div>`;
-    document.getElementById('asistenciasContainer').innerHTML = html;
+    html += ''</tbody></table></div>'';
+    document.getElementById(''asistenciasContainer'').innerHTML = html;
 }
 
 async function eliminarAsistencia(id) {
-    if (!confirm('Â¿Eliminar este registro de asistencia?')) return;
-    try {
-        await apiRequest(`/admin/asistencias/${id}`, { method: 'DELETE' });
-        mostrarToast('Asistencia eliminada', 'success');
-        cargarAsistencias(); // recargar
-    } catch (error) {
-        mostrarToast(error.message, 'error');
-    }
+    if (!confirm(''¿Eliminar este registro de asistencia?'')) return;
+    await apiRequest(`/admin/asistencias/${id}`, { method: ''DELETE'' });
+    mostrarToast(''Asistencia eliminada'', ''success'');
+    cargarAsistencias();
 }
+window.cargarAsistencias = cargarAsistencias;
+window.eliminarAsistencia = eliminarAsistencia;

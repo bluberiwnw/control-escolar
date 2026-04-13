@@ -2,8 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calificaciones Globales</title>
     <link rel="stylesheet" href="../css/estilo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -24,14 +26,25 @@
     </aside>    
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
+        <div class="panel-card">
         <div class="asistencia-header">
             <select id="materiaSelect"><option value="">Todas las materias</option></select>
-            <button class="btn-login-buap" onclick="cargarCalificaciones()">Filtrar</button>
+            <button class="btn btn-primary" onclick="cargarCalificaciones()">Filtrar</button>
+        </div>
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <i class="fas fa-file-excel"></i>
+            <h3>Previsualizar archivo de calificaciones</h3>
+            <p>Formato esperado: Materia, Nombre, Calificacion</p>
+            <input type="file" id="fileInput" style="display:none" accept=".xlsx,.xls,.csv,.pdf" onchange="previsualizarArchivoAdmin(this)">
+        </div>
+        <div id="previewTable" style="margin-top: 16px;"></div>
         </div>
         <div class="asistencia-tabla" id="calificacionesContainer"></div>
     </main>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <script src="js/calificaciones.js"></script>
 </body>
 </html>
