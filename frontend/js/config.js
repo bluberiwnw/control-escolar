@@ -1,41 +1,62 @@
-// Configuración de la API (rutas relativas)
 window.API_URL = '';
 
-// Función para formatear fechas (global)
 function formatearFecha(fechaISO) {
     if (!fechaISO) return 'No definida';
     return new Date(fechaISO).toLocaleDateString('es-ES', {
-        year: 'numeric', month: 'long', day: 'numeric'
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
     });
 }
 
-// Función para peticiones autenticadas con spinner opcional
 async function apiRequest(endpoint, options = {}, showSpinner = true) {
     const token = localStorage.getItem('token');
     const headers = {
         'Content-Type': 'application/json',
-        ...options.headers
+        ...options.headers,
     };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const config = { ...options, headers };
-    
+
     if (showSpinner) mostrarSpinner(true);
     try {
         const response = await fetch(`${window.API_URL}${endpoint}`, config);
+        const ct = response.headers.get('content-type') || '';
+        let data = {};
+        if (ct.includes('application/json')) {
+            const text = await response.text();
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = { message: text };
+                }
+            }
+        } else {
+            const text = await response.text();
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = { message: text };
+                }
+            }
+        }
+
         if (response.status === 401) {
             localStorage.clear();
             window.location.href = '/login.html';
-            throw new Error('Sesión expirada');
+            throw new Error(data.message || 'Sesión expirada');
         }
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Error en la petición');
+        if (!response.ok) {
+            throw new Error(data.message || data.error || 'Error en la petición');
+        }
         return data;
     } finally {
         if (showSpinner) mostrarSpinner(false);
     }
 }
 
-// Funciones de spinner
 let spinnerElement = null;
 function mostrarSpinner(mostrar) {
     if (mostrar) {
@@ -46,16 +67,25 @@ function mostrarSpinner(mostrar) {
             document.body.appendChild(spinnerElement);
         }
         spinnerElement.style.display = 'flex';
-    } else {
-        if (spinnerElement) spinnerElement.style.display = 'none';
+    } else if (spinnerElement) {
+        spinnerElement.style.display = 'none';
     }
 }
 
-// Función para mostrar alertas toast (opcional)
 function mostrarToast(mensaje, tipo = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast-notification ${tipo}`;
     toast.innerHTML = `<i class="fas ${tipo === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${mensaje}`;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => toast.remove(), 3500);
+}
+
+function chartTextColor() {
+    const dark = document.body.classList.contains('dark') || document.body.classList.contains('dark-mode');
+    return dark ? '#e2e8f0' : '#334155';
+}
+
+function chartGridColor() {
+    const dark = document.body.classList.contains('dark') || document.body.classList.contains('dark-mode');
+    return dark ? 'rgba(148,163,184,0.2)' : 'rgba(0,0,0,0.06)';
 }

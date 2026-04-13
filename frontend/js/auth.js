@@ -1,10 +1,5 @@
-/*const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://localhost:8000'
-  : 'https://control-escolar-l3g0.onrender.com';*/
+const API_URL = window.API_URL;
 
-const API_URL = window.API_URL; 
-
-// Función de login
 async function handleLogin(event) {
     event.preventDefault();
     const email = document.getElementById('email').value;
@@ -13,14 +8,12 @@ async function handleLogin(event) {
         const response = await fetch(`${window.API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
         });
         const data = await response.json();
         if (response.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('usuarioActual', JSON.stringify(data.usuario));
-            console.log('Token guardado:', data.token); 
-            // Redirigir según rol
             if (data.usuario.rol === 'administrador') {
                 window.location.href = 'admin/dashboard.html';
             } else if (data.usuario.rol === 'profesor') {
@@ -42,19 +35,26 @@ function mostrarAlerta(mensaje, tipo) {
         alertContainer.textContent = mensaje;
         alertContainer.className = `alert alert-${tipo}`;
         alertContainer.style.display = 'block';
-        setTimeout(() => { alertContainer.style.display = 'none'; }, 3000);
+        setTimeout(() => {
+            alertContainer.style.display = 'none';
+        }, 3000);
     } else {
         alert(mensaje);
     }
 }
 
 function verificarSesion() {
-    const usuario = JSON.parse(localStorage.getItem('usuarioActual'));
-    if (!usuario) {
+    const raw = localStorage.getItem('usuarioActual');
+    if (!raw) {
         window.location.href = '/login.html';
         return null;
     }
-    return usuario;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        window.location.href = '/login.html';
+        return null;
+    }
 }
 
 function cerrarSesion() {
@@ -63,13 +63,24 @@ function cerrarSesion() {
 }
 
 function mostrarInfoUsuario() {
-    const usuario = JSON.parse(localStorage.getItem('usuarioActual'));
-    if (usuario) {
-        const nombreElem = document.getElementById('teacherName');
-        const emailElem = document.getElementById('teacherEmail');
-        if (nombreElem) nombreElem.textContent = usuario.nombre;
-        if (emailElem) emailElem.textContent = usuario.email;
+    const raw = localStorage.getItem('usuarioActual');
+    if (!raw) return;
+    let usuario;
+    try {
+        usuario = JSON.parse(raw);
+    } catch {
+        return;
     }
+    const nameTargets = ['userName', 'teacherName'];
+    const emailTargets = ['userEmail', 'teacherEmail'];
+    nameTargets.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = usuario.nombre || '';
+    });
+    emailTargets.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = usuario.email || '';
+    });
 }
 
 function mostrarFechaActual() {
@@ -80,84 +91,78 @@ function mostrarFechaActual() {
     }
 }
 
-// Toggle modo oscuro/claro
-function toggleTheme() {
-    document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-}
-
-// Cargar tema guardado
-function loadTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-    }
-}
-
-function ajustarMenuPorRol() {
-    const usuario = JSON.parse(localStorage.getItem('usuarioActual'));
-    if (!usuario) return;
-    const menuUsuarios = document.getElementById('menuUsuarios');
-    if (menuUsuarios) {
-        if (usuario.rol === 'administrador') {
-            menuUsuarios.style.display = 'block';
-        } else {
-            menuUsuarios.style.display = 'none';
+function updateThemeIcons() {
+    const dark = document.body.classList.contains('dark');
+    document.querySelectorAll('[data-theme-icon]').forEach((btn) => {
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
         }
-    }
-    // También ocultar "Reportes" para profesor? según requerimiento, profesor NO debe ver reportes generales.
-    // Se puede ocultar en profesor: 
-    if (usuario.rol === 'profesor') {
-        const menuReportes = document.querySelector('a[href="reportes.html"]');
-        if (menuReportes) menuReportes.style.display = 'none';
-    }
+    });
 }
-// Llamar en cada página después de mostrarInfoUsuario()
-
 
 function applyTheme() {
-    if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
-    else document.body.classList.remove('dark-mode');
+    const dark = localStorage.getItem('theme') === 'dark';
+    document.body.classList.toggle('dark', dark);
+    document.body.classList.toggle('dark-mode', dark);
+    updateThemeIcons();
 }
-// Llamar en cada página después de DOMContentLoaded
 
+function toggleTheme() {
+    const next = !document.body.classList.contains('dark');
+    document.body.classList.toggle('dark', next);
+    document.body.classList.toggle('dark-mode', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+    updateThemeIcons();
+    window.dispatchEvent(new Event('themechange'));
+}
 
-// Llamar a loadTheme al inicio
-document.addEventListener('DOMContentLoaded', () => {
-    loadTheme(); // primero aplicar tema
-    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.pathname === '/';
-    if (isLoginPage) return;
-    const usuario = verificarSesion();
-    if (usuario) {
-        mostrarInfoUsuario();
-        mostrarFechaActual();
-    }
-});
-
-// Inicialización al cargar la página
-document.addEventListener('DOMContentLoaded', () => {
-    // Detectar si estamos en la página de login
-    const isLoginPage = window.location.pathname.endsWith('login.html') || 
-                        window.location.pathname === '/';
-    
-    if (isLoginPage) {
-        // Si es login, no hacemos nada (el formulario ya está listo)
+/**
+ * Misma estructura de menú en todos los roles: solo se ocultan ítems según permisos.
+ * Profesor: sin Reportes ni Usuarios. Alumno: sin Usuarios.
+ */
+function applyRoleNav() {
+    const raw = localStorage.getItem('usuarioActual');
+    if (!raw) return;
+    let usuario;
+    try {
+        usuario = JSON.parse(raw);
+    } catch {
         return;
     }
-    
-    // Para cualquier otra página, verificamos sesión
-    const usuario = verificarSesion();
-    if (usuario) {
-        mostrarInfoUsuario();
-        mostrarFechaActual();
-        ajustarMenuPorRol();      
-        applyTheme();             
+    const usuarios = document.querySelector('[data-nav="usuarios"]');
+    const reportes = document.querySelector('[data-nav="reportes"]');
+    if (usuarios) {
+        usuarios.classList.toggle('nav-item--hidden', usuario.rol !== 'administrador');
     }
+    if (reportes) {
+        reportes.classList.toggle('nav-item--hidden', usuario.rol === 'profesor');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    applyTheme();
+
+    const path = window.location.pathname || '';
+    const isLoginPage = path.endsWith('login.html') || path.endsWith('/login.html');
+    const isLanding = path.endsWith('/') || path.endsWith('index.html');
+
+    if (isLanding || path.includes('index.html')) {
+        return;
+    }
+
+    if (isLoginPage) {
+        return;
+    }
+
+    const usuario = verificarSesion();
+    if (!usuario) return;
+
+    mostrarInfoUsuario();
+    mostrarFechaActual();
+    applyRoleNav();
 });
 
-window.toggleTheme = function() {
-    document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-};
+window.toggleTheme = toggleTheme;
+window.applyTheme = applyTheme;
+window.applyRoleNav = applyRoleNav;

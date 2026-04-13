@@ -9,12 +9,19 @@ const adminController = {
             const estudiantes = await pool.query('SELECT COUNT(*) FROM estudiantes');
             const materias = await pool.query('SELECT COUNT(*) FROM materias');
             const actividades = await pool.query('SELECT COUNT(*) FROM actividades');
+            const alumnosPorGrado = await pool.query(`
+                SELECT SUBSTRING(matricula FROM 1 FOR 4) AS grado, COUNT(*)::int AS total
+                FROM estudiantes
+                GROUP BY 1
+                ORDER BY 1
+            `);
             res.json({
                 profesores: parseInt(profesores.rows[0].count),
                 administradores: parseInt(administradores.rows[0].count),
                 estudiantes: parseInt(estudiantes.rows[0].count),
                 materias: parseInt(materias.rows[0].count),
-                actividades: parseInt(actividades.rows[0].count)
+                actividades: parseInt(actividades.rows[0].count),
+                alumnos_por_grado: alumnosPorGrado.rows
             });
         } catch (error) {
             res.status(500).json({ error: error.message });

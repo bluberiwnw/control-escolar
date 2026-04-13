@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const pool = require('../database/connection');
 
 const alumnoController = {
@@ -123,11 +125,23 @@ const alumnoController = {
             const { actividad_id } = req.params;
             const alumnoId = req.usuario.id;
             const result = await pool.query(
-                'DELETE FROM entregas WHERE actividad_id = $1 AND estudiante_id = $2 RETURNING id',
+                'DELETE FROM entregas WHERE actividad_id = $1 AND estudiante_id = $2 RETURNING archivo',
                 [actividad_id, alumnoId]
             );
             if (result.rowCount === 0) {
                 return res.status(404).json({ message: 'No se encontró la entrega' });
+            }
+            const archivo = result.rows[0]?.archivo;
+            if (archivo) {
+                const uploadDir = path.join(__dirname, '../uploads');
+                const full = path.join(uploadDir, archivo);
+                if (fs.existsSync(full)) {
+                    try {
+                        fs.unlinkSync(full);
+                    } catch (_) {
+                        /* ignorar fallo de borrado físico */
+                    }
+                }
             }
             res.json({ message: 'Entrega eliminada' });
         } catch (error) {

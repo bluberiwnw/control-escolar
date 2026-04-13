@@ -155,6 +155,21 @@ async function initDatabase() {
       );
     `);
 
+    // 12. Inscripciones alumno–materia
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS inscripciones (
+        id SERIAL PRIMARY KEY,
+        materia_id INTEGER NOT NULL REFERENCES materias(id) ON DELETE CASCADE,
+        estudiante_id INTEGER NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+        UNIQUE(materia_id, estudiante_id)
+      );
+    `);
+
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS entregas_actividad_estudiante_uq
+      ON entregas(actividad_id, estudiante_id);
+    `);
+
     console.log('✅ Tablas creadas/verificadas');
 
     // Insertar datos de prueba
@@ -222,6 +237,17 @@ async function initDatabase() {
         (4, 2, 'proyecto', 'Proyecto Final - Sistema de Gestión', 'Desarrollo completo de un sistema CRUD', $4, 100)
       ON CONFLICT (id) DO NOTHING;
     `, [format(f1), format(f2), format(f3), format(f4)]);
+
+    // Inscripciones de ejemplo (alumnos 1–5 en materias 1, 2 y 3)
+    for (const mid of [1, 2, 3]) {
+      for (let sid = 1; sid <= 5; sid++) {
+        await pool.query(
+          `INSERT INTO inscripciones (materia_id, estudiante_id) VALUES ($1, $2)
+           ON CONFLICT (materia_id, estudiante_id) DO NOTHING`,
+          [mid, sid]
+        );
+      }
+    }
 
     console.log('✅ Datos de prueba insertados');
     console.log('🎉 Base de datos inicializada correctamente');

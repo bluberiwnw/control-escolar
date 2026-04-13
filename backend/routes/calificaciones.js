@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const calificacionController = require('../controllers/calificacionController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { verificarRol } = require('../middleware/roleMiddleware');
 
 router.use(authMiddleware);
+router.use(verificarRol(['profesor', 'administrador']));
 router.post('/upload', calificacionController.uploadFile);
 router.get('/archivos', calificacionController.getArchivos);
 router.get('/materia/:materia_id', calificacionController.getByMateria);

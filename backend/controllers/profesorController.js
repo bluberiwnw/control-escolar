@@ -35,7 +35,27 @@ const profesorController = {
             } catch (error) {
                 res.status(500).json({ error: error.message });
             }
+        },
+
+    async getEvolucionCalificaciones(req, res) {
+        try {
+            const profesorId = req.usuario.id;
+            const result = await pool.query(
+                `SELECT 
+                    to_char(date_trunc('month', c.created_at), 'YYYY-MM') AS mes,
+                    AVG(c.calificacion)::numeric(10,2) AS promedio
+                 FROM calificaciones c
+                 JOIN materias m ON c.materia_id = m.id
+                 WHERE m.profesor_id = $1
+                 GROUP BY 1
+                 ORDER BY 1`,
+                [profesorId]
+            );
+            res.json(result.rows);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
+    },
 };
 
 module.exports = profesorController;

@@ -6,19 +6,22 @@
     <link rel="stylesheet" href="../css/estilo.css">
 </head>
 <body>
-    <div class="sidebar">
-        <div class="sidebar-header"><div class="university-logo"><i class="fas fa-university"></i></div><h2>Portal del Alumno</h2><p>BUAP - FCC</p></div>
-        <div class="teacher-info"><div class="teacher-avatar"><i class="fas fa-user-graduate"></i></div><div class="teacher-details"><h3 id="userName">Cargando...</h3><p id="userEmail">...</p></div></div>
-        <div class="sidebar-menu">
-            <a href="dashboard.html" class="active"><i class="fas fa-th-large"></i> Dashboard</a>
-            <a href="materias.html"><i class="fas fa-book"></i> Mis Materias</a>
-            <a href="actividades.html"><i class="fas fa-tasks"></i> Actividades</a>
-            <a href="asistencia.html"><i class="fas fa-calendar-check"></i> Asistencia QR</a>
-            <a href="calificaciones.html"><i class="fas fa-graduation-cap"></i> Calificaciones</a>
-            <a href="reportes.html"><i class="fas fa-chart-line"></i> Reportes</a>
-        </div>
-        <div class="sidebar-footer"><button onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button></div>
-    </div>    
+    <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
+    <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+    <aside class="sidebar" id="appSidebar">
+        <div class="sidebar-header"><div class="university-logo"><i class="fas fa-university"></i></div><h2>Portal del Alumno</h2><p>BUAP · FCC</p></div>
+        <div class="teacher-info"><div class="teacher-avatar"><i class="fas fa-user-graduate"></i></div><div class="teacher-details"><h3 id="userName"></h3><p id="userEmail"></p></div></div>
+        <nav class="sidebar-menu">
+            <a data-nav="dashboard" href="dashboard.html"><span class="nav-emoji" aria-hidden="true">📊</span> Dashboard</a>
+            <a data-nav="materias" href="materias.html"><span class="nav-emoji" aria-hidden="true">📚</span> Mis Materias</a>
+            <a data-nav="actividades" href="actividades.html"><span class="nav-emoji" aria-hidden="true">✏️</span> Actividades</a>
+            <a data-nav="asistencia" href="asistencia.html"><span class="nav-emoji" aria-hidden="true">📅</span> Asistencia</a>
+            <a data-nav="calificaciones" href="calificaciones.html"><span class="nav-emoji" aria-hidden="true">📈</span> Calificaciones</a>
+            <a data-nav="reportes" href="reportes.html"><span class="nav-emoji" aria-hidden="true">📑</span> Reportes</a>
+            <a data-nav="usuarios" href="#"><span class="nav-emoji" aria-hidden="true">👥</span> Usuarios</a>
+        </nav>
+        <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
+    </aside>    
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Reportes de Rendimiento</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
         <div class="stats-grid-profesor" id="reportesStats"></div>

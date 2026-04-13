@@ -47,12 +47,47 @@ const calificacionController = {
                     [req.usuario.id, materia_id, req.file.originalname, tipo]
                 );
                 let detalles = '';
-                if (req.file.mimetype.includes('spreadsheet')) {
-                    const resultado = await procesarExcelCalificaciones(req.file.path, materia_id, req.usuario.id);
-                    detalles = `Insertados: ${resultado.exitosos}, Errores: ${resultado.errores.length} - ${resultado.errores.join(', ')}`;
-                    await pool.query(`UPDATE archivos_calificaciones SET estado = 'Procesado', detalles = $1 WHERE id = $2`, [detalles, insertResult.rows[0].id]);
+                let estado = 'Procesado';
+
+                if (req.file.mimetype === 'application/pdf') {
+                    estado = 'Pendiente';
+                    detalles = 'Función en desarrollo. Por favor use formato Excel por ahora.';
+                    await pool.query(
+                        `UPDATE archivos_calificaciones SET estado = $1, detalles = $2 WHERE id = $3`,
+                        [estado, detalles, insertResult.rows[0].id]
+                    );
+                    return res.json({
+                        message: detalles,
+                        archivo: {
+                            id: insertResult.rows[0].id,
+                            nombre: req.file.originalname,
+                            tipo,
+                            fecha: new Date().toISOString().split('T')[0],
+                            estado,
+                            detalles,
+                        },
+                    });
                 }
-                res.json({ message: 'Archivo subido correctamente', archivo: { id: insertResult.rows[0].id, nombre: req.file.originalname, tipo, fecha: new Date().toISOString().split('T')[0], estado: 'Procesado', detalles } });
+
+                if (req.file.mimetype.includes('spreadsheet') || req.file.originalname.match(/\.(xlsx|xls|csv)$/i)) {
+                    const resultado = await procesarExcelCalificaciones(req.file.path, req.usuario.id);
+                    detalles = `Insertados: ${resultado.exitosos}, Errores: ${resultado.errores.length}${resultado.errores.length ? ' — ' + resultado.errores.join('; ') : ''}`;
+                    await pool.query(
+                        `UPDATE archivos_calificaciones SET estado = 'Procesado', detalles = $1 WHERE id = $2`,
+                        [detalles, insertResult.rows[0].id]
+                    );
+                }
+                res.json({
+                    message: 'Archivo subido correctamente',
+                    archivo: {
+                        id: insertResult.rows[0].id,
+                        nombre: req.file.originalname,
+                        tipo,
+                        fecha: new Date().toISOString().split('T')[0],
+                        estado,
+                        detalles,
+                    },
+                });
             } catch (error) {
                 if (req.file) fs.unlinkSync(req.file.path);
                 res.status(500).json({ message: 'Error en el servidor', error: error.message });

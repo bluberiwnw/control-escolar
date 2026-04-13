@@ -6,36 +6,41 @@
     <title>Dashboard Profesor</title>
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="sidebar">
-        <div class="sidebar-header"><div class="university-logo"><i class="fas fa-university"></i></div><h2>Portal del Profesor</h2><p>BUAP - FCC</p></div>
-        <div class="teacher-info"><div class="teacher-avatar"><i class="fas fa-chalkboard-teacher"></i></div><div class="teacher-details"><h3 id="userName">Cargando...</h3><p id="userEmail">...</p></div></div>
-        <div class="sidebar-menu">
-            <a href="dashboard.html"><i class="fas fa-th-large"></i> Dashboard</a>
-            <a href="materias.html"><i class="fas fa-book"></i> Mis Materias</a>
-            <a href="actividades.html"><i class="fas fa-tasks"></i> Actividades</a>
-            <a href="asistencia.html"><i class="fas fa-calendar-check"></i> Asistencia</a>
-            <a href="calificaciones.html"><i class="fas fa-graduation-cap"></i> Calificaciones</a>
-            <a href="reportes.html"><i class="fas fa-chart-line"></i> Reportes</a>
-        </div>
-        <div class="sidebar-footer"><button onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button></div>
-    </div>    
+    <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
+    <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+    <aside class="sidebar" id="appSidebar">
+        <div class="sidebar-header"><div class="university-logo"><i class="fas fa-university"></i></div><h2>Portal del Profesor</h2><p>BUAP · FCC</p></div>
+        <div class="teacher-info"><div class="teacher-avatar"><i class="fas fa-chalkboard-teacher"></i></div><div class="teacher-details"><h3 id="userName"></h3><p id="userEmail"></p></div></div>
+        <nav class="sidebar-menu">
+            <a data-nav="dashboard" href="dashboard.html"><span class="nav-emoji" aria-hidden="true">📊</span> Dashboard</a>
+            <a data-nav="materias" href="materias.html"><span class="nav-emoji" aria-hidden="true">📚</span> Mis Materias</a>
+            <a data-nav="actividades" href="actividades.html"><span class="nav-emoji" aria-hidden="true">✏️</span> Actividades</a>
+            <a data-nav="asistencia" href="asistencia.html"><span class="nav-emoji" aria-hidden="true">📅</span> Asistencia</a>
+            <a data-nav="calificaciones" href="calificaciones.html"><span class="nav-emoji" aria-hidden="true">📈</span> Calificaciones</a>
+            <a data-nav="reportes" href="reportes.html"><span class="nav-emoji" aria-hidden="true">📑</span> Reportes</a>
+            <a data-nav="usuarios" href="#"><span class="nav-emoji" aria-hidden="true">👥</span> Usuarios</a>
+        </nav>
+        <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
+    </aside>
     <main class="main-content-profesor">
-        <div class="top-bar"><h1>Mis Materias</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div class="courses-grid" id="materiasContainer"></div>
-    <div style="margin-top: 40px;">
-    <canvas id="graficoProfesor" width="400" height="200" style="max-width:100%;"></canvas>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <div class="top-bar"><h1>Dashboard</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
+        <div class="stats-grid-profesor" id="kpiProfesor"></div>
+        <div class="courses-grid" id="coursesGrid"></div>
+        <div class="chart-card">
+            <h2 class="chart-card__title">Evolución de calificaciones del grupo</h2>
+            <div class="chart-card__canvas-wrap">
+                <canvas id="graficoProfesor" aria-label="Evolución de calificaciones"></canvas>
+            </div>
+        </div>
     </main>
-    <button class="theme-toggle" onclick="toggleTheme()">
-        <i class="fas fa-moon"></i>
-    </button>
+    <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Cambiar tema"><i class="fas fa-moon"></i></button>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
     <script src="js/dashboard.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <canvas id="graficoBarras" width="400" height="200"></canvas>
 </body>
 </html>
