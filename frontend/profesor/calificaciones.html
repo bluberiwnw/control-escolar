@@ -19,13 +19,12 @@
             <a data-nav="asistencia" href="asistencia.html"><span class="nav-emoji" aria-hidden="true">📅</span> Asistencia</a>
             <a data-nav="calificaciones" href="calificaciones.html"><span class="nav-emoji" aria-hidden="true">📈</span> Calificaciones</a>
             <a data-nav="reportes" href="reportes.html"><span class="nav-emoji" aria-hidden="true">📑</span> Reportes</a>
-            <a data-nav="usuarios" href="#"><span class="nav-emoji" aria-hidden="true">👥</span> Usuarios</a>
         </nav>
         <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
     </aside> 
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Registro de Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div style="background:white; padding:20px; border-radius:12px; margin-bottom:20px;">
+        <div class="panel-card">
             <div class="form-group"><label>Materia</label><select id="materiaSelect"></select></div>
             <div class="form-group"><label>Tipo</label><select id="tipoSelect"><option value="tarea">Tarea</option><option value="proyecto">Proyecto</option><option value="examen">Examen</option></select></div>
     <div class="upload-area" onclick="document.getElementById('fileInput').click()">

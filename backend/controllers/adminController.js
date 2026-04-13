@@ -124,6 +124,70 @@ const adminController = {
         }
     },
 
+    async crearMateria(req, res) {
+        try {
+            const { nombre, clave, horario, estudiantes, bajas, promedio, semestre, color, profesor_id } = req.body;
+            const r = await pool.query(
+                `INSERT INTO materias (nombre, clave, horario, estudiantes, bajas, promedio, semestre, color, profesor_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+                [
+                    nombre,
+                    clave,
+                    horario || '',
+                    estudiantes ?? 0,
+                    bajas ?? 0,
+                    promedio ?? 0,
+                    semestre || '',
+                    color || 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
+                    profesor_id || null,
+                ]
+            );
+            res.status(201).json({ id: r.rows[0].id, message: 'Materia creada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    async actualizarMateria(req, res) {
+        try {
+            const { id } = req.params;
+            const { nombre, clave, horario, estudiantes, bajas, promedio, semestre, color, profesor_id } = req.body;
+            await pool.query(
+                `UPDATE materias SET nombre=$1, clave=$2, horario=$3, estudiantes=$4, bajas=$5, promedio=$6, semestre=$7, color=$8, profesor_id=$9
+                 WHERE id=$10`,
+                [
+                    nombre,
+                    clave,
+                    horario,
+                    estudiantes,
+                    bajas,
+                    promedio,
+                    semestre,
+                    color,
+                    profesor_id || null,
+                    id,
+                ]
+            );
+            res.json({ message: 'Materia actualizada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    async crearActividad(req, res) {
+        try {
+            const { materia_id, tipo, titulo, descripcion, fecha_entrega, valor } = req.body;
+            const r = await pool.query(
+                `INSERT INTO actividades (materia_id, tipo, titulo, descripcion, fecha_entrega, valor)
+                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+                [materia_id, tipo, titulo, descripcion || '', fecha_entrega, valor ?? 100]
+            );
+            res.status(201).json({ id: r.rows[0].id, message: 'Actividad creada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
     // Listar todas las actividades (con nombre de materia)
     async listarActividades(req, res) {
         try {
@@ -248,11 +312,18 @@ const adminController = {
     // Actualizar actividad
     async updateActividad(req, res) {
         const { id } = req.params;
-        const { titulo, descripcion, fecha_entrega, tipo, valor } = req.body;
-        await pool.query(
-            `UPDATE actividades SET titulo=$1, descripcion=$2, fecha_entrega=$3, tipo=$4, valor=$5 WHERE id=$6`,
-            [titulo, descripcion, fecha_entrega, tipo, valor, id]
-        );
+        const { titulo, descripcion, fecha_entrega, tipo, valor, materia_id } = req.body;
+        if (materia_id != null && materia_id !== '') {
+            await pool.query(
+                `UPDATE actividades SET materia_id=$1, titulo=$2, descripcion=$3, fecha_entrega=$4, tipo=$5, valor=$6 WHERE id=$7`,
+                [materia_id, titulo, descripcion, fecha_entrega, tipo, valor, id]
+            );
+        } else {
+            await pool.query(
+                `UPDATE actividades SET titulo=$1, descripcion=$2, fecha_entrega=$3, tipo=$4, valor=$5 WHERE id=$6`,
+                [titulo, descripcion, fecha_entrega, tipo, valor, id]
+            );
+        }
         res.json({ message: 'Actualizada' });
     },
     

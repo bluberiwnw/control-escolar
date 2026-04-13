@@ -2,8 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Gestión de Usuarios</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de usuarios</title>
     <link rel="stylesheet" href="../css/estilo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -21,17 +24,89 @@
             <a data-nav="usuarios" href="usuarios.html"><span class="nav-emoji" aria-hidden="true">👥</span> Usuarios</a>
         </nav>
         <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
-    </aside>    
+    </aside>
     <main class="main-content-profesor">
-        <div class="top-bar"><h1>Gestionar Usuarios</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div class="section-title"><h2>Profesores</h2><button class="btn-login-buap" onclick="mostrarModalProfesor()">+ Nuevo Profesor</button></div>
-        <div id="listaProfesores" class="asistencia-tabla"></div>
-        <div class="section-title"><h2>Estudiantes</h2><button class="btn-login-buap" onclick="mostrarModalEstudiante()">+ Nuevo Estudiante</button></div>
-        <div id="listaEstudiantes" class="asistencia-tabla"></div>
+        <div class="top-bar"><h1>Usuarios</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
+
+        <section class="panel-section">
+            <div class="panel-section__head">
+                <h2>Profesores</h2>
+                <button type="button" class="btn btn-primary" onclick="abrirModalProfesor()"><i class="fas fa-plus"></i> Nuevo profesor</button>
+            </div>
+            <div id="listaProfesores" class="table-responsive-wrap"></div>
+        </section>
+
+        <section class="panel-section">
+            <div class="panel-section__head">
+                <h2>Estudiantes</h2>
+                <button type="button" class="btn btn-primary" onclick="abrirModalEstudiante()"><i class="fas fa-plus"></i> Nuevo estudiante</button>
+            </div>
+            <div id="listaEstudiantes" class="table-responsive-wrap"></div>
+        </section>
     </main>
-    <div id="modalUsuario" class="modal" style="display:none;"><div class="modal-content">...</div></div>
+
+    <div id="modalProfesor" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo profesor</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalProfesor()">&times;</button>
+            </div>
+            <form onsubmit="guardarProfesor(event)">
+                <div class="form-group-modern">
+                    <label for="profNombre">Nombre completo</label>
+                    <input type="text" id="profNombre" required placeholder="Nombre">
+                </div>
+                <div class="form-group-modern">
+                    <label for="profEmail">Correo</label>
+                    <input type="email" id="profEmail" required placeholder="correo@institucion.edu">
+                </div>
+                <div class="form-group-modern">
+                    <label for="profPass">Contraseña temporal</label>
+                    <input type="password" id="profPass" required minlength="6" placeholder="Mínimo 6 caracteres">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalProfesor()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalEstudiante" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo estudiante</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalEstudiante()">&times;</button>
+            </div>
+            <form onsubmit="guardarEstudiante(event)">
+                <div class="form-group-modern">
+                    <label for="estMatricula">Matrícula</label>
+                    <input type="text" id="estMatricula" required placeholder="2024-0001">
+                </div>
+                <div class="form-group-modern">
+                    <label for="estNombre">Nombre completo</label>
+                    <input type="text" id="estNombre" required>
+                </div>
+                <div class="form-group-modern">
+                    <label for="estEmail">Correo</label>
+                    <input type="email" id="estEmail" required>
+                </div>
+                <div class="form-group-modern">
+                    <label for="estPass">Contraseña temporal</label>
+                    <input type="password" id="estPass" required minlength="6">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalEstudiante()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
     <script src="js/usuarios.js"></script>
 </body>
 </html>

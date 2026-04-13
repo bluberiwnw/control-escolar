@@ -2,8 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Actividades Globales</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actividades globales</title>
     <link rel="stylesheet" href="../css/estilo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -21,13 +24,63 @@
             <a data-nav="usuarios" href="usuarios.html"><span class="nav-emoji" aria-hidden="true">👥</span> Usuarios</a>
         </nav>
         <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
-    </aside>    
+    </aside>
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Actividades</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div id="actividadesContainer" class="actividades-container"></div>
+        <div class="toolbar-actions">
+            <button type="button" class="btn btn-primary" onclick="abrirModalNuevaActividad()"><i class="fas fa-plus"></i> Nueva actividad</button>
+        </div>
+        <div id="actividadesContainer"></div>
     </main>
+    <div id="editModal" class="modal" style="display:none;">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h2 id="tituloModalActividad">Editar actividad</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalActividad()">&times;</button>
+            </div>
+            <form id="formActividad" onsubmit="guardarActividadAdmin(event)">
+                <input type="hidden" id="editActividadId">
+                <div class="form-grid">
+                    <div class="form-group-modern form-grid__full">
+                        <label for="editMateriaId">Materia</label>
+                        <select id="editMateriaId" required></select>
+                    </div>
+                    <div class="form-group-modern form-grid__full">
+                        <label for="editTitulo">Título</label>
+                        <input type="text" id="editTitulo" required>
+                    </div>
+                    <div class="form-group-modern form-grid__full">
+                        <label for="editDescripcion">Descripción</label>
+                        <textarea id="editDescripcion" rows="3"></textarea>
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="editTipo">Tipo</label>
+                        <select id="editTipo">
+                            <option value="tarea">Tarea</option>
+                            <option value="proyecto">Proyecto</option>
+                            <option value="examen">Examen</option>
+                        </select>
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="editFechaEntrega">Fecha entrega</label>
+                        <input type="date" id="editFechaEntrega" required>
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="editValor">Valor (pts)</label>
+                        <input type="number" id="editValor" min="1" value="100">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalActividad()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
     <script src="js/actividades.js"></script>
 </body>
 </html>

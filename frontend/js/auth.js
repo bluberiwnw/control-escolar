@@ -145,13 +145,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const path = window.location.pathname || '';
     const isLoginPage = path.endsWith('login.html') || path.endsWith('/login.html');
-    const isLanding = path.endsWith('/') || path.endsWith('index.html');
+    const isLanding = path.endsWith('/') || path.endsWith('index.html') || /index\.html$/i.test(path);
 
     if (isLanding || path.includes('index.html')) {
         return;
     }
 
     if (isLoginPage) {
+        applyTheme();
+        updateThemeIcons();
         return;
     }
 

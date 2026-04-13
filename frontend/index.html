@@ -2,75 +2,26 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Escolar BUAP | Plataforma Académica</title>
     <link rel="stylesheet" href="css/landing.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        /* Variables de color institucionales (modo claro) */
-        :root {
-            --primary: #003366;
-            --primary-dark: #002244;
-            --primary-light: #e6f0ff;
-            --secondary: #4a5568;
-            --bg-light: #f8fafc;
-            --card-bg: #ffffff;
-            --text-dark: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-        }
-        body.dark-mode {
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --bg-light: #0f172a;
-            --card-bg: #1e293b;
-            --text-dark: #f1f5f9;
-            --text-muted: #cbd5e1;
-            --border: #334155;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg-light); color: var(--text-dark); transition: background 0.3s, color 0.3s; }
-        /* Navbar */
-        .landing-nav { position: sticky; top: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); z-index: 1000; padding: 16px 32px; border-bottom: 1px solid var(--border); }
-        body.dark-mode .landing-nav { background: rgba(15,23,42,0.95); }
-        .nav-container { max-width: 1300px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-        .logo { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 700; color: var(--primary); }
-        .nav-links { display: flex; align-items: center; gap: 32px; }
-        .nav-links a { color: var(--secondary); text-decoration: none; font-weight: 500; transition: color 0.2s; }
-        .nav-links a:hover { color: var(--primary); }
-        .btn-login-nav { background: var(--primary); border: none; border-radius: 40px; padding: 10px 24px; color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        .theme-toggle { background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--primary); }
-        .menu-icon { display: none; font-size: 28px; cursor: pointer; color: var(--primary); }
-        /* Hero y secciones (mantener estilos originales) */
-        .hero, .features, .preview, .footer { max-width: 1300px; margin: 80px auto; padding: 0 32px; }
-        .section-title { text-align: center; font-size: 36px; font-weight: 700; margin-bottom: 48px; }
-        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 40px; }
-        .feature-card { background: var(--card-bg); border-radius: 32px; padding: 32px; text-align: center; border: 1px solid var(--border); transition: transform 0.2s; }
-        .feature-card:hover { transform: translateY(-8px); }
-        .contact-info, .about-info { margin-top: 40px; padding: 20px; background: var(--card-bg); border-radius: 20px; border: 1px solid var(--border); }
-        @media (max-width: 768px) {
-            .nav-links { display: none; flex-direction: column; position: absolute; top: 70px; left: 0; right: 0; background: var(--card-bg); padding: 20px; gap: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-            .nav-links.active { display: flex; }
-            .menu-icon { display: block; }
-        }
-    </style>
 </head>
-<body>
+<body class="page-landing">
     <nav class="landing-nav">
         <div class="nav-container">
-            <div class="logo"><i class="fas fa-university"></i><span>BUAP · FCC</span></div>
-            <div class="nav-links">
+            <div class="logo"><i class="fas fa-university" aria-hidden="true"></i><span>BUAP · FCC</span></div>
+            <div class="nav-links" id="navLinks">
                 <a href="#features">Características</a>
                 <a href="#about">Acerca de</a>
                 <a href="#contact">Contacto</a>
-                <button class="btn-login-nav" onclick="window.location.href='login.html'"><i class="fas fa-arrow-right-to-bracket"></i> Iniciar sesión</button>
-                <!-- Botón de modo oscuro agregado aquí -->
-                <button class="theme-toggle-nav" onclick="toggleTheme()">
-                    <i class="fas fa-moon"></i>
+                <button type="button" class="btn-login-nav" onclick="location.href='login.html'"><i class="fas fa-arrow-right-to-bracket"></i> Iniciar sesión</button>
+                <button type="button" class="theme-toggle-nav" id="landingThemeBtn" data-theme-icon onclick="toggleLandingTheme()" aria-label="Cambiar tema claro u oscuro">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
                 </button>
             </div>
-            <div class="menu-icon" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+            <div class="menu-icon" onclick="document.getElementById('navLinks').classList.toggle('active')" role="button" tabindex="0" aria-label="Menú" onkeypress="if(event.key==='Enter')document.getElementById('navLinks').classList.toggle('active')"><i class="fas fa-bars"></i></div>
         </div>
     </nav>
 
@@ -79,63 +30,79 @@
             <h1>Control académico <span class="highlight">inteligente</span></h1>
             <p>Gestiona calificaciones, asistencias y reportes en una plataforma moderna, segura y accesible desde cualquier dispositivo.</p>
             <div class="hero-buttons">
-                <button class="btn-primary" onclick="window.location.href='login.html'">Comenzar ahora <i class="fas fa-arrow-right"></i></button>
-                <button class="btn-secondary" onclick="scrollToFeatures()">Conocer más <i class="fas fa-chevron-down"></i></button>
+                <button type="button" class="btn-primary" onclick="location.href='login.html'">Comenzar ahora <i class="fas fa-arrow-right"></i></button>
+                <button type="button" class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({ behavior: 'smooth' })">Conocer más <i class="fas fa-chevron-down"></i></button>
             </div>
         </div>
-        <div class="hero-image"><i class="fas fa-chalkboard-user"></i></div>
+        <div class="hero-image"><i class="fas fa-chalkboard-user" aria-hidden="true"></i></div>
     </section>
 
     <section id="features" class="features">
-        <div class="container"><h2 class="section-title">Todo lo que necesitas en un solo lugar</h2>
+        <div class="container">
+            <h2 class="section-title">Todo lo que necesitas en un solo lugar</h2>
             <div class="features-grid">
-                <div class="feature-card"><i class="fas fa-file-excel"></i><h3>Carga masiva</h3><p>Importa listas de alumnos y calificaciones desde Excel con validación automática.</p></div>
-                <div class="feature-card"><i class="fas fa-qrcode"></i><h3>Asistencia QR</h3><p>Genera códigos QR para que los alumnos registren su asistencia al instante.</p></div>
-                <div class="feature-card"><i class="fas fa-chart-line"></i><h3>Reportes dinámicos</h3><p>Visualiza estadísticas de rendimiento y exporta a PDF o Excel.</p></div>
-                <div class="feature-card"><i class="fas fa-users"></i><h3>Multirol</h3><p>Paneles personalizados para administradores, profesores y alumnos.</p></div>
+                <div class="feature-card"><i class="fas fa-file-excel"></i><h3>Carga masiva</h3><p>Importa calificaciones desde Excel con validación de columnas y vista previa.</p></div>
+                <div class="feature-card"><i class="fas fa-qrcode"></i><h3>Asistencia QR</h3><p>Los docentes generan códigos; los alumnos registran asistencia desde el móvil.</p></div>
+                <div class="feature-card"><i class="fas fa-chart-line"></i><h3>Reportes</h3><p>Paneles con gráficos para administrador, profesor y alumno.</p></div>
+                <div class="feature-card"><i class="fas fa-users"></i><h3>Multirol</h3><p>Accesos diferenciados para administración, docencia y estudiantes.</p></div>
             </div>
         </div>
     </section>
 
     <section id="about" class="preview">
         <div class="container">
-            <h2 class="section-title">Acerca del Sistema</h2>
+            <h2 class="section-title">Acerca del sistema</h2>
             <div class="about-info">
-                <p>El Sistema de Control Escolar BUAP es una plataforma integral diseñada para optimizar la gestión académica. Permite a administradores, profesores y alumnos interactuar en un entorno seguro, con funcionalidades como:</p>
-                <ul style="margin-top: 15px; list-style: none;">
-                    <li><i class="fas fa-check-circle" style="color:var(--primary);"></i> Registro de calificaciones con carga masiva desde Excel.</li>
-                    <li><i class="fas fa-check-circle" style="color:var(--primary);"></i> Control de asistencia mediante códigos QR dinámicos.</li>
-                    <li><i class="fas fa-check-circle" style="color:var(--primary);"></i> Entrega de actividades en línea por parte de los alumnos.</li>
-                    <li><i class="fas fa-check-circle" style="color:var(--primary);"></i> Reportes gráficos interactivos y exportables.</li>
+                <p class="lead">El Sistema Escolar integra la gestión diaria de un centro educativo: calificaciones, asistencia, tareas y reportes en un solo entorno web responsivo y seguro.</p>
+                <p><strong>Gestión de calificaciones.</strong> Los profesores pueden registrar evaluaciones y, cuando corresponde, importar listados desde hojas de cálculo con el formato indicado, reduciendo errores manuales y homogeneizando la información.</p>
+                <p><strong>Asistencia con QR y portal de tareas.</strong> La asistencia puede apoyarse en códigos QR por sesión; los alumnos consultan actividades, entregan archivos y revisan estados (pendiente, entregada o calificada) mientras el personal docente da seguimiento desde su panel.</p>
+                <ul style="margin-top: 16px; padding-left: 0; list-style: none;">
+                    <li><i class="fas fa-check-circle" style="color: var(--lp-primary); margin-right: 8px;"></i> Roles: administrador, profesor y alumno con menús coherentes.</li>
+                    <li><i class="fas fa-check-circle" style="color: var(--lp-primary); margin-right: 8px;"></i> Modo claro y oscuro guardado en el dispositivo.</li>
+                    <li><i class="fas fa-check-circle" style="color: var(--lp-primary); margin-right: 8px;"></i> Diseño adaptable a móvil y pantallas grandes.</li>
                 </ul>
             </div>
         </div>
     </section>
 
-    <section id="contact" class="features" style="background: var(--bg-light);">
+    <section id="contact" class="features">
         <div class="container">
             <h2 class="section-title">Contacto</h2>
             <div class="contact-info" style="text-align: center;">
-                <p><i class="fas fa-phone-alt"></i> Teléfono: +52 55 1234 5678</p>
-                <p><i class="fas fa-envelope"></i> Email: contacto@escuela.edu.mx</p>
-                <p><i class="fas fa-map-marker-alt"></i> Dirección: Av. Educación 123, Col. Universidad, Puebla, México.</p>
+                <p><i class="fas fa-phone-alt" aria-hidden="true"></i> Tel: (55) 1234-5678</p>
+                <p><i class="fas fa-envelope" aria-hidden="true"></i> Email: contacto@miescuela.edu</p>
+                <p><i class="fas fa-map-marker-alt" aria-hidden="true"></i> Dirección: Av. Siempre Viva 742</p>
+                <div class="map-embed">
+                    <iframe title="Ubicación de ejemplo" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3762.7!2d-98.2!3d19.0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTnCsDAwJzAwLjAiTiA5OMKwMTInMDAuMCJX!5e0!3m2!1ses!2smx!4v1"></iframe>
+                </div>
             </div>
         </div>
     </section>
 
-    <footer class="footer" style="background: var(--primary-dark); color: white; text-align: center; padding: 40px;">
-        <p>Benemérita Universidad Autónoma de Puebla - Facultad de Ciencias de la Computación</p>
-        <p>© 2026 - Sistema de Control Escolar</p>
+    <footer class="footer">
+        <p>Benemérita Universidad Autónoma de Puebla — Facultad de Ciencias de la Computación</p>
+        <p>© 2026 — Sistema de Control Escolar</p>
     </footer>
 
     <script>
-        function toggleMenu() { document.querySelector('.nav-links').classList.toggle('active'); }
-        function scrollToFeatures() { document.getElementById('features').scrollIntoView({ behavior: 'smooth' }); }
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        function applyLandingTheme() {
+            var dark = localStorage.getItem('theme') === 'dark';
+            document.body.classList.toggle('dark', dark);
+            document.body.classList.toggle('dark-mode', dark);
+            document.documentElement.classList.toggle('dark', dark);
+            var btn = document.getElementById('landingThemeBtn');
+            if (btn) {
+                var icon = btn.querySelector('i');
+                if (icon) icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
+            }
         }
-        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        function toggleLandingTheme() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            localStorage.setItem('theme', isDark ? 'light' : 'dark');
+            applyLandingTheme();
+        }
+        window.toggleLandingTheme = toggleLandingTheme;
+        applyLandingTheme();
     </script>
 </body>
 </html>

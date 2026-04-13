@@ -2,8 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionar Materias</title>
     <link rel="stylesheet" href="../css/estilo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -21,15 +24,71 @@
             <a data-nav="usuarios" href="usuarios.html"><span class="nav-emoji" aria-hidden="true">👥</span> Usuarios</a>
         </nav>
         <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
-    </aside>    
+    </aside>
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Materias</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <button class="btn-login-buap" onclick="mostrarModalMateria()">+ Nueva Materia</button>
+        <div class="toolbar-actions">
+            <button type="button" class="btn btn-primary" onclick="abrirModalMateriaNueva()"><i class="fas fa-plus"></i> Nueva materia</button>
+        </div>
         <div id="materiasContainer" class="courses-grid"></div>
     </main>
-    <div id="modalMateria" class="modal" style="display:none;"><div class="modal-content"><form id="formMateria">...</form></div></div>
+    <div id="modalMateria" class="modal" style="display:none;">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h2 id="modalMateriaTitulo">Nueva materia</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalMateria()" aria-label="Cerrar">&times;</button>
+            </div>
+            <form id="formMateria" onsubmit="guardarMateria(event)">
+                <input type="hidden" id="materiaIdEdit">
+                <div class="form-grid">
+                    <div class="form-group-modern">
+                        <label for="nombreMateria">Nombre</label>
+                        <input type="text" id="nombreMateria" required placeholder="Ej. Programación I">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="claveMateria">Clave</label>
+                        <input type="text" id="claveMateria" required placeholder="Ej. CS-101">
+                    </div>
+                    <div class="form-group-modern form-grid__full">
+                        <label for="horarioMateria">Horario</label>
+                        <input type="text" id="horarioMateria" placeholder="Ej. Lun y Mié 8:00 - 10:00">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="semestreMateria">Semestre</label>
+                        <input type="text" id="semestreMateria" placeholder="Ej. Primavera 2026">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="selectProfesor">Profesor asignado</label>
+                        <select id="selectProfesor"></select>
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="estudiantesMateria">Estudiantes (número)</label>
+                        <input type="number" id="estudiantesMateria" min="0" value="0">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="bajasMateria">Bajas</label>
+                        <input type="number" id="bajasMateria" min="0" value="0">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="promedioMateria">Promedio</label>
+                        <input type="number" id="promedioMateria" step="0.1" min="0" max="10" value="0">
+                    </div>
+                    <div class="form-group-modern form-grid__full">
+                        <label for="colorMateria">Color / gradiente (CSS)</label>
+                        <input type="text" id="colorMateria" placeholder="linear-gradient(135deg, #0ea5e9, #6366f1)">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalMateria()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
     <script src="js/materias.js"></script>
 </body>
 </html>
