@@ -44,7 +44,7 @@ const calificacionController = {
                 const insertResult = await pool.query(
                     `INSERT INTO archivos_calificaciones (profesor_id, materia_id, nombre_archivo, tipo)
                      VALUES ($1, $2, $3, $4) RETURNING id`,
-                    [req.usuario.id, materia_id, req.file.originalname, tipo]
+                    [req.usuario.id, materia_id, req.file.filename, tipo]
                 );
                 let detalles = '';
                 let estado = 'Procesado';
@@ -61,6 +61,7 @@ const calificacionController = {
                         archivo: {
                             id: insertResult.rows[0].id,
                             nombre: req.file.originalname,
+                            archivo_url: `/uploads/${req.file.filename}`,
                             tipo,
                             fecha: new Date().toISOString().split('T')[0],
                             estado,
@@ -82,6 +83,7 @@ const calificacionController = {
                     archivo: {
                         id: insertResult.rows[0].id,
                         nombre: req.file.originalname,
+                        archivo_url: `/uploads/${req.file.filename}`,
                         tipo,
                         fecha: new Date().toISOString().split('T')[0],
                         estado,
@@ -105,7 +107,10 @@ const calificacionController = {
                  ORDER BY a.fecha_subida DESC`,
                 [req.usuario.id]
             );
-            res.json(result.rows);
+            res.json(result.rows.map((row) => ({
+                ...row,
+                archivo_url: `/uploads/${row.nombre_archivo}`,
+            })));
         } catch (error) {
             res.status(500).json({ message: 'Error en el servidor', error: error.message });
         }

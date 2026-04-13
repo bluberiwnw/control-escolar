@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    verificarSesion(); mostrarInfoUsuario(); mostrarFechaActual();
+    verificarSesion();
+    mostrarInfoUsuario();
+    mostrarFechaActual();
     await cargarMaterias();
     await cargarHistorial();
 });
@@ -30,7 +32,24 @@ async function subirArchivo(input) {
 
 async function cargarHistorial() {
     const archivos = await apiRequest('/calificaciones/archivos');
-    document.getElementById('archivosList').innerHTML = archivos.map(a => `<div class="archivo-item"><div><strong>${a.nombre_archivo}</strong><br><small>${a.tipo} - ${new Date(a.fecha_subida).toLocaleDateString()}</small></div><span class="archivo-estado">${a.estado}</span></div>`).join('');
+    if (!archivos.length) {
+        document.getElementById('archivosList').innerHTML = '<div class="empty-state">No hay documentos cargados.</div>';
+        return;
+    }
+    document.getElementById('archivosList').innerHTML = archivos
+        .map(
+            (a) => `<div class="archivo-item">
+            <div>
+                <strong>${a.nombre_archivo}</strong><br>
+                <small>${a.tipo} - ${new Date(a.fecha_subida).toLocaleDateString()}</small>
+            </div>
+            <div class="table-actions">
+                <a class="btn btn-secondary btn-sm" href="${a.archivo_url}" target="_blank" rel="noopener">Ver documento</a>
+                <span class="badge">${a.estado}</span>
+            </div>
+        </div>`
+        )
+        .join('');
 }
 
 

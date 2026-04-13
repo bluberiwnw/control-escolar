@@ -2,11 +2,14 @@ let html5QrCode;
 
 async function cargarHistorial() {
     const historial = await apiRequest('/alumno/asistencias');
-    document.getElementById('historialAsistencias').innerHTML = `
-        <table class="table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
-        ${historial.map(h => `<tr><td>${formatearFecha(h.fecha)}</td><td>${h.materia_nombre}</td><td>${h.estado}</td></tr>`).join('')}
-        </tbody></table>
-    `;
+    if (!historial.length) {
+        document.getElementById('historialAsistencias').innerHTML = '<div class="empty-state">No hay asistencias registradas.</div>';
+        return;
+    }
+    document.getElementById('historialAsistencias').innerHTML = `<div class="table-responsive-wrap">
+        <table class="data-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
+        ${historial.map(h => `<tr><td data-label="Fecha">${formatearFecha(h.fecha)}</td><td data-label="Materia">${h.materia_nombre}</td><td data-label="Estado">${h.estado}</td></tr>`).join('')}
+        </tbody></table></div>`;
 }
 
 function iniciarLectorQR() {

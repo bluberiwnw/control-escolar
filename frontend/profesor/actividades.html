@@ -24,23 +24,21 @@
     </aside>     
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Actividades</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <button class="btn-login-buap" onclick="mostrarModalActividad()" style="width:auto; margin-bottom:20px;">+ Nueva Actividad</button>
+        <button type="button" class="btn btn-primary" onclick="mostrarModalActividad()" style="margin-bottom:20px;"><i class="fas fa-plus"></i> Nueva actividad</button>
         <div id="actividadesContainer"></div>
     </main>
-    <div id="modalActividad" class="modal" style="display:none;"><div class="modal-content"><span class="close" onclick="cerrarModal()">&times;</span><h2>Nueva Actividad</h2><form id="formActividad">...</form></div></div>
-    
     <div id="actividadModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h2>Nueva Actividad</h2>
             <button class="close-modal" onclick="cerrarModal()">&times;</button>
         </div>
-        <form id="actividadForm">
-            <div class="form-group">
+        <form id="actividadForm" onsubmit="guardarActividad(event)">
+            <div class="form-group-modern">
                 <label>Materia</label>
                 <select id="actividadMateria" required></select>
             </div>
-            <div class="form-group">
+            <div class="form-group-modern">
                 <label>Tipo</label>
                 <select id="actividadTipo" required>
                     <option value="tarea">Tarea</option>
@@ -48,31 +46,32 @@
                     <option value="examen">Examen</option>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group-modern">
                 <label>Título</label>
                 <input type="text" id="actividadTitulo" required>
             </div>
-            <div class="form-group">
+            <div class="form-group-modern">
                 <label>Descripción</label>
                 <textarea id="actividadDescripcion" rows="3" required></textarea>
             </div>
-            <div class="form-group">
+            <div class="form-group-modern">
                 <label>Fecha entrega</label>
                 <input type="date" id="actividadFecha" required>
             </div>
-            <div class="form-group">
+            <div class="form-group-modern">
                 <label>Valor (pts)</label>
                 <input type="number" id="actividadValor" min="0" max="100" required>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-                <button type="submit" class="btn-login-buap">Guardar</button>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
             </div>
         </form>
     </div>
 </div>
     <script src="../js/config.js"></script>
-    <script src="../js/auth.js"></script>`r`n    <script src="../js/app-shell.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
     <script src="js/actividades.js"></script>
 </body>
 </html>

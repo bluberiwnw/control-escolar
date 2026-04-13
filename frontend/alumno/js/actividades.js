@@ -27,9 +27,9 @@ async function cargarActividades() {
                     <span><i class="fas fa-star"></i> Valor: ${a.valor} pts</span>
                 </div>
                 <div class="actividad-actions">
-                    ${!a.entregado ? `<button class="btn-course" onclick="mostrarModalEntrega(${a.id})">Subir trabajo</button>` : ''}
-                    ${a.entregado ? `<span class="badge" style="background:green;">Entregado</span>` : ''}
-                    ${puedeCancelar ? `<button class="btn-small btn-danger" onclick="cancelarEntrega(${a.id})">Cancelar Entrega</button>` : ''}
+                    ${!a.entregado ? `<button type="button" class="btn btn-primary btn-sm" onclick="mostrarModalEntrega(${a.id})">Subir trabajo</button>` : ''}
+                    ${a.entregado ? `<span class="badge badge-success">Entregado</span>` : ''}
+                    ${puedeCancelar ? `<button type="button" class="btn btn-danger btn-sm" onclick="cancelarEntrega(${a.id})">Cancelar entrega</button>` : ''}
                 </div>
             </div>
         `;
@@ -67,10 +67,14 @@ document.getElementById('formEntrega').addEventListener('submit', async (e) => {
         body: formData
     });
     if (res.ok) {
-        alert('Entrega subida correctamente');
+        mostrarToast('Entrega subida correctamente', 'success');
         cerrarModal();
         cargarActividades();
     } else {
-        alert('Error al subir');
+        mostrarToast('Error al subir', 'error');
     }
 });
+
+window.cerrarModal = cerrarModal;
+window.mostrarModalEntrega = mostrarModalEntrega;
+window.cancelarEntrega = cancelarEntrega;

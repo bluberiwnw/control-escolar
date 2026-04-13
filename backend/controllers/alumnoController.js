@@ -31,6 +31,7 @@ const alumnoController = {
                     e.archivo as archivo_entrega, e.calificacion as calificacion_entrega
                 FROM actividades a
                 JOIN materias m ON a.materia_id = m.id
+                JOIN inscripciones i ON i.materia_id = m.id AND i.estudiante_id = $1
                 LEFT JOIN entregas e ON e.actividad_id = a.id AND e.estudiante_id = $1
                 ORDER BY a.fecha_entrega ASC
             `, [alumnoId]);
@@ -65,11 +66,12 @@ const alumnoController = {
         try {
             const alumnoId = req.usuario.id;
             const result = await pool.query(`
-                SELECT cf.calificacion, m.nombre as materia_nombre
-                FROM calificaciones_finales cf
-                JOIN materias m ON cf.materia_id = m.id
-                WHERE cf.estudiante_id = $1
-                ORDER BY m.nombre
+                SELECT c.calificacion, c.tipo, c.fecha_registro, m.nombre as materia_nombre, a.titulo as actividad_titulo
+                FROM calificaciones c
+                JOIN materias m ON c.materia_id = m.id
+                LEFT JOIN actividades a ON c.actividad_id = a.id
+                WHERE c.estudiante_id = $1
+                ORDER BY m.nombre, c.fecha_registro DESC
             `, [alumnoId]);
             res.json(result.rows);
         } catch (error) {

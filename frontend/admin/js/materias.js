@@ -28,7 +28,7 @@ async function cargarMaterias() {
             .map(
                 (m) => `
             <div class="course-card course-card--elevated">
-                <div class="course-header" style="background:${m.color || 'var(--primary)'}"><h3>${m.nombre}</h3><p>${m.clave}</p></div>
+                <div class="course-header"><h3>${m.nombre}</h3><p>${m.clave}</p></div>
                 <div class="course-body">
                     <div class="course-detail"><i class="fas fa-chalkboard-user"></i> ${m.profesor_nombre || 'Sin asignar'}</div>
                     <div class="course-detail"><i class="fas fa-clock"></i> ${m.horario || '—'}</div>
@@ -76,7 +76,6 @@ async function editarMateria(id) {
     document.getElementById('estudiantesMateria').value = m.estudiantes ?? 0;
     document.getElementById('bajasMateria').value = m.bajas ?? 0;
     document.getElementById('promedioMateria').value = m.promedio ?? 0;
-    document.getElementById('colorMateria').value = m.color || '';
     document.getElementById('selectProfesor').value = m.profesor_id || '';
     document.getElementById('modalMateria').style.display = 'flex';
 }
@@ -94,7 +93,6 @@ async function guardarMateria(ev) {
         clave: document.getElementById('claveMateria').value.trim(),
         horario: document.getElementById('horarioMateria').value.trim(),
         semestre: document.getElementById('semestreMateria').value.trim(),
-        color: document.getElementById('colorMateria').value.trim() || undefined,
         estudiantes: parseInt(document.getElementById('estudiantesMateria').value, 10) || 0,
         bajas: parseInt(document.getElementById('bajasMateria').value, 10) || 0,
         promedio: parseFloat(document.getElementById('promedioMateria').value) || 0,

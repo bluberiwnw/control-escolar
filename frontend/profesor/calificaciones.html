@@ -25,8 +25,8 @@
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Registro de Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
         <div class="panel-card">
-            <div class="form-group"><label>Materia</label><select id="materiaSelect"></select></div>
-            <div class="form-group"><label>Tipo</label><select id="tipoSelect"><option value="tarea">Tarea</option><option value="proyecto">Proyecto</option><option value="examen">Examen</option></select></div>
+            <div class="form-group-modern"><label>Materia</label><select id="materiaSelect"></select></div>
+            <div class="form-group-modern"><label>Tipo</label><select id="tipoSelect"><option value="tarea">Tarea</option><option value="proyecto">Proyecto</option><option value="examen">Examen</option></select></div>
     <div class="upload-area" onclick="document.getElementById('fileInput').click()">
         <i class="fas fa-cloud-upload-alt"></i><h3>Subir calificaciones (Excel/CSV)</h3>
         <p>Formato requerido: columnas <strong>"Materia", "Nombre", "Calificacion"</strong></p>
@@ -38,7 +38,8 @@
         <div class="historial-archivos"><h3>Archivos subidos</h3><div id="archivosList"></div></div>
     </main>
     <script src="../js/config.js"></script>
-    <script src="../js/auth.js"></script>`r`n    <script src="../js/app-shell.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
     <script src="js/calificaciones.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </body>

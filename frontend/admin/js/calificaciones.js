@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion(); mostrarInfoUsuario(); mostrarFechaActual();
     await cargarMaterias();
+    await cargarCalificaciones();
 });
 
 async function cargarMaterias() {
@@ -14,9 +15,25 @@ async function cargarCalificaciones() {
     let url = '/admin/calificaciones';
     if (materiaId) url += `?materia_id=${materiaId}`;
     const calificaciones = await apiRequest(url);
-    document.getElementById('calificacionesContainer').innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Calificación</th><th>Fecha</th></tr></thead><tbody>
-        ${calificaciones.map(c => `<tr><td data-label="Materia">${c.materia_nombre}</td><td data-label="Estudiante">${c.estudiante_nombre}</td><td data-label="Calificación">${c.calificacion}</td><td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td></tr>`).join('')}
+    document.getElementById('calificacionesContainer').innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
+        ${calificaciones.map(c => `<tr><td data-label="Materia">${c.materia_nombre}</td><td data-label="Estudiante">${c.estudiante_nombre}</td><td data-label="Actividad">${c.actividad_titulo || c.tipo}</td><td data-label="Calificación">${c.calificacion}</td><td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td><td data-label="Acciones"><button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button></td></tr>`).join('')}
         </tbody></table></div>`;
+}
+
+async function editarCalificacion(id, actual) {
+    const valor = prompt('Nueva calificación (0 - 10):', actual);
+    if (valor === null) return;
+    const numero = parseFloat(valor);
+    if (Number.isNaN(numero) || numero < 0 || numero > 10) {
+        mostrarToast('Calificación inválida', 'error');
+        return;
+    }
+    await apiRequest(`/admin/calificaciones/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ calificacion: numero }),
+    });
+    mostrarToast('Calificación actualizada', 'success');
+    await cargarCalificaciones();
 }
 
 function previsualizarArchivoAdmin(input) {
@@ -59,3 +76,4 @@ function previsualizarArchivoAdmin(input) {
 }
 
 window.previsualizarArchivoAdmin = previsualizarArchivoAdmin;
+window.editarCalificacion = editarCalificacion;

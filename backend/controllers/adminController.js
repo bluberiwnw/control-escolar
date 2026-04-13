@@ -103,8 +103,8 @@ const adminController = {
             const { id } = req.params;
             const { nombre, email } = req.body;
             await pool.query(
-                'UPDATE usuarios SET nombre = $1, email = $2 WHERE id = $3 AND rol = $4',
-                [nombre, email, id, 'profesor']
+                'UPDATE usuarios SET nombre = $1, email = $2 WHERE id = $3 AND rol IN ($4, $5)',
+                [nombre, email, id, 'profesor', 'administrador']
             );
             res.json({ message: 'Profesor actualizado' });
         } catch (error) {
@@ -154,7 +154,7 @@ const adminController = {
 
     async crearMateria(req, res) {
         try {
-            const { nombre, clave, horario, estudiantes, bajas, promedio, semestre, color, profesor_id } = req.body;
+            const { nombre, clave, horario, estudiantes, bajas, promedio, semestre, profesor_id } = req.body;
             const r = await pool.query(
                 `INSERT INTO materias (nombre, clave, horario, estudiantes, bajas, promedio, semestre, color, profesor_id)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
@@ -166,7 +166,7 @@ const adminController = {
                     bajas ?? 0,
                     promedio ?? 0,
                     semestre || '',
-                    color || 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
+                    'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
                     profesor_id || null,
                 ]
             );
@@ -179,7 +179,7 @@ const adminController = {
     async actualizarMateria(req, res) {
         try {
             const { id } = req.params;
-            const { nombre, clave, horario, estudiantes, bajas, promedio, semestre, color, profesor_id } = req.body;
+            const { nombre, clave, horario, estudiantes, bajas, promedio, semestre, profesor_id } = req.body;
             await pool.query(
                 `UPDATE materias SET nombre=$1, clave=$2, horario=$3, estudiantes=$4, bajas=$5, promedio=$6, semestre=$7, color=$8, profesor_id=$9
                  WHERE id=$10`,
@@ -191,7 +191,7 @@ const adminController = {
                     bajas,
                     promedio,
                     semestre,
-                    color,
+                    'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
                     profesor_id || null,
                     id,
                 ]
@@ -299,6 +299,20 @@ const adminController = {
         }
     },
 
+    async actualizarCalificacion(req, res) {
+        try {
+            const { id } = req.params;
+            const { calificacion } = req.body;
+            await pool.query(
+                'UPDATE calificaciones SET calificacion = $1 WHERE id = $2',
+                [calificacion, id]
+            );
+            res.json({ message: 'Calificacion actualizada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
     // Reportes globales
     async getReportes(req, res) {
         try {
@@ -361,6 +375,20 @@ const adminController = {
             const { id } = req.params;
             await pool.query('DELETE FROM asistencias WHERE id = $1', [id]);
             res.json({ message: 'Asistencia eliminada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    async actualizarAsistencia(req, res) {
+        try {
+            const { id } = req.params;
+            const { estado } = req.body;
+            await pool.query(
+                'UPDATE asistencias SET estado = $1 WHERE id = $2',
+                [estado, id]
+            );
+            res.json({ message: 'Asistencia actualizada' });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

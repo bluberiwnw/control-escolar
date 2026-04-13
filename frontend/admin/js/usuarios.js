@@ -22,7 +22,7 @@ async function cargarProfesores() {
                 <td data-label="Nombre">${p.nombre}</td>
                 <td data-label="Email">${p.email}</td>
                 <td data-label="Rol">${p.rol}</td>
-                <td data-label="Acciones"><button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${p.id},'profesor')">Eliminar</button></td>
+                <td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarProfesor(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', '${p.email.replace(/'/g, "\\'")}')">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${p.id},'profesor')">Eliminar</button></td>
             </tr>`
                 )
                 .join('')}
@@ -47,7 +47,7 @@ async function cargarEstudiantes() {
                 <td data-label="Matrícula">${e.matricula}</td>
                 <td data-label="Nombre">${e.nombre}</td>
                 <td data-label="Email">${e.email}</td>
-                <td data-label="Acciones"><button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${e.id},'alumno')">Eliminar</button></td>
+                <td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarEstudiante(${e.id}, '${e.matricula.replace(/'/g, "\\'")}', '${e.nombre.replace(/'/g, "\\'")}', '${e.email.replace(/'/g, "\\'")}')">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${e.id},'alumno')">Eliminar</button></td>
             </tr>`
                 )
                 .join('')}
@@ -63,6 +63,34 @@ async function eliminarUsuario(id, tipo) {
     mostrarToast('Usuario eliminado', 'success');
     if (tipo === 'profesor') cargarProfesores();
     else cargarEstudiantes();
+}
+
+async function editarProfesor(id, nombreActual, emailActual) {
+    const nombre = prompt('Nombre del profesor', nombreActual);
+    if (!nombre) return;
+    const email = prompt('Correo del profesor', emailActual);
+    if (!email) return;
+    await apiRequest(`/admin/profesores/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ nombre: nombre.trim(), email: email.trim() }),
+    });
+    mostrarToast('Profesor actualizado', 'success');
+    cargarProfesores();
+}
+
+async function editarEstudiante(id, matriculaActual, nombreActual, emailActual) {
+    const matricula = prompt('Matrícula del estudiante', matriculaActual);
+    if (!matricula) return;
+    const nombre = prompt('Nombre del estudiante', nombreActual);
+    if (!nombre) return;
+    const email = prompt('Correo del estudiante', emailActual);
+    if (!email) return;
+    await apiRequest(`/admin/estudiantes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ matricula: matricula.trim(), nombre: nombre.trim(), email: email.trim() }),
+    });
+    mostrarToast('Estudiante actualizado', 'success');
+    cargarEstudiantes();
 }
 
 function abrirModalProfesor() {
@@ -127,3 +155,5 @@ window.abrirModalEstudiante = abrirModalEstudiante;
 window.cerrarModalEstudiante = cerrarModalEstudiante;
 window.guardarEstudiante = guardarEstudiante;
 window.eliminarUsuario = eliminarUsuario;
+window.editarProfesor = editarProfesor;
+window.editarEstudiante = editarEstudiante;

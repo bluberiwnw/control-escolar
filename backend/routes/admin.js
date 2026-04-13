@@ -25,7 +25,9 @@ router.put('/actividades/:id', adminController.updateActividad);
 router.delete('/actividades/:id', adminController.eliminarActividad);
 router.get('/asistencias', adminController.listarAsistencias);
 router.get('/calificaciones', adminController.listarCalificaciones);
+router.put('/calificaciones/:id', adminController.actualizarCalificacion);
 router.get('/reportes', adminController.getReportes);
 router.delete('/asistencias/:id', adminController.deleteAsistencia);
+router.put('/asistencias/:id', adminController.actualizarAsistencia);
 
 module.exports = router;

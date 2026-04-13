@@ -31,23 +31,24 @@
     <!-- Modal para subir entrega -->
     <div id="modalEntrega" class="modal" style="display:none;">
         <div class="modal-content">
-            <span class="close" onclick="cerrarModal()">&times;</span>
+            <button type="button" class="close-modal" onclick="cerrarModal()">&times;</button>
             <h3>Subir entrega</h3>
             <form id="formEntrega" enctype="multipart/form-data">
-                <div class="form-group">
+                <div class="form-group-modern">
                     <label>Archivo (PDF, DOC, ZIP)</label>
                     <input type="file" name="archivo" required accept=".pdf,.doc,.docx,.zip">
                 </div>
-                <div class="form-group">
+                <div class="form-group-modern">
                     <label>Comentario (opcional)</label>
                     <textarea name="comentario" placeholder="Comentario adicional..."></textarea>
                 </div>
-                <button type="submit" class="btn-login-buap">Subir trabajo</button>
+                <button type="submit" class="btn btn-primary">Subir trabajo</button>
             </form>
         </div>
     </div>
     <script src="../js/config.js"></script>
-    <script src="../js/auth.js"></script>`r`n    <script src="../js/app-shell.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
     <script src="js/actividades.js"></script>
 </body>
 </html>
