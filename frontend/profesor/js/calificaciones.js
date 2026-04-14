@@ -51,7 +51,6 @@ async function cargarHistorial() {
                 <small>${a.tipo} - ${new Date(a.fecha_subida).toLocaleDateString()}</small>
             </div>
             <div class="table-actions">
-                <a class="btn btn-secondary btn-sm" href="${a.archivo_url}" target="_blank" rel="noopener">Ver documento</a>
                 <a class="btn btn-secondary btn-sm" href="${a.archivo_url}" download>Descargar</a>
                 <button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivo(${a.id})">Eliminar</button>
                 <span class="badge">${a.estado}</span>
