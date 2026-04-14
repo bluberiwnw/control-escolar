@@ -55,6 +55,10 @@
         </div>
         <div id="resumenActividadesAdmin" class="stats-grid-profesor"></div>
         <div id="actividadesContainer" class="activity-admin-grid"></div>
+        <section class="panel-section">
+            <div class="panel-section__head"><h2>Archivos de entregas de alumnos</h2></div>
+            <div id="archivosEntregasContainer" class="table-responsive-wrap"></div>
+        </section>
     </main>
     <div id="editModal" class="modal" style="display:none;">
         <div class="modal-content modal-content--wide">
@@ -97,6 +101,29 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn-ghost" onclick="cerrarModalActividad()">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="modalEntregaArchivo" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Editar archivo de entrega</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalEntregaArchivo()">&times;</button>
+            </div>
+            <form id="formEntregaArchivo" onsubmit="guardarEntregaArchivo(event)">
+                <input type="hidden" id="editEntregaId">
+                <div class="form-group-modern">
+                    <label for="editEntregaComentario">Comentario</label>
+                    <textarea id="editEntregaComentario" rows="3" maxlength="500" placeholder="Comentario del archivo entregado"></textarea>
+                </div>
+                <div class="form-group-modern">
+                    <label for="editEntregaArchivo">Reemplazar archivo (opcional)</label>
+                    <input type="file" id="editEntregaArchivo" accept=".pdf,.doc,.docx,.zip">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalEntregaArchivo()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
                 </div>
             </form>
         </div>

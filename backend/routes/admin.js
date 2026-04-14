@@ -1,8 +1,32 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const { verificarRol } = require('../middleware/roleMiddleware');
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = path.join(__dirname, '../uploads');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname}`);
+    },
+});
+
+const uploadEntrega = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        if (['.pdf', '.doc', '.docx', '.zip'].includes(ext)) return cb(null, true);
+        cb(new Error('Tipo de archivo no permitido. Usa PDF, DOC, DOCX o ZIP.'));
+    },
+});
 
 router.use(authMiddleware);
 router.use(verificarRol(['administrador']));
@@ -32,5 +56,8 @@ router.delete('/asistencias/:id', adminController.deleteAsistencia);
 router.put('/asistencias/:id', adminController.actualizarAsistencia);
 router.get('/calificaciones/archivos', adminController.listarArchivosCalificaciones);
 router.delete('/calificaciones/archivos/:id', adminController.eliminarArchivoCalificacion);
+router.get('/entregas/archivos', adminController.listarArchivosEntregas);
+router.put('/entregas/archivos/:id', uploadEntrega.single('archivo'), adminController.actualizarArchivoEntrega);
+router.delete('/entregas/archivos/:id', adminController.eliminarArchivoEntrega);
 
 module.exports = router;

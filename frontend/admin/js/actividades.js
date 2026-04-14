@@ -1,5 +1,6 @@
 let actividadesAdmin = [];
 let materiasAdmin = [];
+let entregasAdmin = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion();
@@ -7,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarFechaActual();
     await cargarMateriasAdmin();
     await cargarActividades();
+    await cargarArchivosEntregas();
 });
 
 function escapeHtml(value) {
@@ -72,6 +74,7 @@ function aplicarFiltrosActividades() {
     });
     renderResumen(filtradas);
     renderActividadesCards(filtradas);
+    cargarArchivosEntregas();
 }
 
 async function cargarMateriasAdmin() {
@@ -86,11 +89,111 @@ async function cargarActividades() {
     aplicarFiltrosActividades();
 }
 
+function renderArchivosEntregas(entregas) {
+    const container = document.getElementById('archivosEntregasContainer');
+    if (!entregas.length) {
+        container.innerHTML = '<div class="empty-state">No hay archivos de entregas para la materia seleccionada.</div>';
+        return;
+    }
+    container.innerHTML = `<table class="data-table"><thead><tr>
+        <th>Materia</th><th>Actividad</th><th>Estudiante</th><th>Archivo</th><th>Comentario</th><th>Acciones</th>
+    </tr></thead><tbody>
+    ${entregas
+        .map(
+            (e) => `<tr>
+        <td data-label="Materia">${escapeHtml(e.materia_nombre)}</td>
+        <td data-label="Actividad">${escapeHtml(e.actividad_titulo)}</td>
+        <td data-label="Estudiante">${escapeHtml(e.estudiante_nombre)}</td>
+        <td data-label="Archivo">${escapeHtml(e.archivo || 'Sin archivo')}</td>
+        <td data-label="Comentario">${escapeHtml(e.comentario || '—')}</td>
+        <td data-label="Acciones" class="table-actions">
+            ${e.archivo_url ? `<a class="btn btn-secondary btn-sm" href="${buildApiUrl(e.archivo_url)}" download>Descargar</a>` : ''}
+            <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalEntregaArchivo(${e.id})">Modificar</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="eliminarEntregaArchivo(${e.id})">Eliminar</button>
+        </td>
+    </tr>`
+        )
+        .join('')}
+    </tbody></table>`;
+}
+
+async function cargarArchivosEntregas() {
+    const materiaId = document.getElementById('filtroMateriaActividad').value;
+    const url = materiaId ? `/admin/entregas/archivos?materia_id=${encodeURIComponent(materiaId)}` : '/admin/entregas/archivos';
+    entregasAdmin = await apiRequest(url);
+    renderArchivosEntregas(entregasAdmin);
+}
+
 async function eliminarActividad(id) {
     if (!confirm('¿Eliminar esta actividad?')) return;
     await apiRequest(`/admin/actividades/${id}`, { method: 'DELETE' });
     mostrarToast('Actividad eliminada', 'success');
     await cargarActividades();
+}
+
+function abrirModalEntregaArchivo(id) {
+    const entrega = entregasAdmin.find((e) => e.id === id);
+    if (!entrega) return;
+    document.getElementById('editEntregaId').value = String(entrega.id);
+    document.getElementById('editEntregaComentario').value = entrega.comentario || '';
+    document.getElementById('editEntregaArchivo').value = '';
+    document.getElementById('modalEntregaArchivo').style.display = 'flex';
+}
+
+function cerrarModalEntregaArchivo() {
+    document.getElementById('modalEntregaArchivo').style.display = 'none';
+}
+
+async function guardarEntregaArchivo(event) {
+    event.preventDefault();
+    const id = document.getElementById('editEntregaId').value;
+    const comentario = document.getElementById('editEntregaComentario').value.trim();
+    const file = document.getElementById('editEntregaArchivo').files[0];
+    if (!id) return;
+    if (comentario.length > 500) {
+        mostrarToast('El comentario no puede exceder 500 caracteres', 'error');
+        return;
+    }
+    const formData = new FormData();
+    formData.append('comentario', comentario);
+    if (file) {
+        const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+        if (!['.pdf', '.doc', '.docx', '.zip'].includes(ext)) {
+            mostrarToast('Formato no permitido (PDF, DOC, DOCX, ZIP)', 'error');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            mostrarToast('El archivo excede 10 MB', 'error');
+            return;
+        }
+        formData.append('archivo', file);
+    }
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${window.API_URL}/admin/entregas/archivos/${id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+    });
+    let data = {};
+    try {
+        data = await res.json();
+    } catch (_) {
+        data = {};
+    }
+    if (!res.ok) {
+        mostrarToast(data.message || 'No se pudo actualizar la entrega', 'error');
+        return;
+    }
+    mostrarToast('Archivo de entrega actualizado', 'success');
+    cerrarModalEntregaArchivo();
+    await cargarArchivosEntregas();
+}
+
+async function eliminarEntregaArchivo(id) {
+    if (!confirm('¿Eliminar este archivo de entrega?')) return;
+    await apiRequest(`/admin/entregas/archivos/${id}`, { method: 'DELETE' });
+    mostrarToast('Archivo de entrega eliminado', 'success');
+    await cargarArchivosEntregas();
 }
 
 function validarFormularioActividad(data) {
@@ -163,3 +266,7 @@ window.editarActividad = editarActividad;
 window.eliminarActividad = eliminarActividad;
 window.cerrarModalActividad = cerrarModalActividad;
 window.guardarActividadAdmin = guardarActividadAdmin;
+window.abrirModalEntregaArchivo = abrirModalEntregaArchivo;
+window.cerrarModalEntregaArchivo = cerrarModalEntregaArchivo;
+window.guardarEntregaArchivo = guardarEntregaArchivo;
+window.eliminarEntregaArchivo = eliminarEntregaArchivo;

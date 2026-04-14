@@ -647,6 +647,107 @@ const adminController = {
             res.status(500).json({ error: error.message });
         }
     },
+
+    async listarArchivosEntregas(req, res) {
+        try {
+            const { materia_id } = req.query;
+            const params = [];
+            let idx = 1;
+            let query = `
+                SELECT e.id, e.archivo, e.comentario, e.actividad_id, e.estudiante_id,
+                       a.titulo AS actividad_titulo, a.materia_id,
+                       m.nombre AS materia_nombre, s.nombre AS estudiante_nombre
+                FROM entregas e
+                JOIN actividades a ON e.actividad_id = a.id
+                JOIN materias m ON a.materia_id = m.id
+                JOIN estudiantes s ON e.estudiante_id = s.id
+                WHERE 1=1
+            `;
+            if (materia_id) {
+                query += ` AND a.materia_id = $${idx}`;
+                params.push(parseEnteroSeguro(materia_id, 0));
+                idx++;
+            }
+            query += ' ORDER BY m.nombre, a.titulo, s.nombre';
+            const result = await pool.query(query, params);
+            res.json(
+                result.rows.map((row) => ({
+                    ...row,
+                    archivo_url: row.archivo ? `/uploads/${encodeURIComponent(row.archivo)}` : null,
+                }))
+            );
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudieron cargar los archivos de entregas.' });
+        }
+    },
+
+    async actualizarArchivoEntrega(req, res) {
+        try {
+            const { id } = req.params;
+            const entregaId = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(entregaId) || entregaId <= 0) {
+                if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                return res.status(400).json({ message: 'ID de entrega no válido.' });
+            }
+            const comentario = String(req.body?.comentario || '').trim().slice(0, 500);
+            const find = await pool.query('SELECT archivo FROM entregas WHERE id = $1', [entregaId]);
+            if (find.rowCount === 0) {
+                if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                return res.status(404).json({ message: 'Entrega no encontrada.' });
+            }
+            const archivoAnterior = find.rows[0].archivo;
+            const nuevoArchivo = req.file ? req.file.filename : archivoAnterior;
+            await pool.query('UPDATE entregas SET archivo = $1, comentario = $2 WHERE id = $3', [nuevoArchivo, comentario, entregaId]);
+            if (req.file && archivoAnterior && archivoAnterior !== nuevoArchivo) {
+                const full = path.join(__dirname, '../uploads', archivoAnterior);
+                if (fs.existsSync(full)) {
+                    try {
+                        fs.unlinkSync(full);
+                    } catch (_) {
+                        /* ignore delete error */
+                    }
+                }
+            }
+            res.json({ message: 'Entrega actualizada correctamente.' });
+        } catch (error) {
+            if (req.file?.path && fs.existsSync(req.file.path)) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (_) {
+                    /* ignore rollback delete */
+                }
+            }
+            res.status(500).json({ message: 'No se pudo actualizar el archivo de entrega.' });
+        }
+    },
+
+    async eliminarArchivoEntrega(req, res) {
+        try {
+            const { id } = req.params;
+            const entregaId = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(entregaId) || entregaId <= 0) {
+                return res.status(400).json({ message: 'ID de entrega no válido.' });
+            }
+            const result = await pool.query('DELETE FROM entregas WHERE id = $1 RETURNING archivo', [entregaId]);
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'Entrega no encontrada.' });
+            }
+            const archivo = result.rows[0]?.archivo;
+            if (archivo) {
+                const full = path.join(__dirname, '../uploads', archivo);
+                if (fs.existsSync(full)) {
+                    try {
+                        fs.unlinkSync(full);
+                    } catch (_) {
+                        /* ignore delete error */
+                    }
+                }
+            }
+            res.json({ message: 'Archivo de entrega eliminado correctamente.' });
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo eliminar el archivo de entrega.' });
+        }
+    },
 };
 
 module.exports = adminController;
