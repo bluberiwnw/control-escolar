@@ -43,6 +43,10 @@ async function cargarLista() {
 window.cambiarEstado = async (estudianteId, estado) => {
     const materiaId = document.getElementById('materiaSelect').value;
     const fecha = document.getElementById('fechaAsistencia').value;
+    if (!materiaId || !fecha) {
+        mostrarToast('Selecciona la materia y la fecha antes de registrar asistencia', 'error');
+        return;
+    }
     await apiRequest('/asistencia', { method: 'POST', body: JSON.stringify({ materia_id: parseInt(materiaId, 10), estudiante_id: estudianteId, fecha, estado }) });
     mostrarToast('Asistencia actualizada', 'success');
     cargarLista(); // recargar para mostrar cambios
@@ -62,6 +66,10 @@ async function generarQR() {
         mostrarToast('Usa formato de hora HH:MM', 'error');
         return;
     }
+    if (hora_inicio >= hora_fin) {
+        mostrarToast('La hora final debe ser posterior a la hora inicial', 'error');
+        return;
+    }
 
     const data = await apiRequest('/qr/generar', {
         method: 'POST',
@@ -74,8 +82,8 @@ async function generarQR() {
         <div style="background:white; padding:20px; display:inline-block; border-radius:20px;">
             <img src="${data.qrDataUrl}" style="max-width:300px; width:100%;" alt="QR">
             <br><br>
-            <a href="${data.qrDataUrl}" download="qr_asistencia.png" class="btn-login-buap">Descargar QR</a>
-            <p class="text-muted" style="margin-top:10px;">URL para compartir: <a href="${data.url}" target="_blank" rel="noopener">${data.url}</a></p>
+            <a href="${data.download_url || data.qrDataUrl}" download="qr_asistencia.png" class="btn-login-buap">Descargar código de asistencia</a>
+            <p class="text-muted" style="margin-top:10px;">URL del código de asistencia: <a href="${data.url}" target="_blank" rel="noopener">${data.url}</a></p>
             <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="copiarURLQR('${data.url}')">Copiar URL</button>
         </div>
     `;

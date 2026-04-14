@@ -47,17 +47,26 @@ const alumnoController = {
             const { actividad_id, comentario } = req.body;
             const alumnoId = req.usuario.id;
             const archivo = req.file ? req.file.filename : null;
-            if (!archivo) return res.status(400).json({ error: 'Archivo requerido' });
+            if (!archivo) {
+                return res.status(400).json({ error: 'Debes adjuntar un archivo para enviar tu entrega.' });
+            }
+
+            // Upsert manual sin requerir constraint UNIQUE en BD
+            await pool.query(
+                'DELETE FROM entregas WHERE actividad_id = $1 AND estudiante_id = $2',
+                [actividad_id, alumnoId]
+            );
             await pool.query(
                 `INSERT INTO entregas (actividad_id, estudiante_id, archivo, comentario)
-                 VALUES ($1, $2, $3, $4)
-                 ON CONFLICT (actividad_id, estudiante_id) 
-                 DO UPDATE SET archivo = EXCLUDED.archivo, comentario = EXCLUDED.comentario, fecha_entrega = CURRENT_TIMESTAMP`,
+                 VALUES ($1, $2, $3, $4)`,
                 [actividad_id, alumnoId, archivo, comentario]
             );
-            res.json({ message: 'Entrega subida correctamente' });
+
+            res.json({ message: 'Entrega subida correctamente.' });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({
+                error: 'No se pudo guardar tu entrega. Intenta de nuevo más tarde.',
+            });
         }
     },
 

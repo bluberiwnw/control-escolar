@@ -20,8 +20,8 @@ function buildAdminChartOptions() {
 async function renderAdminChart(stats) {
     const canvas = document.getElementById('graficoBarras');
     if (!canvas || typeof Chart === 'undefined') return;
-    const grupos = stats.alumnos_por_grado || [];
-    const labels = grupos.length ? grupos.map((g) => g.grado || 'N/D') : ['Sin datos'];
+    const grupos = stats.alumnos_por_grupo || [];
+    const labels = grupos.length ? grupos.map((g) => g.grupo || 'N/D') : ['Sin datos'];
     const data = grupos.length ? grupos.map((g) => g.total) : [0];
     if (chartAdmin) chartAdmin.destroy();
     chartAdmin = new Chart(canvas.getContext('2d'), {
@@ -30,7 +30,7 @@ async function renderAdminChart(stats) {
             labels,
             datasets: [
                 {
-                    label: 'Alumnos por grupo (matrícula)',
+                    label: 'Alumnos por grupo',
                     data,
                     backgroundColor: 'rgba(59, 130, 246, 0.65)',
                     borderRadius: 10,

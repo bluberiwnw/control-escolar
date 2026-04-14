@@ -4,6 +4,20 @@ const path = require('path');
 const multer = require('multer');
 const { procesarExcelCalificaciones } = require('../services/excelService');
 
+const TIPOS_CALIFICACION = new Set(['tarea', 'proyecto', 'examen']);
+
+function parseCalificacion(valor) {
+    const numero = Number.parseFloat(valor);
+    return Number.isNaN(numero) ? null : numero;
+}
+
+function mensajeErrorCarga(error) {
+    if (error?.code === '23503') {
+        return 'La materia o el alumno relacionado ya no existe.';
+    }
+    return 'No se pudo procesar el archivo de calificaciones.';
+}
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadDir = path.join(__dirname, '../uploads');
@@ -36,9 +50,17 @@ const calificacionController = {
     async uploadFile(req, res) {
         upload(req, res, async function(err) {
             if (err) return res.status(400).json({ message: err.message });
-            if (!req.file) return res.status(400).json({ message: 'No se seleccionó ningún archivo' });
+            if (!req.file) return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
             try {
                 const { materia_id, tipo } = req.body;
+                if (!materia_id) {
+                    fs.unlinkSync(req.file.path);
+                    return res.status(400).json({ message: 'Selecciona una materia antes de subir el archivo.' });
+                }
+                if (!TIPOS_CALIFICACION.has(String(tipo || '').trim())) {
+                    fs.unlinkSync(req.file.path);
+                    return res.status(400).json({ message: 'Selecciona un tipo de evaluación válido.' });
+                }
                 const materiaCheck = await pool.query(
                     'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
                     [materia_id, req.usuario.id]
@@ -67,7 +89,7 @@ const calificacionController = {
                         archivo: {
                             id: insertResult.rows[0].id,
                             nombre: req.file.originalname,
-                            archivo_url: `/uploads/${req.file.filename}`,
+                            archivo_url: `/uploads/${encodeURIComponent(req.file.filename)}`,
                             tipo,
                             fecha: new Date().toISOString().split('T')[0],
                             estado,
@@ -89,7 +111,7 @@ const calificacionController = {
                     archivo: {
                         id: insertResult.rows[0].id,
                         nombre: req.file.originalname,
-                        archivo_url: `/uploads/${req.file.filename}`,
+                        archivo_url: `/uploads/${encodeURIComponent(req.file.filename)}`,
                         tipo,
                         fecha: new Date().toISOString().split('T')[0],
                         estado,
@@ -98,7 +120,7 @@ const calificacionController = {
                 });
             } catch (error) {
                 if (req.file) fs.unlinkSync(req.file.path);
-                res.status(500).json({ message: 'Error en el servidor', error: error.message });
+                res.status(500).json({ message: mensajeErrorCarga(error) });
             }
         });
     },
@@ -115,10 +137,10 @@ const calificacionController = {
             );
             res.json(result.rows.map((row) => ({
                 ...row,
-                archivo_url: `/uploads/${row.nombre_archivo}`,
+                archivo_url: `/uploads/${encodeURIComponent(row.nombre_archivo)}`,
             })));
         } catch (error) {
-            res.status(500).json({ message: 'Error en el servidor', error: error.message });
+            res.status(500).json({ message: 'No se pudieron cargar los archivos subidos.' });
         }
     },
 
@@ -173,6 +195,16 @@ const calificacionController = {
     async save(req, res) {
         try {
             const { materia_id, estudiante_id, actividad_id, tipo, calificacion } = req.body;
+            const valor = parseCalificacion(calificacion);
+            if (!materia_id || !estudiante_id) {
+                return res.status(400).json({ message: 'Completa los campos obligatorios de materia y alumno.' });
+            }
+            if (!TIPOS_CALIFICACION.has(String(tipo || '').trim())) {
+                return res.status(400).json({ message: 'Selecciona un tipo de evaluación válido.' });
+            }
+            if (valor == null || valor < 5 || valor > 10) {
+                return res.status(400).json({ message: 'La calificación debe estar entre 5 y 10.' });
+            }
             const materiaCheck = await pool.query(
                 'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
                 [materia_id, req.usuario.id]
@@ -181,7 +213,7 @@ const calificacionController = {
             const insertResult = await pool.query(
                 `INSERT INTO calificaciones (materia_id, estudiante_id, actividad_id, tipo, calificacion)
                  VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-                [materia_id, estudiante_id, actividad_id || null, tipo, calificacion]
+                [materia_id, estudiante_id, actividad_id || null, tipo, valor]
             );
             const nueva = await pool.query(
                 `SELECT c.*, e.nombre, e.matricula 
@@ -192,7 +224,22 @@ const calificacionController = {
             );
             res.status(201).json(nueva.rows[0]);
         } catch (error) {
-            res.status(500).json({ message: 'Error en el servidor', error: error.message });
+            res.status(500).json({ message: 'No se pudo guardar la calificación.' });
+        }
+    },
+
+    async getPlantilla(req, res) {
+        try {
+            const ejemploPath = path.join(__dirname, '../uploads/alumnos_ejemplo.csv');
+            if (!fs.existsSync(ejemploPath)) {
+                return res.status(404).json({ message: 'La plantilla de ejemplo no está disponible.' });
+            }
+            res.json({
+                nombre: 'alumnos_ejemplo.csv',
+                archivo_url: '/uploads/alumnos_ejemplo.csv',
+            });
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo obtener la plantilla de ejemplo.' });
         }
     },
 

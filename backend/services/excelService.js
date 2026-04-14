@@ -88,6 +88,10 @@ async function procesarExcelCalificaciones(filePath, profesorId) {
       resultados.errores.push(`Calificación no numérica para ${eNombre}`);
       continue;
     }
+    if (calificacion < 5 || calificacion > 10) {
+      resultados.errores.push(`La calificación de ${eNombre} debe estar entre 5 y 10`);
+      continue;
+    }
 
     await pool.query(
       `INSERT INTO calificaciones_finales (materia_id, estudiante_id, calificacion)

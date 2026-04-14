@@ -44,7 +44,7 @@ const generarQR = async (req, res) => {
   const qrPayload = JSON.stringify(payload);
   const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 320, margin: 2 });
   const url = `${req.protocol}://${req.get('host')}/qr/validar?code=${codigo}`;
-  res.json({ qrDataUrl, codigo, payload, url });
+  res.json({ qrDataUrl, codigo, payload, url, download_url: qrDataUrl });
 };
 
 const registrarAsistenciaQR = async (req, res) => {

@@ -4,8 +4,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarFechaActual();
     await cargarMaterias();
     document.getElementById('fechaAsistencia').valueAsDate = new Date();
+    document.getElementById('todasLasFechas').addEventListener('change', toggleFiltroFechas);
     await cargarAsistencias();
 });
+
+function toggleFiltroFechas() {
+    const verTodas = document.getElementById('todasLasFechas').checked;
+    document.getElementById('fechaAsistencia').disabled = verTodas;
+}
 
 async function cargarMaterias() {
     const materias = await apiRequest('/admin/materias');
@@ -28,9 +34,11 @@ function selectEstado(asistencia) {
 async function cargarAsistencias() {
     const materiaId = document.getElementById('materiaSelect').value;
     const fecha = document.getElementById('fechaAsistencia').value;
+    const todasLasFechas = document.getElementById('todasLasFechas').checked;
     let url = '/admin/asistencias';
     const q = [];
-    if (fecha) q.push(`fecha=${fecha}`);
+    if (todasLasFechas) q.push('todas=true');
+    else if (fecha) q.push(`fecha=${fecha}`);
     if (materiaId) q.push(`materia_id=${materiaId}`);
     if (q.length) url += `?${q.join('&')}`;
     const asistencias = await apiRequest(url);

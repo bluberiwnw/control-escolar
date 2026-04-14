@@ -3,8 +3,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarInfoUsuario();
     mostrarFechaActual();
     await cargarMaterias();
+    await cargarPlantillaEjemplo();
     await cargarHistorial();
 });
+
+async function cargarPlantillaEjemplo() {
+    try {
+        const plantilla = await apiRequest('/calificaciones/plantilla');
+        const enlace = document.getElementById('plantillaEjemploLink');
+        if (enlace) {
+            enlace.href = plantilla.archivo_url;
+            enlace.setAttribute('download', plantilla.nombre);
+        }
+    } catch (_) {
+        // Si la plantilla no está disponible, la vista sigue funcionando.
+    }
+}
 
 async function cargarMaterias() {
     const materias = await apiRequest('/materias');
@@ -52,6 +66,7 @@ async function cargarHistorial() {
             </div>
             <div class="table-actions">
                 <a class="btn btn-secondary btn-sm" href="${a.archivo_url}" target="_blank" rel="noopener">Ver documento</a>
+                <a class="btn btn-secondary btn-sm" href="${a.archivo_url}" download>Descargar</a>
                 <button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivo(${a.id})">Eliminar</button>
                 <span class="badge">${a.estado}</span>
             </div>
@@ -134,6 +149,10 @@ async function confirmarSubida() {
         mostrarToast('Seleccione una materia', 'error');
         return;
     }
+    if (!['tarea', 'proyecto', 'examen'].includes(tipo)) {
+        mostrarToast('Selecciona un tipo de evaluación válido', 'error');
+        return;
+    }
 
     const formData = new FormData();
     formData.append('archivo', window.tempFile);
@@ -152,6 +171,7 @@ async function confirmarSubida() {
         cargarHistorial();   // recargar lista de archivos subidos
         document.getElementById('previewTable').innerHTML = ''; // limpiar preview
         window.tempFile = null;
+        document.getElementById('fileInput').value = '';
     } else {
         document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir'}</div>`;
     }

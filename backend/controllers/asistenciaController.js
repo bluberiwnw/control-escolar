@@ -1,5 +1,11 @@
 const pool = require('../database/connection');
 
+const ESTADOS_VALIDOS = new Set(['presente', 'ausente', 'retardo']);
+
+function fechaValida(fecha) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(fecha || '').trim());
+}
+
 const asistenciaController = {
     async getByMateriaYFecha(req, res) {
         try {
@@ -28,6 +34,15 @@ const asistenciaController = {
     async save(req, res) {
         try {
             const { materia_id, estudiante_id, fecha, estado } = req.body;
+            if (!materia_id || !estudiante_id || !fecha) {
+                return res.status(400).json({ message: 'Completa los campos obligatorios de materia, alumno y fecha.' });
+            }
+            if (!fechaValida(fecha)) {
+                return res.status(400).json({ message: 'La fecha de asistencia no es válida.' });
+            }
+            if (!ESTADOS_VALIDOS.has(String(estado || '').trim())) {
+                return res.status(400).json({ message: 'Selecciona un estado de asistencia válido.' });
+            }
             const materiaCheck = await pool.query(
                 'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
                 [materia_id, req.usuario.id]
@@ -73,6 +88,17 @@ const asistenciaController = {
             const asistencias = req.body;
             if (!Array.isArray(asistencias) || asistencias.length === 0) {
                 return res.status(400).json({ message: 'Se requiere un array de asistencias' });
+            }
+            for (const asistencia of asistencias) {
+                if (!asistencia?.materia_id || !asistencia?.estudiante_id || !asistencia?.fecha) {
+                    return res.status(400).json({ message: 'Todas las asistencias deben incluir materia, alumno y fecha.' });
+                }
+                if (!fechaValida(asistencia.fecha)) {
+                    return res.status(400).json({ message: 'Una o más fechas de asistencia no son válidas.' });
+                }
+                if (!ESTADOS_VALIDOS.has(String(asistencia.estado || '').trim())) {
+                    return res.status(400).json({ message: 'Uno o más estados de asistencia no son válidos.' });
+                }
             }
             const materiaIds = [...new Set(asistencias.map(a => a.materia_id))];
             for (const materia_id of materiaIds) {
