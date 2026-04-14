@@ -542,7 +542,7 @@ const adminController = {
                  FROM archivos_calificaciones a
                  JOIN materias m ON a.materia_id = m.id
                  JOIN usuarios u ON a.profesor_id = u.id
-                 ORDER BY a.created_at DESC`
+                 ORDER BY a.fecha_subida DESC`
             );
             res.json(
                 result.rows.map((row) => ({

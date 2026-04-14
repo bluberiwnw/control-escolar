@@ -1,5 +1,18 @@
 window.API_URL = '';
 
+function buildApiUrl(pathname = '') {
+    const base = (window.API_URL || '').trim();
+    const path = String(pathname || '').trim();
+    if (!path) return base;
+    if (/^https?:\/\//i.test(path)) return path;
+    if (!base) return path;
+    const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return `${normalizedBase}${normalizedPath}`;
+}
+
+window.buildApiUrl = buildApiUrl;
+
 function formatearFecha(fechaISO) {
     if (!fechaISO) return 'No definida';
     return new Date(fechaISO).toLocaleDateString('es-ES', {

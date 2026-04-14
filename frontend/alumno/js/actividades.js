@@ -29,7 +29,7 @@ async function cargarActividades() {
                 <div class="actividad-actions">
                     ${!a.entregado ? `<button type="button" class="btn btn-primary btn-sm" onclick="mostrarModalEntrega(${a.id})">Subir trabajo</button>` : ''}
                     ${a.entregado ? `<span class="badge badge-success">Entregado</span>` : ''}
-                    ${a.archivo_entrega_url ? `<a class="btn btn-secondary btn-sm" href="${a.archivo_entrega_url}" download>Descargar archivo entregado</a>` : ''}
+                    ${a.archivo_entrega_url ? `<a class="btn btn-secondary btn-sm" href="${buildApiUrl(a.archivo_entrega_url)}" download>Descargar archivo entregado</a>` : ''}
                     ${puedeCancelar ? `<button type="button" class="btn btn-danger btn-sm" onclick="cancelarEntrega(${a.id})">Cancelar entrega</button>` : ''}
                 </div>
             </div>
