@@ -80,16 +80,16 @@ body {
 /* Botón modo oscuro */
 .theme-toggle {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    right: calc(16px + env(safe-area-inset-right));
     z-index: 1000;
     background: var(--primary);
     color: white;
     border: none;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 24px;
+    width: clamp(42px, 6vw, 55px);
+    height: clamp(42px, 6vw, 55px);
+    font-size: clamp(18px, 2.6vw, 24px);
     cursor: pointer;
     box-shadow: var(--shadow-lg);
     transition: var(--transition);
@@ -587,8 +587,8 @@ body {
     background: var(--gradient-primary);
     width: 55px;
     height: 55px;
-    bottom: 25px;
-    right: 25px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    right: calc(16px + env(safe-area-inset-right));
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 .theme-toggle:hover {
@@ -992,6 +992,13 @@ body.dark-mode .upload-area {
         font-weight: 700;
         color: var(--text-secondary);
         margin-bottom: 4px;
+    }
+    .theme-toggle {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+        bottom: calc(12px + env(safe-area-inset-bottom));
+        right: calc(12px + env(safe-area-inset-right));
     }
 }
 

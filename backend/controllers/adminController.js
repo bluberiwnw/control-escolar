@@ -56,11 +56,13 @@ const adminController = {
             const estudiantes = await pool.query('SELECT COUNT(*) FROM estudiantes');
             const materias = await pool.query('SELECT COUNT(*) FROM materias');
             const actividades = await pool.query('SELECT COUNT(*) FROM actividades');
-            const alumnosPorGrupo = await pool.query(`
-                SELECT COALESCE(NULLIF(SUBSTRING(matricula FROM 1 FOR 4), ''), 'Sin grupo') AS grupo, COUNT(*)::int AS total
+            const alumnosPorAnio = await pool.query(`
+                SELECT EXTRACT(YEAR FROM created_at)::int AS anio, COUNT(*)::int AS total
                 FROM estudiantes
+                WHERE created_at IS NOT NULL
                 GROUP BY 1
-                ORDER BY 1
+                ORDER BY 1 DESC
+                LIMIT 5
             `);
             res.json({
                 profesores: parseInt(profesores.rows[0].count),
@@ -68,7 +70,7 @@ const adminController = {
                 estudiantes: parseInt(estudiantes.rows[0].count),
                 materias: parseInt(materias.rows[0].count),
                 actividades: parseInt(actividades.rows[0].count),
-                alumnos_por_grupo: alumnosPorGrupo.rows
+                alumnos_por_anio: alumnosPorAnio.rows.reverse()
             });
         } catch (error) {
             res.status(500).json({ message: 'No se pudieron cargar las estadísticas del dashboard.' });

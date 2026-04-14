@@ -3,22 +3,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarInfoUsuario();
     mostrarFechaActual();
     await cargarMaterias();
-    await cargarPlantillaEjemplo();
     await cargarHistorial();
 });
-
-async function cargarPlantillaEjemplo() {
-    try {
-        const plantilla = await apiRequest('/calificaciones/plantilla');
-        const enlace = document.getElementById('plantillaEjemploLink');
-        if (enlace) {
-            enlace.href = plantilla.archivo_url;
-            enlace.setAttribute('download', plantilla.nombre);
-        }
-    } catch (_) {
-        // Si la plantilla no está disponible, la vista sigue funcionando.
-    }
-}
 
 async function cargarMaterias() {
     const materias = await apiRequest('/materias');
@@ -83,16 +69,21 @@ async function eliminarArchivo(id) {
 }
 
 
-// Función para leer y validar el archivo Excel/CSV
+// Función para leer y validar el archivo Excel/PDF
 async function previsualizarArchivo(input) {
     const file = input.files[0];
     if (!file) return;
 
     // Validar extensión
-    const validExt = ['.xlsx', '.xls', '.csv'];
+    const validExt = ['.xlsx', '.xls', '.pdf'];
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!validExt.includes(ext)) {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos Excel (.xlsx, .xls) o CSV.</div>';
+        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos Excel (.xlsx, .xls) o PDF.</div>';
+        return;
+    }
+    window.tempFile = file;
+    if (ext === '.pdf') {
+        document.getElementById('previewTable').innerHTML = '<div class="alert alert-info">Archivo PDF listo para subir. No requiere vista previa.</div>';
         return;
     }
 

@@ -38,8 +38,6 @@ const upload = multer({
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'application/pdf',
-            'text/csv',
-            'application/csv',
         ];
         if (allowedTypes.includes(file.mimetype)) cb(null, true);
         else cb(new Error('Tipo de archivo no permitido. Solo Excel y PDF'), false);
@@ -98,7 +96,7 @@ const calificacionController = {
                     });
                 }
 
-                if (req.file.mimetype.includes('spreadsheet') || req.file.originalname.match(/\.(xlsx|xls|csv)$/i)) {
+                if (req.file.mimetype.includes('spreadsheet') || req.file.originalname.match(/\.(xlsx|xls)$/i)) {
                     const resultado = await procesarExcelCalificaciones(req.file.path, req.usuario.id);
                     detalles = `Insertados: ${resultado.exitosos}, Errores: ${resultado.errores.length}${resultado.errores.length ? ' — ' + resultado.errores.join('; ') : ''}`;
                     await pool.query(

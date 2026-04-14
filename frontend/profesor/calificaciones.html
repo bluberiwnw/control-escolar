@@ -27,11 +27,10 @@
         <div class="panel-card">
             <div class="form-group-modern"><label>Materia</label><select id="materiaSelect"></select></div>
             <div class="form-group-modern"><label>Tipo</label><select id="tipoSelect"><option value="tarea">Tarea</option><option value="proyecto">Proyecto</option><option value="examen">Examen</option></select></div>
-    <div class="form-group-modern"><a id="plantillaEjemploLink" class="btn btn-secondary btn-sm" href="/uploads/alumnos_ejemplo.csv" download>Descargar archivo de ejemplo</a></div>
     <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-        <i class="fas fa-cloud-upload-alt"></i><h3>Subir calificaciones (Excel/CSV)</h3>
-        <p>Formato requerido: columnas <strong>"Materia", "Nombre", "Calificacion"</strong>. Las calificaciones válidas van de 5 a 10.</p>
-        <input type="file" id="fileInput" style="display:none" accept=".xlsx,.xls,.csv" onchange="previsualizarArchivo(this)">
+        <i class="fas fa-cloud-upload-alt"></i><h3>Subir calificaciones (Excel/PDF)</h3>
+        <p>Formato requerido: columnas <strong>"Materia", "Nombre", "Calificacion"</strong> para Excel. Las calificaciones válidas van de 5 a 10.</p>
+        <input type="file" id="fileInput" style="display:none" accept=".xlsx,.xls,.pdf" onchange="previsualizarArchivo(this)">
     </div>
     <div id="previewTable" style="margin-top: 20px; overflow-x:auto;"></div>
     <div id="resultadoUpload"></div>

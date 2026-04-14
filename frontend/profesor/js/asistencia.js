@@ -83,19 +83,9 @@ async function generarQR() {
             <img src="${data.qrDataUrl}" style="max-width:300px; width:100%;" alt="QR">
             <br><br>
             <a href="${data.download_url || data.qrDataUrl}" download="qr_asistencia.png" class="btn-login-buap">Descargar código de asistencia</a>
-            <p class="text-muted" style="margin-top:10px;">URL del código de asistencia: <a href="${data.url}" target="_blank" rel="noopener">${data.url}</a></p>
-            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="copiarURLQR('${data.url}')">Copiar URL</button>
         </div>
     `;
     mostrarToast('QR generado correctamente', 'success');
 }
 
-function copiarURLQR(url) {
-    navigator.clipboard.writeText(url).then(
-        () => mostrarToast('URL copiada', 'success'),
-        () => mostrarToast('No se pudo copiar la URL', 'error')
-    );
-}
-
 window.generarQR = generarQR;
-window.copiarURLQR = copiarURLQR;

@@ -35,7 +35,12 @@ const alumnoController = {
                 LEFT JOIN entregas e ON e.actividad_id = a.id AND e.estudiante_id = $1
                 ORDER BY a.fecha_entrega ASC
             `, [alumnoId]);
-            res.json(result.rows);
+            res.json(
+                result.rows.map((row) => ({
+                    ...row,
+                    archivo_entrega_url: row.archivo_entrega ? `/uploads/${encodeURIComponent(row.archivo_entrega)}` : null,
+                }))
+            );
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
