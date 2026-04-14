@@ -27,10 +27,34 @@
     </aside>
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Actividades</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div class="toolbar-actions">
-            <button type="button" class="btn btn-primary" onclick="abrirModalNuevaActividad()"><i class="fas fa-plus"></i> Nueva actividad</button>
+        <div class="panel-card">
+            <div class="admin-activity-toolbar">
+                <div class="form-group-modern">
+                    <label for="filtroMateriaActividad">Materia</label>
+                    <select id="filtroMateriaActividad" onchange="aplicarFiltrosActividades()">
+                        <option value="">Todas las materias</option>
+                    </select>
+                </div>
+                <div class="form-group-modern">
+                    <label for="filtroTipoActividad">Tipo</label>
+                    <select id="filtroTipoActividad" onchange="aplicarFiltrosActividades()">
+                        <option value="">Todos</option>
+                        <option value="tarea">Tarea</option>
+                        <option value="proyecto">Proyecto</option>
+                        <option value="examen">Examen</option>
+                    </select>
+                </div>
+                <div class="form-group-modern">
+                    <label for="busquedaActividad">Buscar</label>
+                    <input type="text" id="busquedaActividad" placeholder="Título o descripción" oninput="aplicarFiltrosActividades()">
+                </div>
+                <div class="admin-activity-toolbar__action">
+                    <button type="button" class="btn btn-primary" onclick="abrirModalNuevaActividad()"><i class="fas fa-plus"></i> Nueva actividad</button>
+                </div>
+            </div>
         </div>
-        <div id="actividadesContainer"></div>
+        <div id="resumenActividadesAdmin" class="stats-grid-profesor"></div>
+        <div id="actividadesContainer" class="activity-admin-grid"></div>
     </main>
     <div id="editModal" class="modal" style="display:none;">
         <div class="modal-content modal-content--wide">

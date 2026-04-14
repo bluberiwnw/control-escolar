@@ -4,6 +4,7 @@ const path = require('path');
 
 const ESTADOS_ASISTENCIA = new Set(['presente', 'ausente', 'retardo']);
 const TIPOS_CALIFICACION = new Set(['tarea', 'proyecto', 'examen']);
+const TIPOS_ACTIVIDAD = new Set(['tarea', 'proyecto', 'examen']);
 
 function parseEnteroSeguro(valor, fallback = 0) {
     const numero = Number.parseInt(valor, 10);
@@ -45,6 +46,41 @@ function validarNombre(nombre) {
 
 function validarMatricula(matricula) {
     return /^[A-Za-z0-9-]{4,20}$/.test(String(matricula || '').trim());
+}
+
+function limpiarTextoCorto(valor, max = 120) {
+    return String(valor || '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+function validarActividadPayload(payload) {
+    const materiaId = parseEnteroSeguro(payload?.materia_id, NaN);
+    const tipo = limpiarTextoCorto(payload?.tipo, 20).toLowerCase();
+    const titulo = limpiarTextoCorto(payload?.titulo, 120);
+    const descripcion = String(payload?.descripcion || '').trim().slice(0, 600);
+    const fechaEntrega = String(payload?.fecha_entrega || '').trim();
+    const valor = parseEnteroSeguro(payload?.valor, NaN);
+    if (!Number.isInteger(materiaId) || materiaId <= 0) {
+        return { ok: false, message: 'Selecciona una materia válida.' };
+    }
+    if (!TIPOS_ACTIVIDAD.has(tipo)) {
+        return { ok: false, message: 'El tipo de actividad no es válido.' };
+    }
+    if (titulo.length < 4 || titulo.length > 120) {
+        return { ok: false, message: 'El título debe tener entre 4 y 120 caracteres.' };
+    }
+    if (descripcion.length > 600) {
+        return { ok: false, message: 'La descripción no puede exceder 600 caracteres.' };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaEntrega) || Number.isNaN(Date.parse(fechaEntrega))) {
+        return { ok: false, message: 'La fecha de entrega no es válida.' };
+    }
+    if (!Number.isInteger(valor) || valor < 1 || valor > 100) {
+        return { ok: false, message: 'El valor debe ser un número entre 1 y 100.' };
+    }
+    return {
+        ok: true,
+        data: { materia_id: materiaId, tipo, titulo, descripcion, fecha_entrega: fechaEntrega, valor },
+    };
 }
 
 const adminController = {
@@ -328,15 +364,23 @@ const adminController = {
 
     async crearActividad(req, res) {
         try {
-            const { materia_id, tipo, titulo, descripcion, fecha_entrega, valor } = req.body;
+            const validacion = validarActividadPayload(req.body);
+            if (!validacion.ok) {
+                return res.status(400).json({ message: validacion.message });
+            }
+            const { materia_id, tipo, titulo, descripcion, fecha_entrega, valor } = validacion.data;
+            const materiaCheck = await pool.query('SELECT id FROM materias WHERE id = $1', [materia_id]);
+            if (materiaCheck.rowCount === 0) {
+                return res.status(404).json({ message: 'La materia indicada no existe.' });
+            }
             const r = await pool.query(
                 `INSERT INTO actividades (materia_id, tipo, titulo, descripcion, fecha_entrega, valor)
                  VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-                [materia_id, tipo, titulo, descripcion || '', fecha_entrega, valor ?? 100]
+                [materia_id, tipo, titulo, descripcion, fecha_entrega, valor]
             );
             res.status(201).json({ id: r.rows[0].id, message: 'Actividad creada' });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: 'No se pudo crear la actividad.' });
         }
     },
 
@@ -351,7 +395,7 @@ const adminController = {
             `);
             res.json(result.rows);
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: 'No se pudieron cargar las actividades.' });
         }
     },
 
@@ -359,10 +403,17 @@ const adminController = {
     async eliminarActividad(req, res) {
         try {
             const { id } = req.params;
-            await pool.query('DELETE FROM actividades WHERE id = $1', [id]);
+            const idActividad = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(idActividad) || idActividad <= 0) {
+                return res.status(400).json({ message: 'ID de actividad no válido.' });
+            }
+            const result = await pool.query('DELETE FROM actividades WHERE id = $1', [idActividad]);
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'Actividad no encontrada.' });
+            }
             res.json({ message: 'Actividad eliminada' });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: 'No se pudo eliminar la actividad.' });
         }
     },
 
@@ -483,28 +534,45 @@ const adminController = {
 
     // Obtener una actividad por ID (para editar)
     async getActividadById(req, res) {
-        const { id } = req.params;
-        const result = await pool.query('SELECT * FROM actividades WHERE id = $1', [id]);
-        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrada' });
-        res.json(result.rows[0]);
+        try {
+            const { id } = req.params;
+            const idActividad = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(idActividad) || idActividad <= 0) {
+                return res.status(400).json({ message: 'ID de actividad no válido.' });
+            }
+            const result = await pool.query('SELECT * FROM actividades WHERE id = $1', [idActividad]);
+            if (result.rows.length === 0) return res.status(404).json({ message: 'Actividad no encontrada.' });
+            res.json(result.rows[0]);
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo obtener la actividad.' });
+        }
     },
 
     // Actualizar actividad
     async updateActividad(req, res) {
-        const { id } = req.params;
-        const { titulo, descripcion, fecha_entrega, tipo, valor, materia_id } = req.body;
-        if (materia_id != null && materia_id !== '') {
+        try {
+            const { id } = req.params;
+            const idActividad = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(idActividad) || idActividad <= 0) {
+                return res.status(400).json({ message: 'ID de actividad no válido.' });
+            }
+            const validacion = validarActividadPayload(req.body);
+            if (!validacion.ok) {
+                return res.status(400).json({ message: validacion.message });
+            }
+            const { titulo, descripcion, fecha_entrega, tipo, valor, materia_id } = validacion.data;
+            const materiaCheck = await pool.query('SELECT id FROM materias WHERE id = $1', [materia_id]);
+            if (materiaCheck.rowCount === 0) {
+                return res.status(404).json({ message: 'La materia indicada no existe.' });
+            }
             await pool.query(
                 `UPDATE actividades SET materia_id=$1, titulo=$2, descripcion=$3, fecha_entrega=$4, tipo=$5, valor=$6 WHERE id=$7`,
-                [materia_id, titulo, descripcion, fecha_entrega, tipo, valor, id]
+                [materia_id, titulo, descripcion, fecha_entrega, tipo, valor, idActividad]
             );
-        } else {
-            await pool.query(
-                `UPDATE actividades SET titulo=$1, descripcion=$2, fecha_entrega=$3, tipo=$4, valor=$5 WHERE id=$6`,
-                [titulo, descripcion, fecha_entrega, tipo, valor, id]
-            );
+            res.json({ message: 'Actualizada' });
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo actualizar la actividad.' });
         }
-        res.json({ message: 'Actualizada' });
     },
     
     // Eliminar asistencia por ID
