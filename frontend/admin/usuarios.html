@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="api-base" content="">
     <title>Gestión de usuarios</title>
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -26,6 +27,7 @@
         <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
     </aside>
     <main class="main-content-profesor">
+        <div class="app-page-shell">
         <div class="top-bar"><h1>Usuarios</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
 
         <section class="panel-section">
@@ -43,6 +45,7 @@
             </div>
             <div id="listaEstudiantes" class="table-responsive-wrap"></div>
         </section>
+        </div>
     </main>
 
     <div id="modalProfesor" class="modal" style="display:none;">

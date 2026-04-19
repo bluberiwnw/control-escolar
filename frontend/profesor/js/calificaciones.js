@@ -51,7 +51,7 @@ async function cargarHistorial() {
                 <small>${a.tipo} - ${new Date(a.fecha_subida).toLocaleDateString()}</small>
             </div>
             <div class="table-actions">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="descargarConAuth('/calificaciones/archivos/${a.id}/descarga', ${JSON.stringify(a.nombre_archivo)})">Descargar</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-auth-download="/calificaciones/archivos/${a.id}/descarga">Descargar</button>
                 <button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivo(${a.id})">Eliminar</button>
                 <span class="badge">${a.estado}</span>
             </div>

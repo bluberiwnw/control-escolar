@@ -29,7 +29,7 @@ async function cargarActividades() {
                 <div class="actividad-actions">
                     ${!a.entregado ? `<button type="button" class="btn btn-primary btn-sm" onclick="mostrarModalEntrega(${a.id})">Subir trabajo</button>` : ''}
                     ${a.entregado ? `<span class="badge badge-success">Entregado</span>` : ''}
-                    ${a.entregado && a.archivo_entrega ? `<button type="button" class="btn btn-secondary btn-sm" onclick="descargarConAuth('/alumno/entregas/actividad/${a.id}/descarga', ${JSON.stringify(a.archivo_entrega)})">Descargar archivo entregado</button>` : ''}
+                    ${a.entregado && a.archivo_entrega ? `<button type="button" class="btn btn-secondary btn-sm" data-auth-download="/alumno/entregas/actividad/${a.id}/descarga">Descargar archivo entregado</button>` : ''}
                     ${a.calificacion_entrega != null && a.calificacion_entrega !== '' ? `<span class="badge badge-info">Calificación: ${a.calificacion_entrega}</span>` : ''}
                     ${puedeCancelar ? `<button type="button" class="btn btn-danger btn-sm" onclick="cancelarEntrega(${a.id})">Cancelar entrega</button>` : ''}
                 </div>

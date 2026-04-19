@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistencia QR</title>
+    <meta name="api-base" content="">
+    <title>Asistencia</title>
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
@@ -21,32 +23,73 @@
             <a data-nav="asistencia" href="asistencia.html"><span class="nav-emoji" aria-hidden="true">📅</span> Asistencia</a>
             <a data-nav="calificaciones" href="calificaciones.html"><span class="nav-emoji" aria-hidden="true">📈</span> Calificaciones</a>
             <a data-nav="reportes" href="reportes.html"><span class="nav-emoji" aria-hidden="true">📑</span> Reportes</a>
-            <a data-nav="usuarios" href="#"><span class="nav-emoji" aria-hidden="true">👥</span> Usuarios</a>
         </nav>
         <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
-    </aside>    
+    </aside>
     <main class="main-content-profesor">
-        <div class="top-bar"><h1>Registrar Asistencia con QR</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div id="reader" style="width: 300px; margin: 20px auto;"></div>
-        <div id="mensajeQR" class="alert" style="display:none;"></div>
-        <section class="panel-card" style="max-width: 480px; margin: 1.5rem auto;">
-            <h3 style="margin-top: 0;">Registro manual (sin modificar asistencias ya guardadas)</h3>
-            <p style="font-size: 0.9rem; opacity: 0.9;">Si el QR falla, registra tu asistencia como <strong>presente</strong> solo cuando no exista aún un registro para esa materia y fecha.</p>
-            <div class="form-group-modern">
-                <label for="materiaManualAsistencia">Materia</label>
-                <select id="materiaManualAsistencia"></select>
+        <div class="app-page-shell">
+            <div class="top-bar">
+                <h1>Asistencia</h1>
+                <div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div>
             </div>
-            <div class="form-group-modern">
-                <label for="fechaManualAsistencia">Fecha</label>
-                <input type="date" id="fechaManualAsistencia">
-            </div>
-            <button type="button" class="btn btn-primary" onclick="registrarAsistenciaManual()">Registrar mi asistencia (presente)</button>
-        </section>
-        <div class="asistencia-tabla">
-            <h3>Historial de asistencias</h3>
-            <div id="historialAsistencias"></div>
+
+            <section class="panel-card asistencia-paso asistencia-paso--qr">
+                <div class="asistencia-paso__num">1</div>
+                <div class="asistencia-paso__body">
+                    <h2 class="asistencia-paso__title">Elige la materia</h2>
+                    <p class="asistencia-paso__hint">Indica en qué clase vas a registrar asistencia antes de usar la cámara.</p>
+                    <div class="form-group-modern">
+                        <label for="materiaQRSelect">Materia</label>
+                        <select id="materiaQRSelect" class="input-wide"></select>
+                    </div>
+                    <div id="resumenMateriaQR" class="materia-resumen" hidden>
+                        <i class="fas fa-book"></i>
+                        <span id="resumenMateriaQRText"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel-card asistencia-paso asistencia-paso--qr">
+                <div class="asistencia-paso__num">2</div>
+                <div class="asistencia-paso__body">
+                    <h2 class="asistencia-paso__title">Escanear código QR</h2>
+                    <p class="asistencia-paso__hint">Activa la cámara solo cuando el docente muestre el código. El pase debe ser del <strong>mismo día</strong> y dentro del <strong>horario</strong> indicado por tu profesor.</p>
+                    <button type="button" class="btn btn-primary btn-lg-wide" id="btnIniciarCamara" disabled>
+                        <i class="fas fa-camera"></i> Activar cámara y escanear
+                    </button>
+                    <button type="button" class="btn btn-ghost" id="btnDetenerCamara" hidden>
+                        <i class="fas fa-stop"></i> Detener cámara
+                    </button>
+                    <div id="qrScannerRegion" class="qr-reader-wrap" hidden>
+                        <div id="reader"></div>
+                    </div>
+                    <p id="mensajeQRInfo" class="asistencia-aviso" role="status"></p>
+                </div>
+            </section>
+
+            <section class="panel-card">
+                <h2 class="asistencia-paso__title">Registro manual</h2>
+                <p class="asistencia-paso__hint">Si el QR no funciona, puedes registrar <strong>presente</strong> solo si aún no hay registro ese día (no modifica asistencias ya guardadas).</p>
+                <div class="form-grid-asistencia-manual">
+                    <div class="form-group-modern">
+                        <label for="materiaManualAsistencia">Materia</label>
+                        <select id="materiaManualAsistencia"></select>
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="fechaManualAsistencia">Fecha</label>
+                        <input type="date" id="fechaManualAsistencia">
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="registrarAsistenciaManual()">Registrar mi asistencia (presente)</button>
+            </section>
+
+            <section class="asistencia-tabla panel-card panel-card--flat">
+                <h2 class="section-heading">Historial de asistencias</h2>
+                <div id="historialAsistencias"></div>
+            </section>
         </div>
     </main>
+    <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/app-shell.js"></script>

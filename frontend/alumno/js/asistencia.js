@@ -1,5 +1,6 @@
 let html5QrCode;
 let escaneoBloqueado = false;
+let materiaSeleccionadaId = null;
 
 function extraerCodigoQR(decodedText) {
     const t = String(decodedText || '').trim();
@@ -20,23 +21,57 @@ function extraerCodigoQR(decodedText) {
     return t;
 }
 
-async function cargarHistorial() {
-    const historial = await apiRequest('/alumno/asistencias');
-    if (!historial.length) {
-        document.getElementById('historialAsistencias').innerHTML = '<div class="empty-state">No hay asistencias registradas.</div>';
+function obtenerMateriaIdQR() {
+    const sel = document.getElementById('materiaQRSelect');
+    const v = sel?.value;
+    if (!v) return null;
+    const n = Number.parseInt(v, 10);
+    return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+function actualizarEstadoMateria() {
+    const id = obtenerMateriaIdQR();
+    materiaSeleccionadaId = id;
+    const resumen = document.getElementById('resumenMateriaQR');
+    const texto = document.getElementById('resumenMateriaQRText');
+    const btn = document.getElementById('btnIniciarCamara');
+    const sel = document.getElementById('materiaQRSelect');
+    if (!id || !sel) {
+        resumen.hidden = true;
+        if (btn) btn.disabled = true;
         return;
     }
-    document.getElementById('historialAsistencias').innerHTML = `<div class="table-responsive-wrap">
+    const opt = sel.options[sel.selectedIndex];
+    const nombre = opt ? opt.textContent : '';
+    texto.textContent = `Asistencia en: ${nombre}`;
+    resumen.hidden = false;
+    if (btn) btn.disabled = false;
+}
+
+async function cargarHistorial() {
+    const historial = await apiRequest('/alumno/asistencias');
+    const el = document.getElementById('historialAsistencias');
+    if (!historial.length) {
+        el.innerHTML = '<div class="empty-state">No hay asistencias registradas.</div>';
+        return;
+    }
+    el.innerHTML = `<div class="table-responsive-wrap">
         <table class="data-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
         ${historial.map(h => `<tr><td data-label="Fecha">${formatearFecha(h.fecha)}</td><td data-label="Materia">${h.materia_nombre}</td><td data-label="Estado">${h.estado}</td></tr>`).join('')}
         </tbody></table></div>`;
 }
 
-async function cargarMateriasManual() {
-    const sel = document.getElementById('materiaManualAsistencia');
-    if (!sel) return;
+async function cargarMateriasEnSelects() {
     const materias = await apiRequest('/alumno/materias');
-    sel.innerHTML = '<option value="">Selecciona tu materia</option>' + materias.map((m) => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    const opciones =
+        '<option value="">Selecciona una materia</option>' +
+        materias.map((m) => `<option value="${m.id}">${m.nombre}</option>`).join('');
+
+    const qrSel = document.getElementById('materiaQRSelect');
+    const manSel = document.getElementById('materiaManualAsistencia');
+    if (qrSel) qrSel.innerHTML = opciones;
+    if (manSel) manSel.innerHTML = opciones;
+    actualizarEstadoMateria();
 }
 
 async function registrarAsistenciaManual() {
@@ -58,17 +93,64 @@ async function registrarAsistenciaManual() {
     }
 }
 
-function iniciarLectorQR() {
-    const readerElement = document.getElementById('reader');
-    if (!readerElement) return;
+function setMensajeInfo(msg, esError) {
+    const p = document.getElementById('mensajeQRInfo');
+    if (!p) return;
+    p.textContent = msg || '';
+    p.classList.toggle('asistencia-aviso--error', !!esError);
+}
+
+async function detenerCamara() {
+    const region = document.getElementById('qrScannerRegion');
+    const btnDet = document.getElementById('btnDetenerCamara');
+    const btnIni = document.getElementById('btnIniciarCamara');
+    escaneoBloqueado = false;
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+        } catch (_) {
+            /* ignore */
+        }
+        html5QrCode = null;
+    }
+    if (region) region.hidden = true;
+    if (btnDet) btnDet.hidden = true;
+    if (btnIni) btnIni.hidden = false;
+    setMensajeInfo('');
+}
+
+async function iniciarLectorQR() {
+    const mid = obtenerMateriaIdQR();
+    if (!mid) {
+        mostrarToast('Primero elige la materia', 'error');
+        return;
+    }
+    const readerEl = document.getElementById('reader');
+    const region = document.getElementById('qrScannerRegion');
+    const btnDet = document.getElementById('btnDetenerCamara');
+    const btnIni = document.getElementById('btnIniciarCamara');
+    if (!readerEl || !region) return;
+
+    if (html5QrCode) {
+        await detenerCamara();
+    }
+
+    readerEl.innerHTML = '';
+    region.hidden = false;
+    if (btnDet) btnDet.hidden = false;
+    if (btnIni) btnIni.hidden = true;
+    setMensajeInfo('Apunta al código del profesor. Si falla, revisa el mensaje: fecha u hora incorrecta.');
+
     html5QrCode = new Html5Qrcode('reader');
-    const config = { fps: 8, qrbox: { width: 250, height: 250 } };
+    const w = Math.min(320, readerEl.clientWidth || 300);
+    const config = { fps: 8, qrbox: { width: Math.min(260, w - 20), height: Math.min(260, w - 20) } };
+
     html5QrCode
         .start({ facingMode: 'environment' }, config, async (decodedText) => {
             if (escaneoBloqueado) return;
             const codigo = extraerCodigoQR(decodedText);
             if (!codigo) {
-                mostrarToast('QR inválido: no se encontró código', 'error');
+                mostrarToast('No se pudo leer el código del QR', 'error');
                 return;
             }
             escaneoBloqueado = true;
@@ -80,30 +162,34 @@ function iniciarLectorQR() {
                 }
                 const data = await apiRequest(
                     '/qr/validar',
-                    { method: 'POST', body: JSON.stringify({ codigo }) },
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({ codigo, materia_id: mid }),
+                    },
                     false
                 );
                 mostrarToast(data.message || 'Asistencia registrada', 'success');
+                setMensajeInfo('');
                 await cargarHistorial();
-                await html5QrCode.stop();
+                await detenerCamara();
             } catch (err) {
-                mostrarToast(err.message || 'No se pudo registrar la asistencia', 'error');
+                const msg = err.message || 'No se pudo registrar la asistencia';
+                mostrarToast(msg, 'error');
+                setMensajeInfo(msg, true);
                 escaneoBloqueado = false;
                 try {
                     await html5QrCode.resume();
                 } catch (_) {
-                    try {
-                        await html5QrCode.stop();
-                    } catch (__) {
-                        /* ignore */
-                    }
-                    iniciarLectorQR();
+                    await detenerCamara();
+                    mostrarToast('Reinicia la cámara con el botón «Activar cámara».', 'error');
                 }
             }
         })
         .catch((err) => {
             console.error('Error al iniciar lector:', err);
-            mostrarToast('No se pudo acceder a la cámara', 'error');
+            mostrarToast('No se pudo acceder a la cámara. Revisa permisos del navegador.', 'error');
+            setMensajeInfo('Permite el uso de la cámara para este sitio.', true);
+            detenerCamara();
         });
 }
 
@@ -115,9 +201,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (fechaManual) {
         fechaManual.valueAsDate = new Date();
     }
+
+    document.getElementById('materiaQRSelect')?.addEventListener('change', actualizarEstadoMateria);
+
+    document.getElementById('btnIniciarCamara')?.addEventListener('click', () => {
+        iniciarLectorQR();
+    });
+    document.getElementById('btnDetenerCamara')?.addEventListener('click', () => {
+        detenerCamara();
+    });
+
     await cargarHistorial();
-    await cargarMateriasManual();
-    iniciarLectorQR();
+    await cargarMateriasEnSelects();
 });
 
 window.registrarAsistenciaManual = registrarAsistenciaManual;

@@ -108,7 +108,7 @@ function renderArchivosEntregas(entregas) {
         <td data-label="Calificación">${e.calificacion != null && e.calificacion !== '' ? escapeHtml(String(e.calificacion)) : '—'}</td>
         <td data-label="Comentario">${escapeHtml(e.comentario || '—')}</td>
         <td data-label="Acciones" class="table-actions">
-            ${e.archivo ? `<button type="button" class="btn btn-secondary btn-sm" onclick="descargarConAuth('/admin/entregas/archivos/${e.id}/descarga', ${JSON.stringify(e.archivo)})">Descargar</button>` : ''}
+            ${e.archivo ? `<button type="button" class="btn btn-secondary btn-sm" data-auth-download="/admin/entregas/archivos/${e.id}/descarga">Descargar</button>` : ''}
             <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalEntregaArchivo(${e.id})">Modificar</button>
             <button type="button" class="btn btn-danger btn-sm" onclick="eliminarEntregaArchivo(${e.id})">Eliminar</button>
         </td>

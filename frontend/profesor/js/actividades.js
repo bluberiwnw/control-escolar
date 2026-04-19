@@ -88,7 +88,7 @@ function renderEntregasProfesor() {
             <td data-label="Calificación">${e.calificacion != null && e.calificacion !== '' ? escapeHtmlEntrega(String(e.calificacion)) : '—'}</td>
             <td data-label="Comentario">${escapeHtmlEntrega(e.comentario || '—')}</td>
             <td data-label="Acciones" class="table-actions">
-                ${e.archivo ? `<button type="button" class="btn btn-secondary btn-sm" onclick="descargarConAuth('/actividades/entregas/${e.id}/descarga', ${JSON.stringify(e.archivo)})">Descargar</button>` : ''}
+                ${e.archivo ? `<button type="button" class="btn btn-secondary btn-sm" data-auth-download="/actividades/entregas/${e.id}/descarga">Descargar</button>` : ''}
                 <button type="button" class="btn btn-primary btn-sm" onclick="abrirModalRetroEntrega(${e.id})">Calificar / comentar</button>
             </td>
         </tr>`

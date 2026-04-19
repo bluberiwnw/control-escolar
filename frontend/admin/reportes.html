@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="api-base" content="">
     <title>Reportes Globales</title>
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -25,9 +27,11 @@
         <div class="sidebar-footer"><button type="button" onclick="cerrarSesion()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button></div>
     </aside>    
     <main class="main-content-profesor">
+        <div class="app-page-shell">
         <div class="top-bar"><h1>Reportes de Rendimiento</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
         <div class="stats-grid-profesor" id="reportesStats"></div>
         <div class="reportes-grid" id="reportesGraficos"></div>
+        </div>
     </main>
     <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>

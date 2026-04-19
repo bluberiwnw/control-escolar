@@ -50,23 +50,60 @@ const generarQR = async (req, res) => {
 const registrarAsistenciaQR = async (req, res) => {
   const codigo = extractTokenFromPayload(req.body);
   if (!codigo) {
-    return res.status(400).json({ error: 'QR inválido', message: '❌ QR inválido' });
+    return res.status(400).json({ error: 'QR inválido', message: '❌ No se pudo leer el código del QR.' });
   }
+  const materiaEsperadaRaw = req.body?.materia_id;
+  const materiaEsperada =
+    materiaEsperadaRaw != null && materiaEsperadaRaw !== ''
+      ? Number.parseInt(String(materiaEsperadaRaw), 10)
+      : null;
+
   const alumnoId = req.usuario.id;
+
   const qrRes = await pool.query(
-    `SELECT id, materia_id, fecha FROM qr_asistencia 
-     WHERE codigo = $1 AND activo = true 
-     AND fecha = CURRENT_DATE 
-     AND CURRENT_TIME BETWEEN hora_inicio AND hora_fin`,
+    `SELECT q.id, q.materia_id, q.fecha, q.hora_inicio, q.hora_fin, m.nombre AS materia_nombre
+     FROM qr_asistencia q
+     JOIN materias m ON m.id = q.materia_id
+     WHERE q.codigo = $1 AND q.activo = true`,
     [codigo]
   );
   if (qrRes.rows.length === 0) {
     return res.status(400).json({
-      error: 'QR inválido o expirado',
-      message: '❌ QR no válido o fuera de horario. Comprueba la fecha de hoy y el horario del código.',
+      error: 'QR inválido',
+      message: '❌ Código QR no reconocido o ya no está activo. Pide un código nuevo al docente.',
     });
   }
   const qr = qrRes.rows[0];
+
+  if (Number.isInteger(materiaEsperada) && materiaEsperada > 0 && qr.materia_id !== materiaEsperada) {
+    return res.status(400).json({
+      error: 'Materia no coincide',
+      message: `❌ Este QR es de otra materia (${qr.materia_nombre}). Elige la materia correcta antes de escanear.`,
+    });
+  }
+
+  const fechaOk = await pool.query('SELECT ($1::date = CURRENT_DATE) AS ok', [qr.fecha]);
+  if (!fechaOk.rows[0]?.ok) {
+    return res.status(400).json({
+      error: 'Fecha incorrecta',
+      message:
+        '❌ La fecha de este código no coincide con el día de hoy. El docente debe generar el QR con la fecha de hoy.',
+    });
+  }
+
+  const horaOk = await pool.query(
+    'SELECT (CURRENT_TIME BETWEEN $1::time AND $2::time) AS ok',
+    [qr.hora_inicio, qr.hora_fin]
+  );
+  if (!horaOk.rows[0]?.ok) {
+    const hi = String(qr.hora_inicio).slice(0, 5);
+    const hf = String(qr.hora_fin).slice(0, 5);
+    return res.status(400).json({
+      error: 'Horario incorrecto',
+      message: `❌ Fuera del horario permitido para este código (válido entre ${hi} y ${hf}).`,
+    });
+  }
+
   const fechaClase = qr.fecha;
   await pool.query(
     `INSERT INTO asistencias_qr (estudiante_id, qr_id) VALUES ($1, $2)
