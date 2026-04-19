@@ -95,8 +95,8 @@ function renderArchivosEntregas(entregas) {
         container.innerHTML = '<div class="empty-state">No hay archivos de entregas para la materia seleccionada.</div>';
         return;
     }
-    container.innerHTML = `<table class="data-table"><thead><tr>
-        <th>Materia</th><th>Actividad</th><th>Estudiante</th><th>Archivo</th><th>Comentario</th><th>Acciones</th>
+    container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr>
+        <th>Materia</th><th>Actividad</th><th>Estudiante</th><th>Archivo</th><th>Calif.</th><th>Comentario</th><th>Acciones</th>
     </tr></thead><tbody>
     ${entregas
         .map(
@@ -105,16 +105,17 @@ function renderArchivosEntregas(entregas) {
         <td data-label="Actividad">${escapeHtml(e.actividad_titulo)}</td>
         <td data-label="Estudiante">${escapeHtml(e.estudiante_nombre)}</td>
         <td data-label="Archivo">${escapeHtml(e.archivo || 'Sin archivo')}</td>
+        <td data-label="Calificación">${e.calificacion != null && e.calificacion !== '' ? escapeHtml(String(e.calificacion)) : '—'}</td>
         <td data-label="Comentario">${escapeHtml(e.comentario || '—')}</td>
         <td data-label="Acciones" class="table-actions">
-            ${e.archivo_url ? `<a class="btn btn-secondary btn-sm" href="${buildApiUrl(e.archivo_url)}" download>Descargar</a>` : ''}
+            ${e.archivo ? `<button type="button" class="btn btn-secondary btn-sm" onclick="descargarConAuth('/admin/entregas/archivos/${e.id}/descarga', ${JSON.stringify(e.archivo)})">Descargar</button>` : ''}
             <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalEntregaArchivo(${e.id})">Modificar</button>
             <button type="button" class="btn btn-danger btn-sm" onclick="eliminarEntregaArchivo(${e.id})">Eliminar</button>
         </td>
     </tr>`
         )
         .join('')}
-    </tbody></table>`;
+    </tbody></table></div>`;
 }
 
 async function cargarArchivosEntregas() {
@@ -136,6 +137,10 @@ function abrirModalEntregaArchivo(id) {
     if (!entrega) return;
     document.getElementById('editEntregaId').value = String(entrega.id);
     document.getElementById('editEntregaComentario').value = entrega.comentario || '';
+    const calEl = document.getElementById('editEntregaCalificacion');
+    if (calEl) {
+        calEl.value = entrega.calificacion != null && entrega.calificacion !== '' ? String(entrega.calificacion) : '';
+    }
     document.getElementById('editEntregaArchivo').value = '';
     document.getElementById('modalEntregaArchivo').style.display = 'flex';
 }
@@ -148,14 +153,23 @@ async function guardarEntregaArchivo(event) {
     event.preventDefault();
     const id = document.getElementById('editEntregaId').value;
     const comentario = document.getElementById('editEntregaComentario').value.trim();
+    const calRaw = document.getElementById('editEntregaCalificacion')?.value?.trim() ?? '';
     const file = document.getElementById('editEntregaArchivo').files[0];
     if (!id) return;
     if (comentario.length > 500) {
         mostrarToast('El comentario no puede exceder 500 caracteres', 'error');
         return;
     }
+    if (calRaw !== '') {
+        const c = Number.parseFloat(calRaw);
+        if (Number.isNaN(c) || c < 0 || c > 100) {
+            mostrarToast('La calificación debe ser un número entre 0 y 100', 'error');
+            return;
+        }
+    }
     const formData = new FormData();
     formData.append('comentario', comentario);
+    formData.append('calificacion', calRaw);
     if (file) {
         const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
         if (!['.pdf', '.doc', '.docx', '.zip'].includes(ext)) {

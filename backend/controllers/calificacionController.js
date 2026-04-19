@@ -142,6 +142,33 @@ const calificacionController = {
         }
     },
 
+    async descargarArchivoCalificacion(req, res) {
+        try {
+            const id = Number.parseInt(req.params.id, 10);
+            if (!Number.isInteger(id) || id <= 0) {
+                return res.status(400).json({ message: 'ID no válido.' });
+            }
+            const find =
+                req.usuario.rol === 'administrador'
+                    ? await pool.query('SELECT nombre_archivo FROM archivos_calificaciones WHERE id = $1', [id])
+                    : await pool.query(
+                          'SELECT nombre_archivo FROM archivos_calificaciones WHERE id = $1 AND profesor_id = $2',
+                          [id, req.usuario.id]
+                      );
+            if (find.rowCount === 0 || !find.rows[0].nombre_archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado.' });
+            }
+            const nombre = find.rows[0].nombre_archivo;
+            const full = path.join(__dirname, '../uploads', nombre);
+            if (!fs.existsSync(full)) {
+                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
+            }
+            return res.download(full, nombre);
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo descargar el archivo.' });
+        }
+    },
+
     async deleteArchivo(req, res) {
         try {
             const { id } = req.params;

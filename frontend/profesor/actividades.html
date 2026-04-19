@@ -2,9 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Actividades</title>
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -26,6 +28,16 @@
         <div class="top-bar"><h1>Actividades</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
         <button type="button" class="btn btn-primary" onclick="mostrarModalActividad()" style="margin-bottom:20px;"><i class="fas fa-plus"></i> Nueva actividad</button>
         <div id="actividadesContainer"></div>
+        <section class="panel-section" style="margin-top: 2rem;">
+            <div class="panel-section__head"><h2>Entregas de alumnos</h2></div>
+            <div class="panel-card" style="margin-bottom: 1rem;">
+                <div class="form-group-modern">
+                    <label for="filtroMateriaEntregas">Materia</label>
+                    <select id="filtroMateriaEntregas" onchange="cargarEntregasProfesor()"></select>
+                </div>
+            </div>
+            <div id="entregasProfesorContainer" class="table-responsive-wrap"></div>
+        </section>
     </main>
     <div id="actividadModal" class="modal" style="display: none;">
     <div class="modal-content">
@@ -69,6 +81,30 @@
         </form>
     </div>
 </div>
+    <div id="modalRetroEntrega" class="modal" style="display:none;">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h2>Retroalimentación a la entrega</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalRetroEntrega()">&times;</button>
+            </div>
+            <form id="formRetroEntrega" onsubmit="guardarRetroEntrega(event)">
+                <input type="hidden" id="retroEntregaId">
+                <div class="form-group-modern">
+                    <label for="retroComentario">Comentario</label>
+                    <textarea id="retroComentario" rows="3" maxlength="500"></textarea>
+                </div>
+                <div class="form-group-modern">
+                    <label for="retroCalificacion">Calificación (0–100, opcional)</label>
+                    <input type="number" id="retroCalificacion" min="0" max="100" step="0.01" placeholder="Ej. 90">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalRetroEntrega()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/app-shell.js"></script>

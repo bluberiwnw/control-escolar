@@ -54,22 +54,35 @@ const registrarAsistenciaQR = async (req, res) => {
   }
   const alumnoId = req.usuario.id;
   const qrRes = await pool.query(
-    `SELECT id, materia_id FROM qr_asistencia 
-     WHERE codigo = $1 AND activo = true AND fecha = CURRENT_DATE 
+    `SELECT id, materia_id, fecha FROM qr_asistencia 
+     WHERE codigo = $1 AND activo = true 
+     AND fecha = CURRENT_DATE 
      AND CURRENT_TIME BETWEEN hora_inicio AND hora_fin`,
     [codigo]
   );
   if (qrRes.rows.length === 0) {
-    return res.status(400).json({ error: 'QR inválido o expirado', message: '❌ QR inválido' });
+    return res.status(400).json({
+      error: 'QR inválido o expirado',
+      message: '❌ QR no válido o fuera de horario. Comprueba la fecha de hoy y el horario del código.',
+    });
   }
   const qr = qrRes.rows[0];
-  await pool.query(`INSERT INTO asistencias_qr (estudiante_id, qr_id) VALUES ($1, $2)`, [alumnoId, qr.id]);
+  const fechaClase = qr.fecha;
   await pool.query(
-    `INSERT INTO asistencias (materia_id, estudiante_id, fecha, estado)
-     VALUES ($1, $2, CURRENT_DATE, 'presente')
-     ON CONFLICT (materia_id, estudiante_id, fecha) DO NOTHING`,
-    [qr.materia_id, alumnoId]
+    `INSERT INTO asistencias_qr (estudiante_id, qr_id) VALUES ($1, $2)
+     ON CONFLICT (estudiante_id, qr_id) DO NOTHING`,
+    [alumnoId, qr.id]
   );
+  const ins = await pool.query(
+    `INSERT INTO asistencias (materia_id, estudiante_id, fecha, estado)
+     VALUES ($1, $2, $3, 'presente')
+     ON CONFLICT (materia_id, estudiante_id, fecha) DO NOTHING
+     RETURNING id`,
+    [qr.materia_id, alumnoId, fechaClase]
+  );
+  if (ins.rowCount === 0) {
+    return res.json({ message: '✅ Tu asistencia ya estaba registrada para esta clase' });
+  }
   res.json({ message: '✅ Asistencia registrada' });
 };
 

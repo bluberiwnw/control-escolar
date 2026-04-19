@@ -13,6 +13,44 @@ function buildApiUrl(pathname = '') {
 
 window.buildApiUrl = buildApiUrl;
 
+/**
+ * Descarga un archivo de la API con el token (evita fallos con enlaces directos a /uploads).
+ */
+async function descargarConAuth(urlPath, nombreSugerido) {
+    const token = localStorage.getItem('token');
+    const url = buildApiUrl(urlPath);
+    try {
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) {
+            let msg = 'No se pudo descargar el archivo';
+            try {
+                const err = await res.json();
+                msg = err.message || err.error || msg;
+            } catch (_) {
+                /* ignore */
+            }
+            mostrarToast(msg, 'error');
+            return;
+        }
+        const blob = await res.blob();
+        const cd = res.headers.get('Content-Disposition') || '';
+        let nombre = nombreSugerido || 'archivo';
+        const m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+        if (m && m[1]) nombre = decodeURIComponent(m[1].trim());
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = nombre;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+    } catch (_) {
+        mostrarToast('Error de red al descargar', 'error');
+    }
+}
+
+window.descargarConAuth = descargarConAuth;
+
 function formatearFecha(fechaISO) {
     if (!fechaISO) return 'No definida';
     return new Date(fechaISO).toLocaleDateString('es-ES', {

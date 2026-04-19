@@ -2,9 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asistencia QR</title>
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -24,13 +26,24 @@
     </aside>     
     <main class="main-content-profesor">
         <div class="top-bar"><h1>Asistencia con QR</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div class="asistencia-header">
+        <div class="asistencia-header panel-card">
             <select id="materiaSelect"></select>
             <input type="date" id="fechaAsistencia">
             <button type="button" class="btn btn-primary" onclick="generarQR()">Generar QR</button>
         </div>
-    <div id="qrContainer" style="text-align:center; margin:20px 0;"></div>        <div class="asistencia-tabla"><table><thead><tr><th>Matrícula</th><th>Nombre</th><th>Estado</th></tr></thead><tbody id="listaEstudiantes"></tbody></table></div>
+        <div id="qrContainer" style="text-align:center; margin:20px 0;"></div>
+        <section class="panel-section">
+            <div class="panel-section__head"><h2>Lista manual (puedes modificar P / A / R en cualquier momento)</h2></div>
+            <p style="margin: 0 0 1rem; font-size: 0.95rem; opacity: 0.9;">Selecciona materia y fecha, luego marca la asistencia de cada alumno. Los cambios se guardan al instante y puedes corregirlos cuando lo necesites.</p>
+            <div class="table-responsive-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Matrícula</th><th>Nombre</th><th>Estado</th></tr></thead>
+                    <tbody id="listaEstudiantes"></tbody>
+                </table>
+            </div>
+        </section>
     </main>
+    <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/app-shell.js"></script>

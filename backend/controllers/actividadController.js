@@ -1,4 +1,11 @@
 const pool = require('../database/connection');
+const fs = require('fs');
+const path = require('path');
+
+function parseEnteroEntrega(v, fallback = NaN) {
+    const n = Number.parseInt(v, 10);
+    return Number.isNaN(n) ? fallback : n;
+}
 
 const actividadController = {
     async getAll(req, res) {
@@ -121,7 +128,112 @@ const actividadController = {
         } catch (error) {
             res.status(500).json({ message: 'Error en el servidor', error: error.message });
         }
-    }
+    },
+
+    async listarEntregasProfesor(req, res) {
+        try {
+            const { materia_id } = req.query;
+            const params = [req.usuario.id];
+            let idx = 2;
+            let query = `
+                SELECT e.id, e.archivo, e.comentario, e.calificacion, e.actividad_id, e.estudiante_id,
+                       a.titulo AS actividad_titulo, a.materia_id, a.valor AS actividad_valor,
+                       m.nombre AS materia_nombre, s.nombre AS estudiante_nombre
+                FROM entregas e
+                JOIN actividades a ON e.actividad_id = a.id
+                JOIN materias m ON a.materia_id = m.id
+                JOIN estudiantes s ON e.estudiante_id = s.id
+                WHERE m.profesor_id = $1
+            `;
+            if (materia_id) {
+                query += ` AND a.materia_id = $${idx}`;
+                params.push(parseEnteroEntrega(materia_id, 0));
+                idx++;
+            }
+            query += ' ORDER BY a.titulo, s.nombre';
+            const result = await pool.query(query, params);
+            res.json(
+                result.rows.map((row) => ({
+                    ...row,
+                    archivo_url: row.archivo ? `/uploads/${encodeURIComponent(row.archivo)}` : null,
+                }))
+            );
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudieron cargar las entregas.', error: error.message });
+        }
+    },
+
+    async actualizarRetroEntrega(req, res) {
+        try {
+            const entregaId = parseEnteroEntrega(req.params.entregaId, NaN);
+            if (!Number.isInteger(entregaId) || entregaId <= 0) {
+                return res.status(400).json({ message: 'ID de entrega no válido.' });
+            }
+            const comentario = String(req.body?.comentario || '').trim().slice(0, 500);
+            const body = req.body || {};
+            const hasCalifKey = Object.prototype.hasOwnProperty.call(body, 'calificacion');
+            let calificacionValor = null;
+            if (hasCalifKey) {
+                const raw = String(body.calificacion ?? '').trim();
+                if (raw !== '') {
+                    const n = Number.parseFloat(raw);
+                    if (Number.isNaN(n)) {
+                        return res.status(400).json({ message: 'Calificación no válida.' });
+                    }
+                    calificacionValor = Math.min(100, Math.max(0, n));
+                }
+            }
+            const check = await pool.query(
+                `SELECT e.id FROM entregas e
+                 JOIN actividades a ON e.actividad_id = a.id
+                 JOIN materias m ON a.materia_id = m.id
+                 WHERE e.id = $1 AND m.profesor_id = $2`,
+                [entregaId, req.usuario.id]
+            );
+            if (check.rowCount === 0) {
+                return res.status(404).json({ message: 'Entrega no encontrada.' });
+            }
+            if (hasCalifKey) {
+                await pool.query('UPDATE entregas SET comentario = $1, calificacion = $2 WHERE id = $3', [
+                    comentario,
+                    calificacionValor,
+                    entregaId,
+                ]);
+            } else {
+                await pool.query('UPDATE entregas SET comentario = $1 WHERE id = $2', [comentario, entregaId]);
+            }
+            res.json({ message: 'Retroalimentación guardada correctamente.' });
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo guardar la retroalimentación.', error: error.message });
+        }
+    },
+
+    async descargarEntregaProfesor(req, res) {
+        try {
+            const entregaId = parseEnteroEntrega(req.params.entregaId, NaN);
+            if (!Number.isInteger(entregaId) || entregaId <= 0) {
+                return res.status(400).json({ message: 'ID de entrega no válido.' });
+            }
+            const find = await pool.query(
+                `SELECT e.archivo FROM entregas e
+                 JOIN actividades a ON e.actividad_id = a.id
+                 JOIN materias m ON a.materia_id = m.id
+                 WHERE e.id = $1 AND m.profesor_id = $2`,
+                [entregaId, req.usuario.id]
+            );
+            if (find.rowCount === 0 || !find.rows[0].archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado.' });
+            }
+            const archivo = find.rows[0].archivo;
+            const full = path.join(__dirname, '../uploads', archivo);
+            if (!fs.existsSync(full)) {
+                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
+            }
+            return res.download(full, archivo);
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo descargar el archivo.' });
+        }
+    },
 };
 
 module.exports = actividadController;

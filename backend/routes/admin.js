@@ -55,8 +55,10 @@ router.get('/reportes', adminController.getReportes);
 router.delete('/asistencias/:id', adminController.deleteAsistencia);
 router.put('/asistencias/:id', adminController.actualizarAsistencia);
 router.get('/calificaciones/archivos', adminController.listarArchivosCalificaciones);
+router.get('/calificaciones/archivos/:id/descarga', adminController.descargarArchivoCalificacionAdmin);
 router.delete('/calificaciones/archivos/:id', adminController.eliminarArchivoCalificacion);
 router.get('/entregas/archivos', adminController.listarArchivosEntregas);
+router.get('/entregas/archivos/:id/descarga', adminController.descargarArchivoEntrega);
 router.put('/entregas/archivos/:id', uploadEntrega.single('archivo'), adminController.actualizarArchivoEntrega);
 router.delete('/entregas/archivos/:id', adminController.eliminarArchivoEntrega);
 

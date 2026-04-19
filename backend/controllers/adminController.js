@@ -623,6 +623,30 @@ const adminController = {
         }
     },
 
+    async descargarArchivoCalificacionAdmin(req, res) {
+        try {
+            const id = parseEnteroSeguro(req.params.id, NaN);
+            if (!Number.isInteger(id) || id <= 0) {
+                return res.status(400).json({ message: 'ID no válido.' });
+            }
+            const find = await pool.query(
+                'SELECT nombre_archivo FROM archivos_calificaciones WHERE id = $1',
+                [id]
+            );
+            if (find.rowCount === 0 || !find.rows[0].nombre_archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado.' });
+            }
+            const nombre = find.rows[0].nombre_archivo;
+            const full = path.join(__dirname, '../uploads', nombre);
+            if (!fs.existsSync(full)) {
+                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
+            }
+            return res.download(full, nombre);
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo descargar el archivo.' });
+        }
+    },
+
     async eliminarArchivoCalificacion(req, res) {
         try {
             const { id } = req.params;
@@ -654,7 +678,7 @@ const adminController = {
             const params = [];
             let idx = 1;
             let query = `
-                SELECT e.id, e.archivo, e.comentario, e.actividad_id, e.estudiante_id,
+                SELECT e.id, e.archivo, e.comentario, e.calificacion, e.actividad_id, e.estudiante_id,
                        a.titulo AS actividad_titulo, a.materia_id,
                        m.nombre AS materia_nombre, s.nombre AS estudiante_nombre
                 FROM entregas e
@@ -681,6 +705,27 @@ const adminController = {
         }
     },
 
+    async descargarArchivoEntrega(req, res) {
+        try {
+            const entregaId = parseEnteroSeguro(req.params.id, NaN);
+            if (!Number.isInteger(entregaId) || entregaId <= 0) {
+                return res.status(400).json({ message: 'ID de entrega no válido.' });
+            }
+            const find = await pool.query('SELECT archivo FROM entregas WHERE id = $1', [entregaId]);
+            if (find.rowCount === 0 || !find.rows[0].archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado.' });
+            }
+            const archivo = find.rows[0].archivo;
+            const full = path.join(__dirname, '../uploads', archivo);
+            if (!fs.existsSync(full)) {
+                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
+            }
+            return res.download(full, archivo);
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo descargar el archivo.' });
+        }
+    },
+
     async actualizarArchivoEntrega(req, res) {
         try {
             const { id } = req.params;
@@ -690,6 +735,24 @@ const adminController = {
                 return res.status(400).json({ message: 'ID de entrega no válido.' });
             }
             const comentario = String(req.body?.comentario || '').trim().slice(0, 500);
+            const body = req.body || {};
+            const hasCalifKey = Object.prototype.hasOwnProperty.call(body, 'calificacion');
+            let updateCalificacion = false;
+            let calificacionValor = null;
+            if (hasCalifKey) {
+                updateCalificacion = true;
+                const raw = String(body.calificacion ?? '').trim();
+                if (raw === '') {
+                    calificacionValor = null;
+                } else {
+                    const n = Number.parseFloat(raw);
+                    if (Number.isNaN(n)) {
+                        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                        return res.status(400).json({ message: 'Calificación no válida.' });
+                    }
+                    calificacionValor = Math.min(100, Math.max(0, n));
+                }
+            }
             const find = await pool.query('SELECT archivo FROM entregas WHERE id = $1', [entregaId]);
             if (find.rowCount === 0) {
                 if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
@@ -697,7 +760,14 @@ const adminController = {
             }
             const archivoAnterior = find.rows[0].archivo;
             const nuevoArchivo = req.file ? req.file.filename : archivoAnterior;
-            await pool.query('UPDATE entregas SET archivo = $1, comentario = $2 WHERE id = $3', [nuevoArchivo, comentario, entregaId]);
+            if (updateCalificacion) {
+                await pool.query(
+                    'UPDATE entregas SET archivo = $1, comentario = $2, calificacion = $3 WHERE id = $4',
+                    [nuevoArchivo, comentario, calificacionValor, entregaId]
+                );
+            } else {
+                await pool.query('UPDATE entregas SET archivo = $1, comentario = $2 WHERE id = $3', [nuevoArchivo, comentario, entregaId]);
+            }
             if (req.file && archivoAnterior && archivoAnterior !== nuevoArchivo) {
                 const full = path.join(__dirname, '../uploads', archivoAnterior);
                 if (fs.existsSync(full)) {

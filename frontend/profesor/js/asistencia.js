@@ -27,13 +27,13 @@ async function cargarLista() {
     const tbody = document.getElementById('listaEstudiantes');
     tbody.innerHTML = estudiantes.map(e => `
         <tr data-estudiante-id="${e.id}">
-            <td>${e.matricula}</td>
-            <td>${e.nombre}</td>
-            <td>
+            <td data-label="Matrícula">${e.matricula}</td>
+            <td data-label="Nombre">${e.nombre}</td>
+            <td data-label="Estado">
                 <div class="estado-asistencia">
-                    <button class="btn-estado ${mapaAsistencias[e.id] === 'presente' ? 'presente' : ''}" onclick="cambiarEstado(${e.id}, 'presente')">P</button>
-                    <button class="btn-estado ${mapaAsistencias[e.id] === 'ausente' ? 'ausente' : ''}" onclick="cambiarEstado(${e.id}, 'ausente')">A</button>
-                    <button class="btn-estado ${mapaAsistencias[e.id] === 'retardo' ? 'retardo' : ''}" onclick="cambiarEstado(${e.id}, 'retardo')">R</button>
+                    <button type="button" class="btn-estado ${mapaAsistencias[e.id] === 'presente' ? 'presente' : ''}" onclick="cambiarEstado(${e.id}, 'presente')">P</button>
+                    <button type="button" class="btn-estado ${mapaAsistencias[e.id] === 'ausente' ? 'ausente' : ''}" onclick="cambiarEstado(${e.id}, 'ausente')">A</button>
+                    <button type="button" class="btn-estado ${mapaAsistencias[e.id] === 'retardo' ? 'retardo' : ''}" onclick="cambiarEstado(${e.id}, 'retardo')">R</button>
                 </div>
             </td>
         </tr>

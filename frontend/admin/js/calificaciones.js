@@ -58,7 +58,7 @@ async function cargarArchivosCalificaciones() {
     container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Archivo</th><th>Profesor</th><th>Materia</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
         ${archivos
             .map(
-                (a) => `<tr><td data-label="Archivo">${a.nombre_archivo}</td><td data-label="Profesor">${a.profesor_nombre}</td><td data-label="Materia">${a.materia_nombre}</td><td data-label="Tipo">${a.tipo}</td><td data-label="Estado">${a.estado || 'Procesado'}</td><td data-label="Acciones" class="table-actions"><a class="btn btn-secondary btn-sm" href="${buildApiUrl(a.archivo_url)}" download>Descargar archivo</a><button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivoCalificacionAdmin(${a.id})">Eliminar</button></td></tr>`
+                (a) => `<tr><td data-label="Archivo">${a.nombre_archivo}</td><td data-label="Profesor">${a.profesor_nombre}</td><td data-label="Materia">${a.materia_nombre}</td><td data-label="Tipo">${a.tipo}</td><td data-label="Estado">${a.estado || 'Procesado'}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="descargarConAuth('/admin/calificaciones/archivos/${a.id}/descarga', ${JSON.stringify(a.nombre_archivo)})">Descargar archivo</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivoCalificacionAdmin(${a.id})">Eliminar</button></td></tr>`
             )
             .join('')}
         </tbody></table></div>`;

@@ -9,6 +9,7 @@ router.use(verificarRol(['profesor', 'administrador']));
 router.post('/upload', calificacionController.uploadFile);
 router.get('/plantilla', calificacionController.getPlantilla);
 router.get('/archivos', calificacionController.getArchivos);
+router.get('/archivos/:id/descarga', calificacionController.descargarArchivoCalificacion);
 router.delete('/archivos/:id', calificacionController.deleteArchivo);
 router.get('/materia/:materia_id', calificacionController.getByMateria);
 router.post('/', calificacionController.save);

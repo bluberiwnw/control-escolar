@@ -24,7 +24,9 @@ router.get('/materias', alumnoController.getMaterias);
 router.get('/actividades', alumnoController.getActividades);
 router.post('/entregas', upload.single('archivo'), alumnoController.subirEntrega);
 router.get('/asistencias', alumnoController.getAsistencias);
+router.post('/asistencias/manual', alumnoController.registrarAsistenciaManual);
 router.get('/calificaciones', alumnoController.getCalificaciones);
+router.get('/entregas/actividad/:actividad_id/descarga', alumnoController.descargarMiEntrega);
 router.get('/reportes', alumnoController.getReportes);
 router.delete('/entregas/:actividad_id', alumnoController.cancelarEntrega);
 

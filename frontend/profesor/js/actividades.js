@@ -4,9 +4,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarFechaActual();
     await cargarMateriasSelect();
     await cargarActividades();
+    await cargarEntregasProfesor();
 });
 
 let actividadEditando = null;
+let entregasProf = [];
+
+function escapeHtmlEntrega(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 async function cargarActividades() {
     const actividades = await apiRequest('/actividades');
@@ -38,9 +49,91 @@ async function cargarActividades() {
 
 async function cargarMateriasSelect() {
     const materias = await apiRequest('/materias');
-    document.getElementById('actividadMateria').innerHTML = materias
-        .map((m) => `<option value="${m.id}">${m.nombre} (${m.clave})</option>`)
-        .join('');
+    const opts = materias.map((m) => `<option value="${m.id}">${escapeHtmlEntrega(m.nombre)} (${escapeHtmlEntrega(m.clave)})</option>`).join('');
+    document.getElementById('actividadMateria').innerHTML = opts;
+    const filtro = document.getElementById('filtroMateriaEntregas');
+    if (filtro) {
+        filtro.innerHTML = `<option value="">Todas mis materias</option>${opts}`;
+    }
+}
+
+async function cargarEntregasProfesor() {
+    const mid = document.getElementById('filtroMateriaEntregas')?.value || '';
+    const url = mid ? `/actividades/entregas?materia_id=${encodeURIComponent(mid)}` : '/actividades/entregas';
+    try {
+        entregasProf = await apiRequest(url);
+    } catch (_) {
+        entregasProf = [];
+    }
+    renderEntregasProfesor();
+}
+
+function renderEntregasProfesor() {
+    const container = document.getElementById('entregasProfesorContainer');
+    if (!container) return;
+    if (!entregasProf.length) {
+        container.innerHTML = '<div class="empty-state">No hay entregas para mostrar.</div>';
+        return;
+    }
+    container.innerHTML = `<table class="data-table"><thead><tr>
+        <th>Actividad</th><th>Materia</th><th>Estudiante</th><th>Archivo</th><th>Calif.</th><th>Comentario</th><th>Acciones</th>
+    </tr></thead><tbody>
+    ${entregasProf
+        .map(
+            (e) => `<tr>
+            <td data-label="Actividad">${escapeHtmlEntrega(e.actividad_titulo)}</td>
+            <td data-label="Materia">${escapeHtmlEntrega(e.materia_nombre)}</td>
+            <td data-label="Estudiante">${escapeHtmlEntrega(e.estudiante_nombre)}</td>
+            <td data-label="Archivo">${escapeHtmlEntrega(e.archivo || '—')}</td>
+            <td data-label="Calificación">${e.calificacion != null && e.calificacion !== '' ? escapeHtmlEntrega(String(e.calificacion)) : '—'}</td>
+            <td data-label="Comentario">${escapeHtmlEntrega(e.comentario || '—')}</td>
+            <td data-label="Acciones" class="table-actions">
+                ${e.archivo ? `<button type="button" class="btn btn-secondary btn-sm" onclick="descargarConAuth('/actividades/entregas/${e.id}/descarga', ${JSON.stringify(e.archivo)})">Descargar</button>` : ''}
+                <button type="button" class="btn btn-primary btn-sm" onclick="abrirModalRetroEntrega(${e.id})">Calificar / comentar</button>
+            </td>
+        </tr>`
+        )
+        .join('')}
+    </tbody></table>`;
+}
+
+function abrirModalRetroEntrega(id) {
+    const entrega = entregasProf.find((x) => x.id === id);
+    if (!entrega) return;
+    document.getElementById('retroEntregaId').value = String(entrega.id);
+    document.getElementById('retroComentario').value = entrega.comentario || '';
+    const cal = document.getElementById('retroCalificacion');
+    cal.value = entrega.calificacion != null && entrega.calificacion !== '' ? String(entrega.calificacion) : '';
+    document.getElementById('modalRetroEntrega').style.display = 'flex';
+}
+
+function cerrarModalRetroEntrega() {
+    document.getElementById('modalRetroEntrega').style.display = 'none';
+}
+
+async function guardarRetroEntrega(event) {
+    event.preventDefault();
+    const id = document.getElementById('retroEntregaId').value;
+    const comentario = document.getElementById('retroComentario').value.trim();
+    const calRaw = document.getElementById('retroCalificacion').value.trim();
+    if (comentario.length > 500) {
+        mostrarToast('El comentario no puede exceder 500 caracteres', 'error');
+        return;
+    }
+    if (calRaw !== '') {
+        const c = Number.parseFloat(calRaw);
+        if (Number.isNaN(c) || c < 0 || c > 100) {
+            mostrarToast('La calificación debe ser un número entre 0 y 100', 'error');
+            return;
+        }
+    }
+    await apiRequest(`/actividades/entregas/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ comentario, calificacion: calRaw }),
+    });
+    mostrarToast('Retroalimentación guardada', 'success');
+    cerrarModalRetroEntrega();
+    await cargarEntregasProfesor();
 }
 
 async function mostrarModalActividad(id = null) {
@@ -101,6 +194,7 @@ async function guardarActividad(event) {
     }
     cerrarModal();
     cargarActividades();
+    cargarEntregasProfesor();
 }
 
 async function eliminarActividad(id) {
@@ -108,6 +202,7 @@ async function eliminarActividad(id) {
     await apiRequest(`/actividades/${id}`, { method: 'DELETE' });
     mostrarToast('Actividad eliminada', 'success');
     cargarActividades();
+    cargarEntregasProfesor();
 }
 
 function cerrarModal() {
@@ -119,3 +214,7 @@ window.mostrarModalActividad = mostrarModalActividad;
 window.guardarActividad = guardarActividad;
 window.cerrarModal = cerrarModal;
 window.eliminarActividad = eliminarActividad;
+window.cargarEntregasProfesor = cargarEntregasProfesor;
+window.abrirModalRetroEntrega = abrirModalRetroEntrega;
+window.cerrarModalRetroEntrega = cerrarModalRetroEntrega;
+window.guardarRetroEntrega = guardarRetroEntrega;

@@ -174,8 +174,65 @@ const alumnoController = {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
-    }
-    
+    },
+
+    async descargarMiEntrega(req, res) {
+        try {
+            const actividadId = Number.parseInt(req.params.actividad_id, 10);
+            if (!Number.isInteger(actividadId) || actividadId <= 0) {
+                return res.status(400).json({ error: 'Actividad no válida' });
+            }
+            const alumnoId = req.usuario.id;
+            const result = await pool.query(
+                'SELECT archivo FROM entregas WHERE actividad_id = $1 AND estudiante_id = $2',
+                [actividadId, alumnoId]
+            );
+            if (result.rowCount === 0 || !result.rows[0].archivo) {
+                return res.status(404).json({ error: 'No hay archivo de entrega' });
+            }
+            const archivo = result.rows[0].archivo;
+            const full = path.join(__dirname, '../uploads', archivo);
+            if (!fs.existsSync(full)) {
+                return res.status(404).json({ error: 'El archivo ya no está en el servidor' });
+            }
+            return res.download(full, archivo);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    async registrarAsistenciaManual(req, res) {
+        try {
+            const alumnoId = req.usuario.id;
+            const { materia_id, fecha } = req.body;
+            const mid = Number.parseInt(materia_id, 10);
+            if (!Number.isInteger(mid) || mid <= 0 || !fecha || !/^\d{4}-\d{2}-\d{2}$/.test(String(fecha))) {
+                return res.status(400).json({ error: 'Materia y fecha válidas son obligatorias' });
+            }
+            const insc = await pool.query(
+                'SELECT 1 FROM inscripciones WHERE materia_id = $1 AND estudiante_id = $2',
+                [mid, alumnoId]
+            );
+            if (insc.rowCount === 0) {
+                return res.status(403).json({ error: 'No estás inscrito en esa materia' });
+            }
+            const existe = await pool.query(
+                'SELECT id FROM asistencias WHERE materia_id = $1 AND estudiante_id = $2 AND fecha = $3',
+                [mid, alumnoId, fecha]
+            );
+            if (existe.rowCount > 0) {
+                return res.json({ message: 'Ya existe un registro de asistencia para esa fecha (no se modificó).' });
+            }
+            await pool.query(
+                `INSERT INTO asistencias (materia_id, estudiante_id, fecha, estado)
+                 VALUES ($1, $2, $3, 'presente')`,
+                [mid, alumnoId, fecha]
+            );
+            res.status(201).json({ message: 'Asistencia registrada como presente' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
 };
 
 module.exports = alumnoController;

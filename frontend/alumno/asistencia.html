@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asistencia QR</title>
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -28,6 +29,19 @@
         <div class="top-bar"><h1>Registrar Asistencia con QR</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
         <div id="reader" style="width: 300px; margin: 20px auto;"></div>
         <div id="mensajeQR" class="alert" style="display:none;"></div>
+        <section class="panel-card" style="max-width: 480px; margin: 1.5rem auto;">
+            <h3 style="margin-top: 0;">Registro manual (sin modificar asistencias ya guardadas)</h3>
+            <p style="font-size: 0.9rem; opacity: 0.9;">Si el QR falla, registra tu asistencia como <strong>presente</strong> solo cuando no exista aún un registro para esa materia y fecha.</p>
+            <div class="form-group-modern">
+                <label for="materiaManualAsistencia">Materia</label>
+                <select id="materiaManualAsistencia"></select>
+            </div>
+            <div class="form-group-modern">
+                <label for="fechaManualAsistencia">Fecha</label>
+                <input type="date" id="fechaManualAsistencia">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="registrarAsistenciaManual()">Registrar mi asistencia (presente)</button>
+        </section>
         <div class="asistencia-tabla">
             <h3>Historial de asistencias</h3>
             <div id="historialAsistencias"></div>
