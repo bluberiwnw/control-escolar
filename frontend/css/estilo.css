@@ -508,6 +508,52 @@ body {
     transition: all 0.2s;
 }
 
+/* Tabla de calificaciones responsiva */
+#calificacionesContainer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+}
+
+#calificacionesContainer table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+    font-size: 0.95rem;
+}
+
+#calificacionesContainer th,
+#calificacionesContainer td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+#calificacionesContainer th {
+    background: var(--bg-body);
+    font-weight: 600;
+    color: var(--text-primary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+#calificacionesContainer tr:hover {
+    background: rgba(var(--primary-rgb), 0.05);
+}
+
+/* Contenedor de archivos de calificaciones */
+#archivosCalificacionesContainer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#archivosCalificacionesContainer .data-table {
+    min-width: 500px;
+}
+
 @media (max-width: 768px) {
     .upload-area {
         padding: 24px 16px;
@@ -539,6 +585,33 @@ body {
         width: 100%;
         justify-content: center;
     }
+    /* Mejoras para tabla de calificaciones */
+    #calificacionesContainer {
+        margin: 0 -8px;
+        padding: 0 8px;
+    }
+    #calificacionesContainer table {
+        font-size: 0.85rem;
+    }
+    #calificacionesContainer th,
+    #calificacionesContainer td {
+        padding: 8px 10px;
+    }
+    #calificacionesContainer th {
+        font-size: 0.8rem;
+    }
+    /* Mejoras para archivos de calificaciones */
+    #archivosCalificacionesContainer {
+        margin: 0 -8px;
+        padding: 0 8px;
+    }
+    #archivosCalificacionesContainer .data-table {
+        font-size: 0.85rem;
+    }
+    #archivosCalificacionesContainer .data-table th,
+    #archivosCalificacionesContainer .data-table td {
+        padding: 8px 10px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -559,6 +632,24 @@ body {
     }
     .archivo-item {
         padding: 10px;
+    }
+    /* Mejoras adicionales para móviles */
+    #calificacionesContainer table {
+        font-size: 0.8rem;
+    }
+    #calificacionesContainer th,
+    #calificacionesContainer td {
+        padding: 6px 8px;
+    }
+    #calificacionesContainer th {
+        font-size: 0.75rem;
+    }
+    #archivosCalificacionesContainer .data-table {
+        font-size: 0.8rem;
+    }
+    #archivosCalificacionesContainer .data-table th,
+    #archivosCalificacionesContainer .data-table td {
+        padding: 6px 8px;
     }
 }
 
