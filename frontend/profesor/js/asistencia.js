@@ -59,33 +59,70 @@ async function generarQR() {
         mostrarToast('Selecciona materia y fecha', 'error');
         return;
     }
-    const hora_inicio = window.prompt('Hora inicio (HH:MM):', '08:00');
-    const hora_fin = window.prompt('Hora fin (HH:MM):', '10:00');
-    if (!hora_inicio || !hora_fin) return;
+
+    // Obtener hora actual para sugerencias
+    const ahora = new Date();
+    const horaActual = ahora.toTimeString().slice(0, 5);
+    const horaSugeridaInicio = horaActual;
+    const horaSugeridaFin = new Date(ahora.getTime() + 2 * 60 * 60 * 1000).toTimeString().slice(0, 5);
+
+    const hora_inicio = window.prompt(`Hora inicio (HH:MM):`, horaSugeridaInicio);
+    if (!hora_inicio) return;
+    
+    const hora_fin = window.prompt(`Hora fin (HH:MM):`, horaSugeridaFin);
+    if (!hora_fin) return;
+    
     if (!/^\d{2}:\d{2}$/.test(hora_inicio) || !/^\d{2}:\d{2}$/.test(hora_fin)) {
-        mostrarToast('Usa formato de hora HH:MM', 'error');
+        mostrarToast('Usa formato de hora HH:MM (ej: 08:00)', 'error');
         return;
     }
-    if (hora_inicio >= hora_fin) {
+    
+    // Validar rango de horas
+    const [hi, mi] = hora_inicio.split(':').map(Number);
+    const [hf, mf] = hora_fin.split(':').map(Number);
+    const minutosInicio = hi * 60 + mi;
+    const minutosFin = hf * 60 + mf;
+    
+    if (minutosInicio >= minutosFin) {
         mostrarToast('La hora final debe ser posterior a la hora inicial', 'error');
         return;
     }
+    
+    if (minutosFin - minutosInicio > 240) { // Máximo 4 horas
+        mostrarToast('El rango de tiempo no debe exceder 4 horas', 'error');
+        return;
+    }
 
-    const data = await apiRequest('/qr/generar', {
-        method: 'POST',
-        body: JSON.stringify({ materia_id: parseInt(materiaId), fecha, hora_inicio, hora_fin })
-    });
+    try {
+        mostrarToast('Generando código QR...', 'info');
+        const data = await apiRequest('/qr/generar', {
+            method: 'POST',
+            body: JSON.stringify({ materia_id: parseInt(materiaId), fecha, hora_inicio, hora_fin })
+        });
 
-    // Mostrar QR grande y botón de descarga
-    const container = document.getElementById('qrContainer');
-    container.innerHTML = `
-        <div style="background:white; padding:20px; display:inline-block; border-radius:20px;">
-            <img src="${data.qrDataUrl}" style="max-width:300px; width:100%;" alt="QR">
-            <br><br>
-            <a href="${data.download_url || data.qrDataUrl}" download="qr_asistencia.png" class="btn-login-buap">Descargar código de asistencia</a>
-        </div>
-    `;
-    mostrarToast('QR generado correctamente', 'success');
+        // Mostrar QR con información detallada
+        const container = document.getElementById('qrContainer');
+        container.innerHTML = `
+            <div class="panel-card" style="background:white; padding:20px; display:inline-block; border-radius:20px; max-width:100%;">
+                <h3 style="margin:0 0 15px 0; color:#333; text-align:center;">Código QR de Asistencia</h3>
+                <img src="${data.qrDataUrl}" style="max-width:300px; width:100%; height:auto;" alt="QR">
+                <div style="margin:15px 0; padding:10px; background:#f8f9fa; border-radius:8px; font-size:0.9rem; color:#666;">
+                    <strong>Materia:</strong> ${document.getElementById('materiaSelect').options[document.getElementById('materiaSelect').selectedIndex].text}<br>
+                    <strong>Fecha:</strong> ${fecha}<br>
+                    <strong>Válido:</strong> ${hora_inicio} - ${hora_fin}<br>
+                    <small style="color:#999;">Los alumnos tienen 5 minutos de tolerancia</small>
+                </div>
+                <div style="text-align:center;">
+                    <a href="${data.download_url || data.qrDataUrl}" download="qr_asistencia_${fecha.replace(/-/g, '')}.png" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Descargar QR
+                    </a>
+                </div>
+            </div>
+        `;
+        mostrarToast('QR generado correctamente. Muestra este código a tus alumnos.', 'success');
+    } catch (error) {
+        mostrarToast('Error al generar QR: ' + (error.message || 'Intenta de nuevo'), 'error');
+    }
 }
 
 window.generarQR = generarQR;

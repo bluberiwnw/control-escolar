@@ -82,25 +82,32 @@ const registrarAsistenciaQR = async (req, res) => {
     });
   }
 
-  const fechaOk = await pool.query('SELECT ($1::date = CURRENT_DATE) AS ok', [qr.fecha]);
-  if (!fechaOk.rows[0]?.ok) {
+  // Validación de fecha con zona horaria local
+  const ahora = new Date();
+  const fechaLocal = ahora.toISOString().split('T')[0]; // YYYY-MM-DD en zona local
+  
+  if (qr.fecha !== fechaLocal) {
     return res.status(400).json({
       error: 'Fecha incorrecta',
-      message:
-        '❌ La fecha de este código no coincide con el día de hoy. El docente debe generar el QR con la fecha de hoy.',
+      message: `La fecha de este código (${qr.fecha}) no coincide con el día de hoy (${fechaLocal}). El docente debe generar el QR con la fecha de hoy.`,
     });
   }
 
-  const horaOk = await pool.query(
-    'SELECT (CURRENT_TIME BETWEEN $1::time AND $2::time) AS ok',
-    [qr.hora_inicio, qr.hora_fin]
-  );
-  if (!horaOk.rows[0]?.ok) {
+  // Validación de hora con tolerancia de 5 minutos antes y después
+  const horaActual = ahora.toTimeString().slice(0, 5); // HH:MM
+  const [horaInicio, horaFin] = [qr.hora_inicio, qr.hora_fin];
+  
+  // Convertir a minutos para comparación
+  const minutosActuales = parseInt(horaActual.split(':')[0]) * 60 + parseInt(horaActual.split(':')[1]);
+  const minutosInicio = parseInt(horaInicio.split(':')[0]) * 60 + parseInt(horaInicio.split(':')[1]) - 5; // 5 min antes
+  const minutosFin = parseInt(horaFin.split(':')[0]) * 60 + parseInt(horaFin.split(':')[1]) + 5; // 5 min después
+  
+  if (minutosActuales < minutosInicio || minutosActuales > minutosFin) {
     const hi = String(qr.hora_inicio).slice(0, 5);
     const hf = String(qr.hora_fin).slice(0, 5);
     return res.status(400).json({
       error: 'Horario incorrecto',
-      message: `❌ Fuera del horario permitido para este código (válido entre ${hi} y ${hf}).`,
+      message: `Fuera del horario permitido para este código (válido entre ${hi} y ${hf}, con 5 min de tolerancia). Hora actual: ${horaActual}`,
     });
   }
 
