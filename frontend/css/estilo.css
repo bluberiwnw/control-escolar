@@ -1142,98 +1142,114 @@ body.dark-mode .upload-area {
     gap: 8px;
 }
 @media (max-width: 768px) {
+    /* Ocultar headers de tabla en móviles */
     .data-table thead {
-        display: none;
+        display: none !important;
     }
+    
+    /* Transformación general de tablas a cards */
     .data-table,
     .data-table tbody,
     .data-table tr,
     .data-table td {
-        display: block;
-        min-width: 0;
+        display: block !important;
+        min-width: 0 !important;
+        width: 100% !important;
     }
+    
+    /* Estilos de cards para todas las tablas */
     .data-table tr {
-        margin-bottom: 12px;
-        padding: 12px;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: var(--bg-card);
-        box-shadow: var(--shadow-sm);
-        transition: transform 0.2s ease;
+        margin-bottom: 16px !important;
+        padding: 16px !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        background: var(--bg-card) !important;
+        box-shadow: var(--shadow-sm) !important;
+        transition: transform 0.2s ease !important;
+        position: relative !important;
     }
+    
     .data-table tr:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
+        transform: translateY(-2px) !important;
+        box-shadow: var(--shadow-md) !important;
     }
+    
+    /* Estilos de celdas en móviles */
     .data-table td {
-        border: none;
-        padding: 12px 0;
-        font-size: 0.9rem;
-        position: relative;
-        padding-left: 0;
-        padding-right: 0;
+        border: none !important;
+        padding: 12px 0 8px 0 !important;
+        font-size: 0.9rem !important;
+        position: relative !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        line-height: 1.4 !important;
     }
+    
+    /* Etiquetas para celdas */
     .data-table td::before {
-        content: attr(data-label);
-        display: block;
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: var(--primary);
-        margin-bottom: 6px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        content: attr(data-label) !important;
+        display: block !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        color: var(--primary) !important;
+        margin-bottom: 6px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
+    
+    /* Contenedores específicos */
+    #historialAsistencias,
+    #asistenciasContainer,
+    #calificacionesContainer {
+        margin: 0 -8px !important;
+        padding: 0 8px !important;
+    }
+    
+    #historialAsistencias .table-responsive-wrap,
+    #asistenciasContainer .table-responsive-wrap,
+    #calificacionesContainer .table-responsive-wrap {
+        border-radius: 12px !important;
+        margin-bottom: 16px !important;
+        overflow: hidden !important;
+        background: transparent !important;
+        border: none !important;
+    }
+    
+    /* Botones de acción */
+    .table-actions {
+        margin-top: 12px !important;
+        padding-top: 12px !important;
+        border-top: 1px solid var(--border) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    
+    .table-actions .btn-sm {
+        width: 100% !important;
+        padding: 10px 12px !important;
+        font-size: 0.85rem !important;
+        margin: 0 !important;
+    }
+    
+    /* Selects en tablas */
+    .data-table td select {
+        width: 100% !important;
+        margin-top: 4px !important;
+        padding: 8px 12px !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 8px !important;
+        background: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        font-size: 0.9rem !important;
+    }
+    
     .theme-toggle {
         width: 44px;
         height: 44px;
         font-size: 18px;
         bottom: calc(12px + env(safe-area-inset-bottom));
         right: calc(12px + env(safe-area-inset-right));
-    }
-    
-    /* Mejoras específicas para contenedores de tablas */
-    #historialAsistencias,
-    #asistenciasContainer,
-    #calificacionesContainer {
-        margin: 0 -8px;
-        padding: 0 8px;
-    }
-    
-    #historialAsistencias .table-responsive-wrap,
-    #asistenciasContainer .table-responsive-wrap,
-    #calificacionesContainer .table-responsive-wrap {
-        border-radius: 12px;
-        margin-bottom: 16px;
-        overflow: hidden;
-    }
-    
-    /* Botones en tablas responsivas */
-    .table-actions {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .table-actions .btn-sm {
-        width: 100%;
-        padding: 10px 12px;
-        font-size: 0.85rem;
-        margin: 0;
-    }
-    
-    /* Selects en tablas responsivas */
-    .data-table td select {
-        width: 100%;
-        margin-top: 4px;
-        padding: 8px 12px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--bg-card);
-        color: var(--text-primary);
-        font-size: 0.9rem;
     }
 }
 
