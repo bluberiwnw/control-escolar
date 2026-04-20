@@ -818,6 +818,44 @@ const adminController = {
             res.status(500).json({ message: 'No se pudo eliminar el archivo de entrega.' });
         }
     },
+
+    // Actualizar contraseña de usuario (profesor o estudiante)
+    async actualizarContraseña(req, res) {
+        try {
+            const { id } = req.params;
+            const { password } = req.body;
+            
+            if (!password || password.length < 6) {
+                return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+            }
+
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = bcrypt.hashSync(password, 10);
+
+            // Intentar actualizar en tabla usuarios (profesores)
+            const resultProfesor = await pool.query(
+                'UPDATE usuarios SET password = $1 WHERE id = $2 RETURNING id',
+                [hashedPassword, id]
+            );
+
+            // Si no se actualizó en usuarios, intentar en estudiantes
+            if (resultProfesor.rowCount === 0) {
+                const resultEstudiante = await pool.query(
+                    'UPDATE estudiantes SET password = $1 WHERE id = $2 RETURNING id',
+                    [hashedPassword, id]
+                );
+
+                if (resultEstudiante.rowCount === 0) {
+                    return res.status(404).json({ message: 'Usuario no encontrado' });
+                }
+            }
+
+            res.json({ message: 'Contraseña actualizada correctamente' });
+        } catch (error) {
+            console.error('Error al actualizar contraseña:', error);
+            res.status(500).json({ message: 'Error al actualizar contraseña' });
+        }
+    },
 };
 
 module.exports = adminController;

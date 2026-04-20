@@ -1143,7 +1143,8 @@ body.dark-mode .upload-area {
 }
 @media (max-width: 768px) {
     /* Ocultar headers de tabla en móviles */
-    .data-table thead {
+    .data-table thead,
+    .table-responsive-wrap .data-table thead {
         display: none !important;
     }
     
@@ -1162,6 +1163,24 @@ body.dark-mode .upload-area {
     .table-responsive-wrap .data-table tbody,
     .table-responsive-wrap .data-table tr,
     .table-responsive-wrap .data-table td {
+        display: block !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+    
+    /* Forzar estilos específicos para módulos */
+    #asistenciasContainer .data-table,
+    #asistenciasContainer .data-table tbody,
+    #asistenciasContainer .data-table tr,
+    #asistenciasContainer .data-table td,
+    #historialAsistencias .data-table,
+    #historialAsistencias .data-table tbody,
+    #historialAsistencias .data-table tr,
+    #historialAsistencias .data-table td,
+    #calificacionesContainer .data-table,
+    #calificacionesContainer .data-table tbody,
+    #calificacionesContainer .data-table tr,
+    #calificacionesContainer .data-table td {
         display: block !important;
         min-width: 0 !important;
         width: 100% !important;

@@ -37,6 +37,7 @@ router.post('/profesores', adminController.crearProfesor);
 router.post('/estudiantes', adminController.crearEstudiante);
 router.put('/profesores/:id', adminController.actualizarProfesor);
 router.put('/estudiantes/:id', adminController.actualizarEstudiante);
+router.put('/usuarios/:id/password', adminController.actualizarContraseña);
 router.delete('/usuarios/:id/:tipo', adminController.eliminarUsuario);
 router.get('/materias', adminController.listarMaterias);
 router.post('/materias', adminController.crearMateria);
