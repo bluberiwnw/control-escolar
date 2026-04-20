@@ -23,12 +23,21 @@ async function cargarProfesores() {
     try {
         const lista = await apiRequest('/admin/usuarios?rol=profesor');
         const profesores = lista.filter((p) => p.rol === 'profesor');
+        
+        // Cache de usuarios para togglePassword
+        const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
+        const usuariosActualizados = usuariosCache.filter(u => u.tipo !== 'profesor');
+        profesores.forEach(p => {
+            usuariosActualizados.push({...p, tipo: 'profesor'});
+        });
+        localStorage.setItem('usuariosCache', JSON.stringify(usuariosActualizados));
+        
         const container = document.getElementById('listaProfesores');
         if (profesores.length === 0) {
             container.innerHTML = '<div class="empty-state">No hay profesores registrados.</div>';
             return;
         }
-        container.innerHTML = `<table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
+        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${profesores
                 .map(
                     (p) => `<tr>
@@ -51,7 +60,7 @@ async function cargarProfesores() {
             </tr>`
                 )
                 .join('')}
-        </tbody></table>`;
+        </tbody></table></div>`;
     } catch (e) {
         document.getElementById('listaProfesores').innerHTML = '<p class="alert alert-error">Error al cargar profesores.</p>';
     }
@@ -60,12 +69,21 @@ async function cargarProfesores() {
 async function cargarEstudiantes() {
     try {
         const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
+        
+        // Cache de usuarios para togglePassword
+        const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
+        const usuariosActualizados = usuariosCache.filter(u => u.tipo !== 'alumno');
+        estudiantes.forEach(e => {
+            usuariosActualizados.push({...e, tipo: 'alumno'});
+        });
+        localStorage.setItem('usuariosCache', JSON.stringify(usuariosActualizados));
+        
         const container = document.getElementById('listaEstudiantes');
         if (estudiantes.length === 0) {
             container.innerHTML = '<div class="empty-state">No hay estudiantes registrados.</div>';
             return;
         }
-        container.innerHTML = `<table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Email</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
+        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Email</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${estudiantes
                 .map(
                     (e) => `<tr>
@@ -88,7 +106,7 @@ async function cargarEstudiantes() {
             </tr>`
                 )
                 .join('')}
-        </tbody></table>`;
+        </tbody></table></div>`;
     } catch (e) {
         document.getElementById('listaEstudiantes').innerHTML = '<p class="alert alert-error">Error al cargar estudiantes.</p>';
     }
