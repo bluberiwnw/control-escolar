@@ -1177,6 +1177,107 @@ body.dark-mode .upload-area {
         bottom: calc(12px + env(safe-area-inset-bottom));
         right: calc(12px + env(safe-area-inset-right));
     }
+    
+    /* Mejoras específicas para contenedores de tablas */
+    #historialAsistencias,
+    #asistenciasContainer,
+    #calificacionesContainer {
+        margin: 0 -8px;
+        padding: 0 8px;
+    }
+    
+    #historialAsistencias .table-responsive-wrap,
+    #asistenciasContainer .table-responsive-wrap,
+    #calificacionesContainer .table-responsive-wrap {
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+    
+    #historialAsistencias .data-table tr,
+    #asistenciasContainer .data-table tr,
+    #calificacionesContainer .data-table tr {
+        background: var(--bg-card);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 16px;
+        transition: transform 0.2s ease;
+    }
+    
+    #historialAsistencias .data-table tr:hover,
+    #asistenciasContainer .data-table tr:hover,
+    #calificacionesContainer .data-table tr:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    #historialAsistencias .data-table td,
+    #asistenciasContainer .data-table td,
+    #calificacionesContainer .data-table td {
+        padding: 12px 0;
+        font-size: 0.9rem;
+    }
+    
+    #historialAsistencias .data-table td::before,
+    #asistenciasContainer .data-table td::before,
+    #calificacionesContainer .data-table td::before {
+        font-size: 0.8rem;
+        color: var(--primary);
+        margin-bottom: 6px;
+    }
+    
+    /* Botones en tablas responsivas */
+    .table-actions {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+    }
+    
+    .table-actions .btn-sm {
+        width: 100%;
+        margin-bottom: 8px;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+    
+    .table-actions .btn-sm:last-child {
+        margin-bottom: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Mejoras adicionales para móviles pequeños */
+    #historialAsistencias,
+    #asistenciasContainer,
+    #calificacionesContainer {
+        margin: 0 -12px;
+        padding: 0 12px;
+    }
+    
+    #historialAsistencias .data-table tr,
+    #asistenciasContainer .data-table tr,
+    #calificacionesContainer .data-table tr {
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    
+    #historialAsistencias .data-table td,
+    #asistenciasContainer .data-table td,
+    #calificacionesContainer .data-table td {
+        padding: 10px 0;
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+    
+    #historialAsistencias .data-table td::before,
+    #asistenciasContainer .data-table td::before,
+    #calificacionesContainer .data-table td::before {
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+    }
+    
+    .table-actions .btn-sm {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
 }
 
 .chart-card {
