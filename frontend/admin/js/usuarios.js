@@ -413,18 +413,40 @@ async function handleCambiarContrasena(event, userId, tipo) {
     }
     
     try {
-        await apiRequest(`/admin/usuarios/${userId}/password`, {
+        const response = await apiRequest(`/admin/usuarios/${userId}/password`, {
             method: 'PUT',
             body: JSON.stringify({ password: nuevaContrasena }),
         });
-        mostrarToast('Contraseña actualizada exitosamente', 'success');
+        
+        if (response && response.message) {
+            mostrarToast(response.message, 'success');
+        } else {
+            mostrarToast('Contraseña actualizada exitosamente', 'success');
+        }
+        
         cerrarModalCambiarContrasena();
         
-        // Recargar la lista para mostrar la nueva contraseña
-        if (tipo === 'profesor') cargarProfesores();
-        else cargarEstudiantes();
+        // Actualizar cache de usuarios con nueva contraseña
+        const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
+        const usuarioIndex = usuariosCache.findIndex(u => u.id == userId);
+        if (usuarioIndex !== -1) {
+            usuariosCache[usuarioIndex].password = nuevaContrasena;
+            localStorage.setItem('usuariosCache', JSON.stringify(usuariosCache));
+        }
+        
+        // Actualizar contraseña en el DOM si está visible
+        const passElement = document.getElementById(`pass-${userId}`);
+        if (passElement) {
+            passElement.textContent = nuevaContrasena;
+        }
+        
+        // Recargar la lista para asegurar consistencia
+        if (tipo === 'profesor') await cargarProfesores();
+        else await cargarEstudiantes();
+        
     } catch (error) {
-        mostrarToast('Error al actualizar contraseña', 'error');
+        console.error('Error detallado:', error);
+        mostrarToast('Error al actualizar contraseña: ' + (error.message || 'Intenta de nuevo'), 'error');
     }
 }
 

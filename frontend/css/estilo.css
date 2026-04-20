@@ -1187,36 +1187,56 @@ body.dark-mode .upload-area {
     }
     
     /* Estilos de cards para todas las tablas */
-    .data-table tr {
-        margin-bottom: 16px !important;
-        padding: 16px !important;
+    .data-table tr,
+    #asistenciasContainer .data-table tr,
+    #historialAsistencias .data-table tr,
+    #calificacionesContainer .data-table tr {
+        margin-bottom: 20px !important;
+        padding: 20px !important;
         border: 1px solid var(--border) !important;
         border-radius: 12px !important;
         background: var(--bg-card) !important;
         box-shadow: var(--shadow-sm) !important;
         transition: transform 0.2s ease !important;
         position: relative !important;
+        width: 100% !important;
+        display: block !important;
     }
     
-    .data-table tr:hover {
+    .data-table tr:hover,
+    #asistenciasContainer .data-table tr:hover,
+    #historialAsistencias .data-table tr:hover,
+    #calificacionesContainer .data-table tr:hover {
         transform: translateY(-2px) !important;
         box-shadow: var(--shadow-md) !important;
     }
     
-    /* Estilos de celdas en móviles - Solución simple */
-    .data-table td {
+    /* Estilos de celdas en móviles - Mejor espaciado */
+    .data-table td,
+    #asistenciasContainer .data-table td,
+    #historialAsistencias .data-table td,
+    #calificacionesContainer .data-table td {
         border: none !important;
-        padding: 20px 0 8px 0 !important;
+        padding: 0 0 16px 0 !important;
         font-size: 0.95rem !important;
         position: relative !important;
         display: block !important;
         width: 100% !important;
-        margin-bottom: 20px !important;
+        margin-bottom: 0 !important;
         min-height: auto !important;
         line-height: 1.5 !important;
         word-wrap: break-word !important;
         overflow-wrap: break-word !important;
-        border-bottom: 1px solid rgba(var(--border), 0.2) !important;
+        border-bottom: 1px solid rgba(var(--border), 0.15) !important;
+        vertical-align: top !important;
+    }
+    
+    .data-table td:last-child,
+    #asistenciasContainer .data-table td:last-child,
+    #historialAsistencias .data-table td:last-child,
+    #calificacionesContainer .data-table td:last-child {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
     }
     
     /* Etiquetas para celdas */
