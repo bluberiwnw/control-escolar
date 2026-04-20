@@ -43,6 +43,33 @@ function mostrarAlerta(mensaje, tipo) {
     }
 }
 
+async function mostrarReestablecerContrasena() {
+    const email = prompt('Ingresa tu correo electrónico para reestablecer la contraseña:');
+    if (!email) return;
+    
+    if (!email.includes('@')) {
+        mostrarAlerta('Por favor ingresa un correo electrónico válido', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${window.API_URL}/auth/reestablecer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            mostrarAlerta('Se ha enviado un correo con instrucciones para reestablecer tu contraseña', 'success');
+        } else {
+            mostrarAlerta(data.message || 'No se pudo procesar la solicitud', 'error');
+        }
+    } catch (error) {
+        mostrarAlerta('Error de conexión', 'error');
+    }
+}
+
 function verificarSesion() {
     const raw = localStorage.getItem('usuarioActual');
     if (!raw) {

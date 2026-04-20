@@ -170,6 +170,33 @@
             color: #276749;
             border: 1px solid #9ae6b4;
         }
+        .forgot-password-btn {
+            background: transparent;
+            border: none;
+            color: #003366;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            transition: all 0.2s ease;
+        }
+        .forgot-password-btn:hover {
+            background: rgba(0, 51, 102, 0.08);
+            color: #002244;
+        }
+        body.login-page.dark .forgot-password-btn,
+        body.login-page.dark-mode .forgot-password-btn {
+            color: #38bdf8;
+        }
+        body.login-page.dark .forgot-password-btn:hover,
+        body.login-page.dark-mode .forgot-password-btn:hover {
+            background: rgba(56, 189, 248, 0.15);
+            color: #0ea5e9;
+        }
         .login-theme-btn {
             position: fixed;
             top: calc(12px + env(safe-area-inset-top));
@@ -287,6 +314,11 @@
                 <div class="input-group">
                     <i class="fas fa-lock"></i>
                     <input type="password" id="password" placeholder="Contraseña" required>
+                </div>
+                <div style="text-align: center; margin-top: 12px;">
+                    <button type="button" class="forgot-password-btn" onclick="mostrarReestablecerContrasena()">
+                        <i class="fas fa-key"></i> ¿Olvidaste tu contraseña?
+                    </button>
                 </div>
                 <div style="text-align: center; margin-top: 20px;">
                     <a href="index.html" class="btn-back-home">

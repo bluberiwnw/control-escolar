@@ -47,13 +47,9 @@ async function cargarAsistencias() {
             '<div class="empty-state">No hay asistencias para los filtros.</div>';
         return;
     }
-    let html =
-        '<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
-    asistencias.forEach((a) => {
-        html += `<tr><td data-label="Materia">${a.materia_nombre}</td><td data-label="Estudiante">${a.estudiante_nombre}</td><td data-label="Fecha">${formatearFecha(a.fecha)}</td><td data-label="Estado">${selectEstado(a)}</td><td data-label="Acciones"><button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button></td></tr>`;
-    });
-    html += '</tbody></table></div>';
-    document.getElementById('asistenciasContainer').innerHTML = html;
+    document.getElementById('asistenciasContainer').innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        ${asistencias.map(a => `<tr><td data-label="Materia">${a.materia_nombre}</td><td data-label="Estudiante">${a.estudiante_nombre}</td><td data-label="Fecha">${formatearFecha(a.fecha)}</td><td data-label="Estado">${selectEstado(a)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button></td></tr>`).join('')}
+        </tbody></table></div>`;
 }
 
 async function actualizarAsistencia(id, estado) {

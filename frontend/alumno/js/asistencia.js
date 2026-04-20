@@ -55,8 +55,7 @@ async function cargarHistorial() {
         el.innerHTML = '<div class="empty-state">No hay asistencias registradas.</div>';
         return;
     }
-    el.innerHTML = `<div class="table-responsive-wrap">
-        <table class="data-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
+    el.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
         ${historial.map(h => `<tr><td data-label="Fecha">${formatearFecha(h.fecha)}</td><td data-label="Materia">${h.materia_nombre}</td><td data-label="Estado">${h.estado}</td></tr>`).join('')}
         </tbody></table></div>`;
 }

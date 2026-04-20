@@ -20,7 +20,8 @@ async function cargarCalificaciones() {
         document.getElementById('calificacionesContainer').innerHTML = '<div class="empty-state">No hay calificaciones registradas.</div>';
         return;
     }
-    document.getElementById('calificacionesContainer').innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
+    const container = document.getElementById('calificacionesContainer');
+    container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
         ${calificaciones.map(c => `<tr><td data-label="Materia">${c.materia_nombre}</td><td data-label="Estudiante">${c.estudiante_nombre}</td><td data-label="Actividad">${c.actividad_titulo || c.tipo}</td><td data-label="Calificación">${c.calificacion}</td><td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button></td></tr>`).join('')}
         </tbody></table></div>`;
 }

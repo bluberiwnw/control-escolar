@@ -28,14 +28,26 @@ async function cargarProfesores() {
             container.innerHTML = '<div class="empty-state">No hay profesores registrados.</div>';
             return;
         }
-        container.innerHTML = `<table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Acciones</th></tr></thead><tbody>
+        container.innerHTML = `<table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${profesores
                 .map(
                     (p) => `<tr>
                 <td data-label="Nombre">${p.nombre}</td>
                 <td data-label="Email">${p.email}</td>
                 <td data-label="Rol">${p.rol}</td>
-                <td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarProfesor(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', '${p.email.replace(/'/g, "\\'")}')">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${p.id},'profesor')">Eliminar</button></td>
+                <td data-label="Contraseña">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="pass-${p.id}" style="font-family: monospace; font-size: 0.85rem;">${p.password || 'N/A'}</span>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePassword(${p.id})" style="padding: 4px 8px;">
+                            <i class="fas fa-eye" id="eye-${p.id}"></i>
+                        </button>
+                    </div>
+                </td>
+                <td data-label="Acciones" class="table-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarProfesor(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', '${p.email.replace(/'/g, "\\'")}')">Editar</button>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="cambiarContrasena(${p.id}, 'profesor')">Cambiar contraseña</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${p.id},'profesor')">Eliminar</button>
+                </td>
             </tr>`
                 )
                 .join('')}
@@ -53,14 +65,26 @@ async function cargarEstudiantes() {
             container.innerHTML = '<div class="empty-state">No hay estudiantes registrados.</div>';
             return;
         }
-        container.innerHTML = `<table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Email</th><th>Acciones</th></tr></thead><tbody>
+        container.innerHTML = `<table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Email</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${estudiantes
                 .map(
                     (e) => `<tr>
                 <td data-label="Matrícula">${e.matricula}</td>
                 <td data-label="Nombre">${e.nombre}</td>
                 <td data-label="Email">${e.email}</td>
-                <td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarEstudiante(${e.id}, '${e.matricula.replace(/'/g, "\\'")}', '${e.nombre.replace(/'/g, "\\'")}', '${e.email.replace(/'/g, "\\'")}')">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${e.id},'alumno')">Eliminar</button></td>
+                <td data-label="Contraseña">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="pass-${e.id}" style="font-family: monospace; font-size: 0.85rem;">${e.password || 'N/A'}</span>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePassword(${e.id})" style="padding: 4px 8px;">
+                            <i class="fas fa-eye" id="eye-${e.id}"></i>
+                        </button>
+                    </div>
+                </td>
+                <td data-label="Acciones" class="table-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarEstudiante(${e.id}, '${e.matricula.replace(/'/g, "\\'")}', '${e.nombre.replace(/'/g, "\\'")}', '${e.email.replace(/'/g, "\\'")}')">Editar</button>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="cambiarContrasena(${e.id}, 'alumno')">Cambiar contraseña</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${e.id},'alumno')">Eliminar</button>
+                </td>
             </tr>`
                 )
                 .join('')}
@@ -216,6 +240,48 @@ async function guardarEstudiante(ev) {
     cargarEstudiantes();
 }
 
+function togglePassword(userId) {
+    const passElement = document.getElementById(`pass-${userId}`);
+    const eyeElement = document.getElementById(`eye-${userId}`);
+    
+    if (passElement.style.display === 'none' || passElement.textContent === '******') {
+        // Mostrar contraseña
+        const usuarios = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
+        const usuario = usuarios.find(u => u.id === userId);
+        passElement.textContent = usuario ? usuario.password : 'N/A';
+        passElement.style.display = 'inline';
+        eyeElement.className = 'fas fa-eye-slash';
+    } else {
+        // Ocultar contraseña
+        passElement.textContent = '******';
+        eyeElement.className = 'fas fa-eye';
+    }
+}
+
+async function cambiarContrasena(userId, tipo) {
+    const nuevaContrasena = prompt('Ingresa la nueva contraseña (mínimo 6 caracteres):');
+    if (!nuevaContrasena) return;
+    
+    if (nuevaContrasena.length < 6) {
+        mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
+        return;
+    }
+    
+    try {
+        await apiRequest(`/admin/usuarios/${userId}/password`, {
+            method: 'PUT',
+            body: JSON.stringify({ password: nuevaContrasena }),
+        });
+        mostrarToast('Contraseña actualizada exitosamente', 'success');
+        
+        // Recargar la lista para mostrar la nueva contraseña
+        if (tipo === 'profesor') cargarProfesores();
+        else cargarEstudiantes();
+    } catch (error) {
+        mostrarToast('Error al actualizar contraseña', 'error');
+    }
+}
+
 window.abrirModalProfesor = abrirModalProfesor;
 window.cerrarModalProfesor = cerrarModalProfesor;
 window.guardarProfesor = guardarProfesor;
@@ -225,3 +291,5 @@ window.guardarEstudiante = guardarEstudiante;
 window.eliminarUsuario = eliminarUsuario;
 window.editarProfesor = editarProfesor;
 window.editarEstudiante = editarEstudiante;
+window.togglePassword = togglePassword;
+window.cambiarContrasena = cambiarContrasena;
