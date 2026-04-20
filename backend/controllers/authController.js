@@ -134,13 +134,17 @@ const authController = {
         }
     },
 
-    async reestablecer(req, res) {
+    async register(req, res) {
         try {
-            const { email } = req.body;
-            console.log('🔐 Solicitud de reestablecer contraseña para:', email);
+            const { nombre, email, password, rol } = req.body;
+            console.log(' Registro de nuevo usuario:', email);
 
-            if (!email) {
-                return res.status(400).json({ message: 'Email es requerido' });
+            if (!nombre || !email || !password || !rol) {
+                return res.status(400).json({ message: 'Todos los campos son requeridos' });
+            }
+
+            if (!['profesor', 'alumno'].includes(rol)) {
+                return res.status(400).json({ message: 'Rol inválido' });
             }
 
             // Buscar en usuarios
@@ -183,8 +187,8 @@ const authController = {
                 [hashedTempPassword, usuario.id]
             );
 
-            console.log('✅ Contraseña temporal generada para:', email);
-            console.log('🔑 Contraseña temporal:', tempPassword);
+            console.log(' Contraseña temporal generada para:', email);
+            console.log(' Contraseña temporal:', tempPassword);
 
             // En producción, aquí se enviaría email
             res.json({ 
@@ -197,7 +201,7 @@ const authController = {
             });
 
         } catch (error) {
-            console.error('🔥 Error en reestablecer contraseña:', error);
+            console.error(' Error en reestablecer contraseña:', error);
             res.status(500).json({ message: 'Error en el servidor', error: error.message });
         }
     }
