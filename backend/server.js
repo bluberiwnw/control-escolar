@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Las rutas de API aplican su propia autenticación en cada archivo de ruta
-app.post('/auth/register', handleRegister);
+app.post('/auth/register', authController.register);
 app.post('/auth/reestablecer', handleReestablecer);
 app.use('/auth', require('./routes/auth'));
 app.use('/profesores', require('./routes/profesores'));
