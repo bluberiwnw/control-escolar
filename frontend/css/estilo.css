@@ -1177,24 +1177,32 @@ body.dark-mode .upload-area {
     /* Estilos de celdas en móviles */
     .data-table td {
         border: none !important;
-        padding: 12px 0 8px 0 !important;
-        font-size: 0.9rem !important;
+        padding: 16px 0 10px 0 !important;
+        font-size: 0.95rem !important;
         position: relative !important;
         padding-left: 0 !important;
         padding-right: 0 !important;
-        line-height: 1.4 !important;
+        line-height: 1.6 !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        min-height: 20px !important;
+        display: block !important;
+        width: 100% !important;
     }
     
     /* Etiquetas para celdas */
     .data-table td::before {
         content: attr(data-label) !important;
         display: block !important;
-        font-size: 0.75rem !important;
+        font-size: 0.8rem !important;
         font-weight: 700 !important;
         color: var(--primary) !important;
-        margin-bottom: 6px !important;
+        margin-bottom: 8px !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
+        line-height: 1.3 !important;
+        padding-bottom: 4px !important;
+        border-bottom: 1px solid rgba(var(--primary-rgb), 0.1) !important;
     }
     
     /* Contenedores específicos */
@@ -1258,35 +1266,45 @@ body.dark-mode .upload-area {
     #historialAsistencias,
     #asistenciasContainer,
     #calificacionesContainer {
-        margin: 0 -12px;
-        padding: 0 12px;
+        margin: 0 -12px !important;
+        padding: 0 12px !important;
     }
     
     #historialAsistencias .data-table tr,
     #asistenciasContainer .data-table tr,
     #calificacionesContainer .data-table tr {
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 20px !important;
+        margin-bottom: 16px !important;
     }
     
     #historialAsistencias .data-table td,
     #asistenciasContainer .data-table td,
     #calificacionesContainer .data-table td {
-        padding: 10px 0;
-        font-size: 0.85rem;
-        line-height: 1.4;
+        padding: 18px 0 12px 0 !important;
+        font-size: 0.9rem !important;
+        line-height: 1.5 !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        min-height: 24px !important;
     }
     
     #historialAsistencias .data-table td::before,
     #asistenciasContainer .data-table td::before,
     #calificacionesContainer .data-table td::before {
-        font-size: 0.75rem;
-        margin-bottom: 4px;
+        font-size: 0.75rem !important;
+        margin-bottom: 8px !important;
+        line-height: 1.3 !important;
+        padding-bottom: 6px !important;
     }
     
     .table-actions .btn-sm {
-        padding: 8px 10px;
-        font-size: 0.8rem;
+        padding: 12px 14px !important;
+        font-size: 0.85rem !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .table-actions .btn-sm:last-child {
+        margin-bottom: 0 !important;
     }
 }
 
