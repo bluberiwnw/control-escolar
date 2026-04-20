@@ -259,8 +259,135 @@ function togglePassword(userId) {
 }
 
 async function cambiarContrasena(userId, tipo) {
-    const nuevaContrasena = prompt('Ingresa la nueva contraseña (mínimo 6 caracteres):');
-    if (!nuevaContrasena) return;
+    // Crear modal para cambiar contraseña
+    const modal = document.createElement('div');
+    modal.id = 'modalCambiarContrasena';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        backdrop-filter: blur(4px);
+    `;
+    
+    modal.innerHTML = `
+        <div style="
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            max-width: 480px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease;
+        ">
+            <div style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 24px 24px 16px;
+                border-bottom: 1px solid #e2e8f0;
+            ">
+                <h3 style="
+                    margin: 0;
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    color: #1a202c;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                "><i class="fas fa-key"></i> Cambiar Contraseña</h3>
+                <button type="button" onclick="cerrarModalCambiarContrasena()" style="
+                    background: transparent;
+                    border: none;
+                    font-size: 1.25rem;
+                    color: #718096;
+                    cursor: pointer;
+                    padding: 8px;
+                    border-radius: 8px;
+                "><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 16px 24px 24px;">
+                <form onsubmit="handleCambiarContrasena(event, ${userId}, '${tipo}')">
+                    <div style="margin-bottom: 18px;">
+                        <label style="
+                            display: block;
+                            font-size: 0.85rem;
+                            font-weight: 600;
+                            color: #4a5568;
+                            margin-bottom: 8px;
+                        ">Nueva Contraseña</label>
+                        <input type="password" id="nuevaContrasenaInput" required style="
+                            width: 100%;
+                            padding: 12px 16px;
+                            font-size: 1rem;
+                            border-radius: 12px;
+                            border: 1px solid #e2e8f0;
+                            background: #f7fafc;
+                            color: #1a202c;
+                        " placeholder="Mínimo 6 caracteres">
+                    </div>
+                    <div style="
+                        display: flex;
+                        flex-wrap: wrap;
+                        justify-content: flex-end;
+                        gap: 12px;
+                        margin-top: 24px;
+                        padding-top: 16px;
+                        border-top: 1px solid #e2e8f0;
+                    ">
+                        <button type="button" onclick="cerrarModalCambiarContrasena()" style="
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            border: 1px solid #e2e8f0;
+                            background: #f7fafc;
+                            color: #4a5568;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">Cancelar</button>
+                        <button type="submit" style="
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            border: none;
+                            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                            color: white;
+                            font-weight: 600;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                        "><i class="fas fa-save"></i> Actualizar Contraseña</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.getElementById('nuevaContrasenaInput').focus();
+}
+
+function cerrarModalCambiarContrasena() {
+    const modal = document.getElementById('modalCambiarContrasena');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function handleCambiarContrasena(event, userId, tipo) {
+    event.preventDefault();
+    const nuevaContrasena = document.getElementById('nuevaContrasenaInput').value.trim();
+    
+    if (!nuevaContrasena) {
+        mostrarToast('Por favor ingresa la nueva contraseña', 'error');
+        return;
+    }
     
     if (nuevaContrasena.length < 6) {
         mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
@@ -273,6 +400,7 @@ async function cambiarContrasena(userId, tipo) {
             body: JSON.stringify({ password: nuevaContrasena }),
         });
         mostrarToast('Contraseña actualizada exitosamente', 'success');
+        cerrarModalCambiarContrasena();
         
         // Recargar la lista para mostrar la nueva contraseña
         if (tipo === 'profesor') cargarProfesores();
@@ -293,3 +421,5 @@ window.editarProfesor = editarProfesor;
 window.editarEstudiante = editarEstudiante;
 window.togglePassword = togglePassword;
 window.cambiarContrasena = cambiarContrasena;
+window.cerrarModalCambiarContrasena = cerrarModalCambiarContrasena;
+window.handleCambiarContrasena = handleCambiarContrasena;

@@ -1157,6 +1157,16 @@ body.dark-mode .upload-area {
         width: 100% !important;
     }
     
+    /* Forzar estilos para todos los contenedores de tablas */
+    .table-responsive-wrap .data-table,
+    .table-responsive-wrap .data-table tbody,
+    .table-responsive-wrap .data-table tr,
+    .table-responsive-wrap .data-table td {
+        display: block !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+    
     /* Estilos de cards para todas las tablas */
     .data-table tr {
         margin-bottom: 16px !important;

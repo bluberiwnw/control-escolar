@@ -76,8 +76,42 @@ async function handleReestablecer(event) {
         
         const data = await response.json();
         if (response.ok) {
-            mostrarAlerta('Se ha enviado un correo con instrucciones para reestablecer tu contraseña', 'success');
-            cerrarModalReestablecer();
+            let mensaje = 'Se ha enviado un correo con instrucciones para reestablecer tu contraseña';
+            
+            // Mostrar contraseña temporal si está disponible (modo desarrollo)
+            if (data.debug && data.debug.tempPassword) {
+                mensaje = `Tu contraseña temporal es: ${data.debug.tempPassword}`;
+                
+                // Crear un elemento más visible para la contraseña temporal
+                const tempPassDiv = document.createElement('div');
+                tempPassDiv.style.cssText = `
+                    background: #f0f9ff;
+                    border: 2px solid #0ea5e9;
+                    color: #0369a1;
+                    padding: 16px;
+                    border-radius: 12px;
+                    margin: 16px 0;
+                    font-weight: 600;
+                    text-align: center;
+                    font-size: 1.1rem;
+                `;
+                tempPassDiv.innerHTML = `
+                    <div style="margin-bottom: 8px; font-size: 0.9rem; color: #64748b;">Contraseña Temporal:</div>
+                    <div style="font-family: monospace; font-size: 1.3rem; letter-spacing: 2px;">${data.debug.tempPassword}</div>
+                    <div style="margin-top: 12px; font-size: 0.85rem; color: #64748b;">
+                        <strong>Importante:</strong> Usa esta contraseña para iniciar sesión y luego cámbiala por una segura.
+                    </div>
+                `;
+                
+                // Insertar después del formulario
+                const form = document.querySelector('#modalReestablecer form');
+                form.parentNode.insertBefore(tempPassDiv, form.nextSibling);
+            }
+            
+            mostrarAlerta(mensaje, 'success');
+            if (!data.debug) {
+                cerrarModalReestablecer();
+            }
         } else {
             mostrarAlerta(data.message || 'No se pudo procesar la solicitud', 'error');
         }
