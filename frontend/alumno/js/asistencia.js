@@ -55,17 +55,10 @@ async function cargarHistorial() {
         el.innerHTML = '<div class="empty-state">No hay asistencias registradas.</div>';
         return;
     }
-    el.innerHTML = historial.map(h => {
-        const estadoClass = h.estado.toLowerCase() === 'presente' ? 'presente' : 
-                           h.estado.toLowerCase() === 'ausente' ? 'ausente' : 'retardo';
-        return `<div class="asistencia-item">
-            <div class="asistencia-info">
-                <div class="asistencia-materia">${h.materia_nombre}</div>
-                <div class="asistencia-fecha">${formatearFecha(h.fecha)}</div>
-                <div class="asistencia-estado ${estadoClass}">${h.estado}</div>
-            </div>
-        </div>`;
-    }).join('');
+    el.innerHTML = `<div class="table-responsive-wrap">
+        <table class="data-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
+        ${historial.map(h => `<tr><td data-label="Fecha">${formatearFecha(h.fecha)}</td><td data-label="Materia">${h.materia_nombre}</td><td data-label="Estado">${h.estado}</td></tr>`).join('')}
+        </tbody></table></div>`;
 }
 
 async function cargarMateriasEnSelects() {

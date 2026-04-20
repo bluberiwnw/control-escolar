@@ -20,22 +20,9 @@ async function cargarCalificaciones() {
         document.getElementById('calificacionesContainer').innerHTML = '<div class="empty-state">No hay calificaciones registradas.</div>';
         return;
     }
-    const html = calificaciones.map(c => `
-        <div class="calificacion-item">
-            <div class="calificacion-info">
-                <div class="calificacion-materia">${c.materia_nombre}</div>
-                <div class="calificacion-estudiante">${c.estudiante_nombre}</div>
-                <div class="calificacion-actividad">${c.actividad_titulo || c.tipo}</div>
-                <div class="calificacion-valor">${c.calificacion}</div>
-                <div class="calificacion-fecha">${formatearFecha(c.fecha_registro)}</div>
-                <div class="calificacion-acciones">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-    document.getElementById('calificacionesContainer').innerHTML = html;
+    document.getElementById('calificacionesContainer').innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
+        ${calificaciones.map(c => `<tr><td data-label="Materia">${c.materia_nombre}</td><td data-label="Estudiante">${c.estudiante_nombre}</td><td data-label="Actividad">${c.actividad_titulo || c.tipo}</td><td data-label="Calificación">${c.calificacion}</td><td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button></td></tr>`).join('')}
+        </tbody></table></div>`;
 }
 
 async function editarCalificacion(id, actual) {
@@ -68,22 +55,13 @@ async function cargarArchivosCalificaciones() {
         container.innerHTML = '<div class="empty-state">No hay archivos registrados.</div>';
         return;
     }
-    const html = archivos.map(a => `
-        <div class="calificacion-archivo-item">
-            <div class="calificacion-archivo-info">
-                <div class="calificacion-archivo-nombre">${a.nombre_archivo}</div>
-                <div class="calificacion-archivo-profesor">${a.profesor_nombre}</div>
-                <div class="calificacion-archivo-materia">${a.materia_nombre}</div>
-                <div class="calificacion-archivo-tipo">${a.tipo}</div>
-                <div class="calificacion-archivo-estado">${a.estado || 'Procesado'}</div>
-                <div class="calificacion-archivo-acciones">
-                    <button type="button" class="btn btn-secondary btn-sm" data-auth-download="/admin/calificaciones/archivos/${a.id}/descarga">Descargar archivo</button>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivoCalificacionAdmin(${a.id})">Eliminar</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-    container.innerHTML = html;
+    container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Archivo</th><th>Profesor</th><th>Materia</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        ${archivos
+            .map(
+                (a) => `<tr><td data-label="Archivo">${a.nombre_archivo}</td><td data-label="Profesor">${a.profesor_nombre}</td><td data-label="Materia">${a.materia_nombre}</td><td data-label="Tipo">${a.tipo}</td><td data-label="Estado">${a.estado || 'Procesado'}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" data-auth-download="/admin/calificaciones/archivos/${a.id}/descarga">Descargar archivo</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarArchivoCalificacionAdmin(${a.id})">Eliminar</button></td></tr>`
+            )
+            .join('')}
+        </tbody></table></div>`;
 }
 
 async function eliminarArchivoCalificacionAdmin(id) {
