@@ -1157,18 +1157,31 @@ body.dark-mode .upload-area {
         padding: 12px;
         border: 1px solid var(--border);
         border-radius: 12px;
+        background: var(--bg-card);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.2s ease;
+    }
+    .data-table tr:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
     }
     .data-table td {
         border: none;
-        padding: 8px 0;
+        padding: 12px 0;
+        font-size: 0.9rem;
+        position: relative;
+        padding-left: 0;
+        padding-right: 0;
     }
     .data-table td::before {
         content: attr(data-label);
         display: block;
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         font-weight: 700;
-        color: var(--text-secondary);
-        margin-bottom: 4px;
+        color: var(--primary);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     .theme-toggle {
         width: 44px;
@@ -1191,37 +1204,7 @@ body.dark-mode .upload-area {
     #calificacionesContainer .table-responsive-wrap {
         border-radius: 12px;
         margin-bottom: 16px;
-    }
-    
-    #historialAsistencias .data-table tr,
-    #asistenciasContainer .data-table tr,
-    #calificacionesContainer .data-table tr {
-        background: var(--bg-card);
-        box-shadow: var(--shadow-sm);
-        margin-bottom: 16px;
-        transition: transform 0.2s ease;
-    }
-    
-    #historialAsistencias .data-table tr:hover,
-    #asistenciasContainer .data-table tr:hover,
-    #calificacionesContainer .data-table tr:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-    }
-    
-    #historialAsistencias .data-table td,
-    #asistenciasContainer .data-table td,
-    #calificacionesContainer .data-table td {
-        padding: 12px 0;
-        font-size: 0.9rem;
-    }
-    
-    #historialAsistencias .data-table td::before,
-    #asistenciasContainer .data-table td::before,
-    #calificacionesContainer .data-table td::before {
-        font-size: 0.8rem;
-        color: var(--primary);
-        margin-bottom: 6px;
+        overflow: hidden;
     }
     
     /* Botones en tablas responsivas */
@@ -1229,17 +1212,28 @@ body.dark-mode .upload-area {
         margin-top: 12px;
         padding-top: 12px;
         border-top: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
     
     .table-actions .btn-sm {
         width: 100%;
-        margin-bottom: 8px;
         padding: 10px 12px;
         font-size: 0.85rem;
+        margin: 0;
     }
     
-    .table-actions .btn-sm:last-child {
-        margin-bottom: 0;
+    /* Selects en tablas responsivas */
+    .data-table td select {
+        width: 100%;
+        margin-top: 4px;
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-size: 0.9rem;
     }
 }
 
