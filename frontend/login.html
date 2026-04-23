@@ -364,6 +364,64 @@
                 }
             }
         }
+        
+        /* Optimización para iPhone y dispositivos con notch */
+        @supports (padding: max(0px)) {
+            .login-theme-btn {
+                top: max(12px, env(safe-area-inset-top));
+                right: max(12px, env(safe-area-inset-right));
+            }
+        }
+        
+        /* Optimización para iPad y tablets pequeñas */
+        @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+            .login-theme-btn {
+                width: 44px;
+                height: 44px;
+                top: calc(16px + env(safe-area-inset-top));
+                right: calc(16px + env(safe-area-inset-right));
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+            .login-theme-btn {
+                width: 40px;
+                height: 40px;
+                top: calc(8px + env(safe-area-inset-top));
+                right: calc(8px + env(safe-area-inset-right));
+            }
+        }
+        
+        /* Optimización para Android con barra de navegación */
+        @media screen and (-webkit-device-pixel-ratio: 0) and (min-resolution: .001dpcm) {
+            .login-theme-btn {
+                bottom: auto;
+                top: calc(16px + env(safe-area-inset-top));
+            }
+        }
+        
+        /* Optimización para dispositivos muy pequeños (relojes, etc.) */
+        @media (max-width: 240px) {
+            .login-theme-btn {
+                width: 24px;
+                height: 24px;
+                font-size: 0.7rem;
+                border-width: 1px;
+                top: calc(2px + env(safe-area-inset-top));
+                right: calc(2px + env(safe-area-inset-right));
+            }
+        }
+        
+        /* Optimización para alto dinámico (teclado virtual) */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .login-theme-btn {
+                width: 32px;
+                height: 32px;
+                top: calc(4px + env(safe-area-inset-top));
+                right: calc(4px + env(safe-area-inset-right));
+            }
+        }
+        
         /* Estilos para modal de reestablecer contraseña */
         .modal {
             position: fixed;

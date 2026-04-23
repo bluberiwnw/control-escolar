@@ -75,14 +75,14 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden
+        // Lista de endpoints a intentar en orden (priorizando los que no usan columna 'anio')
         const endpoints = [
-            '/admin/usuarios?rol=alumno',
-            '/admin/estudiantes',
-            '/usuarios?rol=alumno',
-            '/estudiantes',
-            '/admin/alumnos',
-            '/alumnos'
+            '/admin/estudiantes', // Endpoint específico para estudiantes
+            '/estudiantes',       // Endpoint general de estudiantes
+            '/admin/alumnos',     // Endpoint alternativo
+            '/alumnos',           // Endpoint general de alumnos
+            '/admin/usuarios?rol=alumno', // Puede tener error de columna 'anio'
+            '/usuarios?rol=alumno'        // Puede tener error de columna 'anio'
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
@@ -102,7 +102,15 @@ async function cargarEstudiantes() {
             } catch (error) {
                 console.log(`❌ Error en endpoint ${endpoint}:`, error.message);
                 console.log('Error completo:', error);
-                endpointsIntentados.push(`${endpoint} (error: ${error.message})`);
+                
+                // Verificar si es el error específico de columna 'anio'
+                const esErrorAnio = error.message && error.message.includes('column "anio" does not exist');
+                if (esErrorAnio) {
+                    console.log('⚠️ Error de columna "anio" detectado, continuando con siguiente endpoint...');
+                    endpointsIntentados.push(`${endpoint} (error: columna "anio" no existe)`);
+                } else {
+                    endpointsIntentados.push(`${endpoint} (error: ${error.message})`);
+                }
                 
                 // Si es el último endpoint, mostrar error
                 if (i === endpoints.length - 1) {
