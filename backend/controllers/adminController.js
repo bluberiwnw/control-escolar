@@ -174,7 +174,16 @@ const adminController = {
     async crearEstudiante(req, res) {
         try {
             const { matricula, nombre, anio, email, password } = req.body;
-            if (!validarMatricula(matricula)) {
+            
+            // Generar matrícula automáticamente si no se proporciona
+            let matriculaFinal = matricula;
+            if (!matricula) {
+                const year = new Date().getFullYear();
+                const randomNum = Math.floor(Math.random() * 9000) + 1000;
+                matriculaFinal = `${year}-${randomNum}`;
+            }
+            
+            if (matricula && !validarMatricula(matricula)) {
                 return res.status(400).json({ message: 'La matrícula debe contener entre 4 y 20 caracteres válidos.' });
             }
             if (!validarNombre(nombre)) {
@@ -193,7 +202,7 @@ const adminController = {
             const hashedPassword = bcrypt.hashSync(password, 10);
             const result = await pool.query(
                 'INSERT INTO estudiantes (matricula, nombre, anio, email, password, activo) VALUES ($1, $2, $3, $4, $5, true) RETURNING id',
-                [matricula, nombre, anio, email, hashedPassword]
+                [matriculaFinal, nombre, anio, email, hashedPassword]
             );
             res.status(201).json({ id: result.rows[0].id, message: 'Estudiante creado' });
         } catch (error) {

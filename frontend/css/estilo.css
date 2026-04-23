@@ -1862,7 +1862,7 @@ body.dark-mode .materia-resumen {
     border-color: #f59e0b;
 }
 
-/* Responsividad Admin Calificaciones */
+/* Responsividad Admin Asistencia */
 @media (max-width: 768px) {
     .panel-section.panel-card {
         padding: 1rem !important;
@@ -1969,6 +1969,104 @@ body.dark-mode .materia-resumen {
     .table-actions .btn {
         font-size: 0.7rem !important;
         padding: 0.2rem 0.4rem !important;
+    }
+}
+
+/* Mejoras adicionales para admin calificaciones */
+@media (max-width: 768px) {
+    .panel-section.panel-card {
+        border-radius: 0.5rem !important;
+        margin: 0.5rem !important;
+    }
+    
+    .panel-section__head {
+        padding: 0.75rem 1rem !important;
+        border-bottom: 1px solid var(--border) !important;
+    }
+    
+    .panel-section__body {
+        padding: 1rem !important;
+    }
+    
+    .form-group-modern {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .form-group-modern label {
+        font-size: 0.9rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    
+    .form-group-modern input,
+    .form-group-modern select {
+        font-size: 0.9rem !important;
+        padding: 0.5rem !important;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.9rem !important;
+        border-radius: 0.375rem !important;
+    }
+    
+    .btn-primary {
+        background: var(--primary) !important;
+        border: 1px solid var(--primary) !important;
+    }
+    
+    .upload-area {
+        border: 2px dashed var(--border) !important;
+        border-radius: 0.5rem !important;
+        padding: 2rem 1rem !important;
+        text-align: center !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .upload-area p {
+        font-size: 0.9rem !important;
+        margin: 0.5rem 0 !important;
+    }
+    
+    .file-list {
+        max-height: 200px !important;
+        overflow-y: auto !important;
+    }
+    
+    .file-item {
+        padding: 0.75rem !important;
+        border-bottom: 1px solid var(--border) !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+    
+    .file-info {
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+    
+    .file-name {
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    .file-size {
+        font-size: 0.75rem !important;
+        color: var(--text-secondary) !important;
+    }
+    
+    .file-actions {
+        display: flex !important;
+        gap: 0.25rem !important;
+    }
+    
+    .file-actions .btn {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.75rem !important;
+        min-width: auto !important;
     }
 }
 

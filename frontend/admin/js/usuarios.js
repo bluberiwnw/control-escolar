@@ -239,15 +239,10 @@ function cerrarModalEstudiante() {
 
 async function guardarEstudiante(ev) {
     ev.preventDefault();
-    const matricula = document.getElementById('estMatricula').value.trim();
     const nombre = document.getElementById('estNombre').value.trim();
     const anio = document.getElementById('estAnio').value;
     const email = document.getElementById('estEmail').value.trim();
     const password = document.getElementById('estPass').value;
-    if (!esMatriculaValida(matricula)) {
-        mostrarToast('La matrícula debe contener entre 4 y 20 caracteres válidos', 'error');
-        return;
-    }
     if (!esNombreValido(nombre)) {
         mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
         return;
@@ -267,7 +262,6 @@ async function guardarEstudiante(ev) {
     await apiRequest('/admin/estudiantes', {
         method: 'POST',
         body: JSON.stringify({
-            matricula,
             nombre,
             anio: parseInt(anio),
             email,
