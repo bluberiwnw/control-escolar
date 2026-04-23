@@ -56,7 +56,7 @@ async function generarQR() {
     const materiaId = document.getElementById('materiaSelect').value;
     const fecha = document.getElementById('fechaAsistencia').value;
     if (!materiaId || !fecha) {
-        mostrarToast('⚠️ Selecciona materia y fecha antes de generar QR', 'error');
+        mostrarToast('Selecciona materia y fecha antes de generar QR', 'error');
         return;
     }
 
@@ -72,47 +72,47 @@ async function generarQR() {
         // Clase de 7-9am
         horaSugeridaInicio = "07:00";
         horaSugeridaFin = "09:00";
-        mensajeEjemplo = "📚 Ejemplo: Clase matutina (7:00 - 9:00)";
+        mensajeEjemplo = "Ejemplo: Clase matutina (7:00 - 9:00)";
     } else if (horaActualNum >= 9 * 60 && horaActualNum < 11 * 60) {
         // Clase de 9-11am
         horaSugeridaInicio = "09:00";
         horaSugeridaFin = "11:00";
-        mensajeEjemplo = "📚 Ejemplo: Clase de la mañana (9:00 - 11:00)";
+        mensajeEjemplo = "Ejemplo: Clase de la mañana (9:00 - 11:00)";
     } else if (horaActualNum >= 11 * 60 && horaActualNum < 13 * 60) {
         // Clase de 11am-1pm
         horaSugeridaInicio = "11:00";
         horaSugeridaFin = "13:00";
-        mensajeEjemplo = "📚 Ejemplo: Clase de mediodía (11:00 - 13:00)";
+        mensajeEjemplo = "Ejemplo: Clase de mediodía (11:00 - 13:00)";
     } else if (horaActualNum >= 13 * 60 && horaActualNum < 15 * 60) {
         // Clase de 1-3pm
         horaSugeridaInicio = "13:00";
         horaSugeridaFin = "15:00";
-        mensajeEjemplo = "📚 Ejemplo: Clase de la tarde (13:00 - 15:00)";
+        mensajeEjemplo = "Ejemplo: Clase de la tarde (13:00 - 15:00)";
     } else if (horaActualNum >= 15 * 60 && horaActualNum < 17 * 60) {
         // Clase de 3-5pm
         horaSugeridaInicio = "15:00";
         horaSugeridaFin = "17:00";
-        mensajeEjemplo = "📚 Ejemplo: Clase vespertina (15:00 - 17:00)";
+        mensajeEjemplo = "Ejemplo: Clase vespertina (15:00 - 17:00)";
     } else if (horaActualNum >= 17 * 60 && horaActualNum < 19 * 60) {
         // Clase de 5-7pm
         horaSugeridaInicio = "17:00";
         horaSugeridaFin = "19:00";
-        mensajeEjemplo = "📚 Ejemplo: Clase de la tarde-noche (17:00 - 19:00)";
+        mensajeEjemplo = "Ejemplo: Clase de la tarde-noche (17:00 - 19:00)";
     } else if (horaActualNum >= 19 * 60 && horaActualNum < 21 * 60) {
         // Clase de 7-9pm
         horaSugeridaInicio = "19:00";
         horaSugeridaFin = "21:00";
-        mensajeEjemplo = "📚 Ejemplo: Última clase del día (19:00 - 21:00)";
+        mensajeEjemplo = "Ejemplo: Última clase del día (19:00 - 21:00)";
     } else {
         // Fuera de horario, sugerir próxima clase
         horaSugeridaInicio = "07:00";
         horaSugeridaFin = "09:00";
-        mensajeEjemplo = "📚 Ejemplo: Primera clase del día (7:00 - 9:00)";
+        mensajeEjemplo = "Ejemplo: Primera clase del día (7:00 - 9:00)";
     }
 
     // Mostrar diálogo con ejemplos
     const hora_inicio = window.prompt(
-        `⏰ HORA DE INICIO\n\n${mensajeEjemplo}\n\nFormato: HH:MM (24 horas)\nHorario escolar: 07:00 - 21:00\n\nEjemplos válidos:\n• 07:00 (7 AM)\n• 14:30 (2:30 PM)\n• 19:00 (7 PM)\n\nIngresa la hora de inicio:`, 
+        `HORA DE INICIO\n\n${mensajeEjemplo}\n\nFormato: HH:MM (24 horas)\nHorario escolar: 07:00 - 21:00\n\nEjemplos válidos:\n• 07:00 (7 AM)\n• 14:30 (2:30 PM)\n• 19:00 (7 PM)\n\nIngresa la hora de inicio:`, 
         horaSugeridaInicio
     );
     
@@ -120,31 +120,31 @@ async function generarQR() {
     
     // Validar formato de hora
     if (!/^\d{2}:\d{2}$/.test(hora_inicio)) {
-        mostrarToast('❌ Formato inválido. Usa HH:MM (ej: 08:00, 14:30)', 'error');
+        mostrarToast('Formato inválido. Usa HH:MM (ej: 08:00, 14:30)', 'error');
         return;
     }
     
     const [hi, mi] = hora_inicio.split(':').map(Number);
     if (hi < 7 || hi > 21 || mi < 0 || mi > 59) {
-        mostrarToast('❌ Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
+        mostrarToast('Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
         return;
     }
     
     const hora_fin = window.prompt(
-        `⏰ HORA DE FIN\n\nInicio: ${hora_inicio}\n${mensajeEjemplo}\n\nFormato: HH:MM (24 horas)\nMáximo 4 horas de diferencia\n\nEjemplos según inicio:\n• Si inicia 07:00 → fin 11:00\n• Si inicia 14:30 → fin 18:30\n• Si inicia 19:00 → fin 21:00\n\nIngresa la hora de fin:`, 
+        `HORA DE FIN\n\nInicio: ${hora_inicio}\n${mensajeEjemplo}\n\nFormato: HH:MM (24 horas)\nMáximo 4 horas de diferencia\n\nEjemplos según inicio:\n• Si inicia 07:00 → fin 11:00\n• Si inicia 14:30 → fin 18:30\n• Si inicia 19:00 → fin 21:00\n\nIngresa la hora de fin:`, 
         horaSugeridaFin
     );
     
     if (!hora_fin) return;
     
     if (!/^\d{2}:\d{2}$/.test(hora_fin)) {
-        mostrarToast('❌ Formato inválido. Usa HH:MM (ej: 10:00, 16:30)', 'error');
+        mostrarToast('Formato inválido. Usa HH:MM (ej: 10:00, 16:30)', 'error');
         return;
     }
     
     const [hf, mf] = hora_fin.split(':').map(Number);
     if (hf < 7 || hf > 21 || mf < 0 || mf > 59) {
-        mostrarToast('❌ Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
+        mostrarToast('Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
         return;
     }
     
@@ -153,36 +153,35 @@ async function generarQR() {
     const minutosFin = hf * 60 + mf;
     
     if (minutosInicio >= minutosFin) {
-        mostrarToast('❌ La hora final debe ser posterior a la hora inicial', 'error');
+        mostrarToast('La hora final debe ser posterior a la hora inicial', 'error');
         return;
     }
     
     if (minutosFin - minutosInicio > 240) { // Máximo 4 horas
-        mostrarToast('❌ El rango no debe exceder 4 horas. Máximo permitido: 240 minutos', 'error');
+        mostrarToast('El rango no debe exceder 4 horas. Máximo permitido: 240 minutos', 'error');
         return;
     }
 
     // Confirmación con detalles
     const materiaNombre = document.getElementById('materiaSelect').options[document.getElementById('materiaSelect').selectedIndex].text;
     const confirmacion = confirm(
-        `🔍 CONFIRMA LOS DATOS\n\n` +
-        `📚 Materia: ${materiaNombre}\n` +
-        `📅 Fecha: ${fecha}\n` +
-        `⏰ Horario: ${hora_inicio} - ${hora_fin}\n` +
-        `⏱️ Duración: ${Math.floor((minutosFin - minutosInicio) / 60)}h ${((minutosFin - minutosInicio) % 60)}min\n\n` +
-        `📋 Los alumnos podrán escanear:\n` +
+        `CONFIRMA LOS DATOS\n\n` +
+        `Materia: ${materiaNombre}\n` +
+        `Fecha: ${fecha}\n` +
+        `Horario: ${hora_inicio} - ${hora_fin}\n` +
+        `Duración: ${Math.floor((minutosFin - minutosInicio) / 60)}h ${((minutosFin - minutosInicio) % 60)}min\n\n` +
+        `Los alumnos podrán escanear:\n` +
         `• Desde las ${hora_inicio}\n` +
         `• Hasta las ${hora_fin}\n` +
-        `• Con 5 min de tolerancia antes y después\n\n` +
         `¿Generar código QR con estos datos?`
     );
     
     if (!confirmacion) return;
 
     try {
-        mostrarToast('⏳ Generando código QR único y seguro...', 'info');
+        mostrarToast('Generando código QR...', 'info');
         
-        const response = await fetch(`${API_BASE_URL}/qr/generar`, {
+        const response = await fetch('/qr/generar', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -273,7 +272,7 @@ async function generarQR() {
         
     } catch (error) {
         console.error('Error generando QR:', error);
-        mostrarToast('❌ Error al generar QR: ' + (error.message || 'Verifica tu conexión'), 'error');
+        mostrarToast('Error al generar QR: ' + (error.message || 'Verifica tu conexión'), 'error');
     }
 }
 

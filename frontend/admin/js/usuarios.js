@@ -68,7 +68,9 @@ async function cargarProfesores() {
 
 async function cargarEstudiantes() {
     try {
+        console.log('Cargando estudiantes...');
         const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
+        console.log('Estudiantes cargados:', estudiantes.length);
         
         // Cache de usuarios para togglePassword
         const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
@@ -79,6 +81,11 @@ async function cargarEstudiantes() {
         localStorage.setItem('usuariosCache', JSON.stringify(usuariosActualizados));
         
         const container = document.getElementById('listaEstudiantes');
+        if (!container) {
+            console.error('Contenedor listaEstudiantes no encontrado');
+            return;
+        }
+        
         if (estudiantes.length === 0) {
             container.innerHTML = '<div class="empty-state">No hay estudiantes registrados.</div>';
             return;
@@ -110,8 +117,13 @@ async function cargarEstudiantes() {
                 )
                 .join('')}
         </tbody></table></div>`;
-    } catch (e) {
-        document.getElementById('listaEstudiantes').innerHTML = '<p class="alert alert-error">Error al cargar estudiantes.</p>';
+    } catch (error) {
+        console.error('Error al cargar estudiantes:', error);
+        const container = document.getElementById('listaEstudiantes');
+        if (container) {
+            container.innerHTML = '<p class="alert alert-error">No se pudieron cargar los estudiantes. Intenta recargar la página.</p>';
+        }
+        mostrarToast('Error al cargar estudiantes. Verifica tu conexión e intenta de nuevo.', 'error');
     }
 }
 

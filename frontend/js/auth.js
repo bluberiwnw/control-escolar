@@ -62,10 +62,18 @@ async function handleReestablecer(event) {
         return;
     }
     
-    if (!email.includes('@')) {
+    // Validación más robusta de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
         mostrarAlerta('Por favor ingresa un correo electrónico válido', 'error');
         return;
     }
+    
+    // Deshabilitar botón para evitar múltiples envíos
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
     
     try {
         const response = await fetch(`${window.API_URL}/auth/reestablecer`, {
@@ -75,48 +83,72 @@ async function handleReestablecer(event) {
         });
         
         const data = await response.json();
+        
         if (response.ok) {
-            let mensaje = 'Se ha enviado un correo con instrucciones para reestablecer tu contraseña';
-            
-            // Mostrar contraseña temporal si está disponible (modo desarrollo)
+            // Modo desarrollo: mostrar contraseña temporal de forma segura
             if (data.debug && data.debug.tempPassword) {
-                mensaje = `Tu contraseña temporal es: ${data.debug.tempPassword}`;
+                // Limpiar cualquier contraseña temporal anterior
+                const existingTemp = document.querySelector('.temp-password-display');
+                if (existingTemp) existingTemp.remove();
                 
-                // Crear un elemento más visible para la contraseña temporal
                 const tempPassDiv = document.createElement('div');
+                tempPassDiv.className = 'temp-password-display';
                 tempPassDiv.style.cssText = `
-                    background: #f0f9ff;
+                    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
                     border: 2px solid #0ea5e9;
                     color: #0369a1;
-                    padding: 16px;
+                    padding: 20px;
                     border-radius: 12px;
                     margin: 16px 0;
                     font-weight: 600;
                     text-align: center;
                     font-size: 1.1rem;
+                    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
                 `;
                 tempPassDiv.innerHTML = `
-                    <div style="margin-bottom: 8px; font-size: 0.9rem; color: #64748b;">Contraseña Temporal:</div>
-                    <div style="font-family: monospace; font-size: 1.3rem; letter-spacing: 2px;">${data.debug.tempPassword}</div>
-                    <div style="margin-top: 12px; font-size: 0.85rem; color: #64748b;">
-                        <strong>Importante:</strong> Usa esta contraseña para iniciar sesión y luego cámbiala por una segura.
+                    <div style="margin-bottom: 12px; font-size: 0.9rem; color: #64748b;">
+                        <i class="fas fa-shield-alt"></i> Contraseña Temporal Generada
                     </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 1.4rem; letter-spacing: 3px; 
+                                background: white; padding: 12px; border-radius: 8px; margin: 8px 0;
+                                border: 1px solid #cbd5e1; color: #1e40af;">
+                        ${data.debug.tempPassword}
+                    </div>
+                    <div style="margin-top: 16px; font-size: 0.85rem; color: #64748b; line-height: 1.4;">
+                        <strong>Instrucciones de seguridad:</strong><br>
+                        1. Copia esta contraseña<br>
+                        2. Inicia sesión inmediatamente<br>
+                        3. Cambia la contraseña en tu perfil<br>
+                        4. Esta contraseña expira en 30 minutos
+                    </div>
+                    <button type="button" onclick="navigator.clipboard.writeText('${data.debug.tempPassword}'); 
+                           this.innerHTML='¡Copiado!'; this.style.background='#10b981'; this.style.color='white';"
+                           style="margin-top: 12px; padding: 8px 16px; background: #0ea5e9; color: white; 
+                                  border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-copy"></i> Copiar contraseña
+                    </button>
                 `;
                 
                 // Insertar después del formulario
                 const form = document.querySelector('#modalReestablecer form');
                 form.parentNode.insertBefore(tempPassDiv, form.nextSibling);
-            }
-            
-            mostrarAlerta(mensaje, 'success');
-            if (!data.debug) {
+                
+                mostrarAlerta('Contraseña temporal generada. Revisa las instrucciones de seguridad.', 'success');
+            } else {
+                // Modo producción: mensaje estándar
+                mostrarAlerta('Se ha enviado un correo con instrucciones seguras para reestablecer tu contraseña. El enlace expirará en 30 minutos.', 'success');
                 cerrarModalReestablecer();
             }
         } else {
-            mostrarAlerta(data.message || 'No se pudo procesar la solicitud', 'error');
+            mostrarAlerta(data.message || 'No se pudo procesar la solicitud. Verifica que el correo esté registrado.', 'error');
         }
     } catch (error) {
-        mostrarAlerta('Error de conexión', 'error');
+        console.error('Error al reestablecer contraseña:', error);
+        mostrarAlerta('Error de conexión. Verifica tu internet e intenta más tarde.', 'error');
+    } finally {
+        // Restaurar botón
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     }
 }
 
