@@ -15,7 +15,11 @@ async function cargarMaterias() {
 async function cargarLista() {
     const materiaId = document.getElementById('materiaSelect').value;
     const fecha = document.getElementById('fechaAsistencia').value;
-    if (!materiaId || !fecha) return;
+    if (!materiaId || !fecha) {
+        // Limpiar estadísticas si no hay selección completa
+        limpiarEstadisticas();
+        return;
+    }
     
     // Obtener estudiantes inscritos en la materia
     const estudiantes = await apiRequest(`/materias/${materiaId}/estudiantes-inscritos`);
@@ -38,6 +42,39 @@ async function cargarLista() {
             </td>
         </tr>
     `).join('');
+    
+    // Generar estadísticas automáticamente
+    generarEstadisticas(asistencias, estudiantes.length);
+}
+
+function generarEstadisticas(asistencias, totalEstudiantes) {
+    const presentes = asistencias.filter(a => a.estado === 'presente').length;
+    const ausentes = asistencias.filter(a => a.estado === 'ausente').length;
+    const retardos = asistencias.filter(a => a.estado === 'retardo').length;
+    const registrados = asistencias.length;
+    const sinRegistrar = totalEstudiantes - registrados;
+    
+    // Actualizar estadísticas en el DOM
+    document.getElementById('estPresentes').textContent = presentes;
+    document.getElementById('estAusentes').textContent = ausentes;
+    document.getElementById('estRetardos').textContent = retardos;
+    document.getElementById('estRegistrados').textContent = registrados;
+    document.getElementById('estSinRegistrar').textContent = sinRegistrar;
+    document.getElementById('estTotal').textContent = totalEstudiantes;
+    
+    // Calcular porcentajes
+    const porcentajeAsistencia = totalEstudiantes > 0 ? ((presentes / totalEstudiantes) * 100).toFixed(1) : 0;
+    document.getElementById('estPorcentaje').textContent = `${porcentajeAsistencia}%`;
+}
+
+function limpiarEstadisticas() {
+    document.getElementById('estPresentes').textContent = '0';
+    document.getElementById('estAusentes').textContent = '0';
+    document.getElementById('estRetardos').textContent = '0';
+    document.getElementById('estRegistrados').textContent = '0';
+    document.getElementById('estSinRegistrar').textContent = '0';
+    document.getElementById('estTotal').textContent = '0';
+    document.getElementById('estPorcentaje').textContent = '0%';
 }
 
 window.cambiarEstado = async (estudianteId, estado) => {

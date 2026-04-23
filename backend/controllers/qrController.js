@@ -91,9 +91,9 @@ const generarQR = async (req, res) => {
   }
   
   await pool.query(
-    `INSERT INTO qr_asistencia (materia_id, codigo, fecha, hora_inicio, hora_fin, profesor_id, creado_en)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-    [materia_id, codigo, fecha, hora_inicio, hora_fin, req.usuario.id]
+    `INSERT INTO qr_asistencia (materia_id, codigo, fecha, hora_inicio, hora_fin, activo)
+     VALUES ($1, $2, $3, $4, $5, TRUE)`,
+    [materia_id, codigo, fecha, hora_inicio, hora_fin]
   );
   
   const payload = {

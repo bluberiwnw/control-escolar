@@ -240,15 +240,10 @@ function cerrarModalEstudiante() {
 async function guardarEstudiante(ev) {
     ev.preventDefault();
     const nombre = document.getElementById('estNombre').value.trim();
-    const anio = document.getElementById('estAnio').value;
     const email = document.getElementById('estEmail').value.trim();
     const password = document.getElementById('estPass').value;
     if (!esNombreValido(nombre)) {
         mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
-        return;
-    }
-    if (!anio || anio < 1 || anio > 6) {
-        mostrarToast('Selecciona un año válido (1-6)', 'error');
         return;
     }
     if (!esCorreoValido(email)) {
@@ -263,7 +258,6 @@ async function guardarEstudiante(ev) {
         method: 'POST',
         body: JSON.stringify({
             nombre,
-            anio: parseInt(anio),
             email,
             password,
         }),
