@@ -119,7 +119,7 @@ async function handleReestablecer(event) {
                         1. Copia esta contraseña<br>
                         2. Inicia sesión inmediatamente<br>
                         3. Cambia la contraseña en tu perfil<br>
-                        4. Esta contraseña expira en 30 minutos
+                        4. Esta contraseña expira en 15 minutos
                     </div>
                     <button type="button" onclick="navigator.clipboard.writeText('${data.debug.tempPassword}'); 
                            this.innerHTML='¡Copiado!'; this.style.background='#10b981'; this.style.color='white';"
@@ -136,7 +136,7 @@ async function handleReestablecer(event) {
                 mostrarAlerta('Contraseña temporal generada. Revisa las instrucciones de seguridad.', 'success');
             } else {
                 // Modo producción: mensaje estándar
-                mostrarAlerta('Se ha enviado un correo con instrucciones seguras para reestablecer tu contraseña. El enlace expirará en 30 minutos.', 'success');
+                mostrarAlerta('Se ha enviado un correo con instrucciones seguras para reestablecer tu contraseña. El enlace expirará en 15 minutos.', 'success');
                 cerrarModalReestablecer();
             }
         } else {

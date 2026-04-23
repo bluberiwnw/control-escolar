@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Sistema Escolar BUAP</title>
+    <link rel="stylesheet" href="../css/estilo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-area">
+                    <h1>BUAP</h1>
+                    <p>Sistema Escolar</p>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-item">
+                    <a href="dashboard.html" class="nav-link">
+                        <i class="fas fa-home"></i>
+                        <span>Inicio</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="materias.html" class="nav-link">
+                        <i class="fas fa-book"></i>
+                        <span>Materias</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="asistencia.html" class="nav-link">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Asistencia</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="calificaciones.html" class="nav-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Calificaciones</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="actividades.html" class="nav-link">
+                        <i class="fas fa-tasks"></i>
+                        <span>Actividades</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="reportes.html" class="nav-link">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Reportes</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="perfil.html" class="nav-link active">
+                        <i class="fas fa-user"></i>
+                        <span>Mi Perfil</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="#" onclick="cerrarSesion()" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Salir</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="page-title">Mi Perfil</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-info">
+                        <span class="user-name" id="teacherName">Cargando...</span>
+                        <span class="user-email" id="teacherEmail">Cargando...</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h2 class="page-title">Información Personal</h2>
+                    <p class="page-description">Gestiona tu información personal y seguridad de tu cuenta</p>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="panel-card">
+                        <div class="panel-section__head">
+                            <h3><i class="fas fa-user"></i> Datos Personales</h3>
+                        </div>
+                        <div class="panel-section__body">
+                            <div class="profile-info">
+                                <div class="profile-avatar">
+                                    <i class="fas fa-user-circle"></i>
+                                </div>
+                                <div class="profile-details">
+                                    <div class="info-item">
+                                        <label>Nombre:</label>
+                                        <span id="profileNombre">Cargando...</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Email:</label>
+                                        <span id="profileEmail">Cargando...</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Rol:</label>
+                                        <span class="badge badge-primary">Profesor</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Departamento:</label>
+                                        <span id="profileDepartamento">No especificado</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-section__head">
+                            <h3><i class="fas fa-lock"></i> Cambiar Contraseña</h3>
+                        </div>
+                        <div class="panel-section__body">
+                            <form id="formCambiarContrasena" class="form-modern">
+                                <div class="form-group-modern">
+                                    <label for="contrasenaActual">Contraseña Actual</label>
+                                    <input type="password" id="contrasenaActual" required minlength="6" 
+                                           placeholder="Ingresa tu contraseña actual">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label for="contrasenaNueva">Nueva Contraseña</label>
+                                    <input type="password" id="contrasenaNueva" required minlength="6" 
+                                           placeholder="Ingresa tu nueva contraseña (mínimo 6 caracteres)">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label for="contrasenaConfirmar">Confirmar Nueva Contraseña</label>
+                                    <input type="password" id="contrasenaConfirmar" required minlength="6" 
+                                           placeholder="Confirma tu nueva contraseña">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Actualizar Contraseña
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-section__head">
+                            <h3><i class="fas fa-shield-alt"></i> Seguridad</h3>
+                        </div>
+                        <div class="panel-section__body">
+                            <div class="security-tips">
+                                <h4>Recomendaciones de seguridad:</h4>
+                                <ul>
+                                    <li>Usa contraseñas de al menos 8 caracteres</li>
+                                    <li>Combina letras, números y símbolos</li>
+                                    <li>No uses información personal fácil de adivinar</li>
+                                    <li>Cambia tu contraseña periódicamente</li>
+                                    <li>No compartas tu contraseña con nadie</li>
+                                    <li>Usa contraseñas diferentes para cada sistema</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-section__head">
+                            <h3><i class="fas fa-chart-bar"></i> Estadísticas</h3>
+                        </div>
+                        <div class="panel-section__body">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="totalMaterias">0</span>
+                                    <span class="stat-label">Materias Asignadas</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number" id="totalEstudiantes">0</span>
+                                    <span class="stat-label">Total Estudiantes</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number" id="totalAsistencias">0</span>
+                                    <span class="stat-label">Asistencias Registradas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/app-shell.js"></script>
+    <script src="js/perfil.js"></script>
+</body>
+</html>

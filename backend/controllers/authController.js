@@ -272,6 +272,76 @@ const authController = {
             console.error('🔥 Error en reestablecer contraseña:', error);
             res.status(500).json({ message: 'Error en el servidor', error: error.message });
         }
+    },
+
+    async cambiarContrasena(req, res) {
+        try {
+            const { email, contrasenaActual, contrasenaNueva } = req.body;
+            console.log('🔐 Solicitud de cambiar contraseña para:', email);
+
+            if (!email || !contrasenaActual || !contrasenaNueva) {
+                return res.status(400).json({ message: 'Email, contraseña actual y nueva son requeridos' });
+            }
+
+            // Validaciones de contraseña nueva
+            if (contrasenaNueva.length < 6) {
+                return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+            }
+
+            const tieneMayuscula = /[A-Z]/.test(contrasenaNueva);
+            const tieneMinuscula = /[a-z]/.test(contrasenaNueva);
+            const tieneNumero = /\d/.test(contrasenaNueva);
+
+            if (!tieneMayuscula || !tieneMinuscula || !tieneNumero) {
+                return res.status(400).json({ message: 'La contraseña debe incluir mayúsculas, minúsculas y números' });
+            }
+
+            // Buscar usuario en ambas tablas
+            let result = await pool.query(
+                `SELECT id, nombre, email, password, 'profesor' as tipo FROM usuarios WHERE email = $1`,
+                [email]
+            );
+            let usuario = result.rows[0];
+
+            if (!usuario) {
+                result = await pool.query(
+                    `SELECT id, nombre, email, password, 'alumno' as tipo FROM estudiantes WHERE email = $1`,
+                    [email]
+                );
+                usuario = result.rows[0];
+            }
+
+            if (!usuario) {
+                return res.status(404).json({ message: 'Usuario no encontrado' });
+            }
+
+            // Verificar contraseña actual
+            const contrasenaValida = await bcrypt.compare(contrasenaActual, usuario.password);
+            if (!contrasenaValida) {
+                return res.status(401).json({ message: 'La contraseña actual es incorrecta' });
+            }
+
+            // Generar hash de la nueva contraseña
+            const salt = await bcrypt.genSalt(10);
+            const hashedNewPassword = await bcrypt.hash(contrasenaNueva, salt);
+
+            // Actualizar contraseña
+            const table = usuario.tipo === 'profesor' ? 'usuarios' : 'estudiantes';
+            await pool.query(
+                `UPDATE ${table} SET password = $1 WHERE id = $2`,
+                [hashedNewPassword, usuario.id]
+            );
+
+            console.log('✅ Contraseña actualizada para:', email);
+
+            res.json({ 
+                message: 'Contraseña actualizada correctamente'
+            });
+
+        } catch (error) {
+            console.error('🔥 Error al cambiar contraseña:', error);
+            res.status(500).json({ message: 'Error en el servidor', error: error.message });
+        }
     }
 };
 
