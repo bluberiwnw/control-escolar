@@ -70,15 +70,24 @@ async function cargarAsistencias() {
         `<div class="asistencias-grid">
             ${asistencias.map(a => `
                 <div class="asistencia-card">
-                    <div class="asistencia-materia">
-                        <span class="materia-badge">${a.materia_nombre}</span>
-                    </div>
-                    <div class="asistencia-content">
-                        <div class="asistencia-info">
-                            <div class="asistencia-estudiante">${a.estudiante_nombre}</div>
-                            <div class="asistencia-fecha">${formatearFecha(a.fecha)}</div>
+                    <div class="asistencia-header">
+                        <div class="asistencia-materia">
+                            <span class="materia-badge">${a.materia_nombre}</span>
                         </div>
-                        <div class="asistencia-estado">${selectEstado(a)}</div>
+                        <div class="asistencia-fecha">
+                            <i class="fas fa-calendar"></i> ${formatearFecha(a.fecha)}
+                        </div>
+                    </div>
+                    <div class="asistencia-body">
+                        <div class="asistencia-info">
+                            <div class="asistencia-estudiante">
+                                <i class="fas fa-user"></i> ${a.estudiante_nombre}
+                            </div>
+                        </div>
+                        <div class="asistencia-estado-container">
+                            <div class="asistencia-estado-label">Estado:</div>
+                            <div class="asistencia-estado">${selectEstado(a)}</div>
+                        </div>
                     </div>
                     <div class="asistencia-actions">
                         <button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">

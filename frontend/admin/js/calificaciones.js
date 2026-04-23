@@ -42,16 +42,27 @@ async function cargarCalificaciones() {
         `<div class="calificaciones-grid">
             ${calificaciones.map(c => `
                 <div class="calificacion-card">
-                    <div class="calificacion-materia">
-                        <span class="materia-badge">${c.materia_nombre}</span>
-                    </div>
-                    <div class="calificacion-content">
-                        <div class="calificacion-info">
-                            <div class="calificacion-estudiante">${c.estudiante_nombre}</div>
-                            <div class="calificacion-actividad">${c.actividad_titulo || c.tipo}</div>
-                            <div class="calificacion-fecha">${formatearFecha(c.fecha_registro)}</div>
+                    <div class="calificacion-header">
+                        <div class="calificacion-materia">
+                            <span class="materia-badge">${c.materia_nombre}</span>
                         </div>
-                        <div class="calificacion-valor">${c.calificacion}</div>
+                        <div class="calificacion-valor">
+                            <span class="calificacion-score">${c.calificacion}</span>
+                            <span class="calificacion-label">Calificación</span>
+                        </div>
+                    </div>
+                    <div class="calificacion-body">
+                        <div class="calificacion-info">
+                            <div class="calificacion-estudiante">
+                                <i class="fas fa-user"></i> ${c.estudiante_nombre}
+                            </div>
+                            <div class="calificacion-actividad">
+                                <i class="fas fa-tasks"></i> ${c.actividad_titulo || c.tipo}
+                            </div>
+                            <div class="calificacion-fecha">
+                                <i class="fas fa-calendar"></i> ${formatearFecha(c.fecha_registro)}
+                            </div>
+                        </div>
                     </div>
                     <div class="calificacion-actions">
                         <button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">

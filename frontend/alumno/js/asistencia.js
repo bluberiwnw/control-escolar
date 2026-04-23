@@ -59,12 +59,18 @@ async function cargarHistorial() {
         `<div class="asistencias-historial-grid">
             ${historial.map(h => `
                 <div class="asistencia-historial-card">
-                    <div class="asistencia-historial-fecha">
-                        <span class="fecha-destacada">${formatearFecha(h.fecha)}</span>
+                    <div class="asistencia-historial-header">
+                        <div class="asistencia-historial-fecha">
+                            <i class="fas fa-calendar"></i> ${formatearFecha(h.fecha)}
+                        </div>
+                        <div class="asistencia-historial-estado">
+                            ${getEstadoBadge(h.estado)}
+                        </div>
                     </div>
-                    <div class="asistencia-historial-content">
-                        <div class="asistencia-historial-materia">${h.materia_nombre}</div>
-                        <div class="asistencia-historial-estado">${getEstadoBadge(h.estado)}</div>
+                    <div class="asistencia-historial-body">
+                        <div class="asistencia-historial-materia">
+                            <i class="fas fa-book"></i> ${h.materia_nombre}
+                        </div>
                     </div>
                 </div>
             `).join('')}

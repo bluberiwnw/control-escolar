@@ -112,24 +112,87 @@ async function cargarEstudiantes() {
                     endpointsIntentados.push(`${endpoint} (error: ${error.message})`);
                 }
                 
-                // Si es el último endpoint, mostrar error
+                // Si es el último endpoint, mostrar error y datos de prueba
                 if (i === endpoints.length - 1) {
                     // Mostrar información detallada del error
                     const container = document.getElementById('listaEstudiantes');
                     if (container) {
+                        // Datos de prueba para fallback
+                        const datosPrueba = [
+                            {
+                                id: 1,
+                                nombre: 'Juan Pérez',
+                                email: 'juan.perez@estudiante.edu',
+                                rol: 'alumno',
+                                matricula: '20240001'
+                            },
+                            {
+                                id: 2,
+                                nombre: 'María García',
+                                email: 'maria.garcia@estudiante.edu',
+                                rol: 'alumno',
+                                matricula: '20240002'
+                            },
+                            {
+                                id: 3,
+                                nombre: 'Carlos López',
+                                email: 'carlos.lopez@estudiante.edu',
+                                rol: 'alumno',
+                                matricula: '20240003'
+                            }
+                        ];
+                        
                         container.innerHTML = `
-                            <div class="alert alert-error">
-                                <h3>❌ Error al cargar estudiantes</h3>
+                            <div class="alert alert-warning">
+                                <h3>⚠️ No se pudieron cargar los estudiantes desde el servidor</h3>
                                 <p><strong>Endpoints intentados:</strong></p>
                                 <ul>${endpointsIntentados.map(e => `<li>${e}</li>`).join('')}</ul>
                                 <p><strong>API Base:</strong> ${API_URL}</p>
                                 <p><strong>Último error:</strong> ${error.message}</p>
-                                <button type="button" class="btn btn-primary" onclick="location.reload()">Recargar página</button>
-                                <button type="button" class="btn btn-secondary" onclick="cargarEstudiantes()">Reintentar</button>
+                                <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border);">
+                                <p><strong>📋 Mostrando datos de prueba:</strong></p>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                    Estos son datos de ejemplo para que puedas probar la funcionalidad del módulo. 
+                                    Cuando el servidor esté disponible, los datos reales se cargarán automáticamente.
+                                </p>
+                            </div>
+                            <div class="table-responsive-wrap">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Email</th>
+                                            <th>Rol</th>
+                                            <th>Matrícula</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${datosPrueba.map(e => `
+                                            <tr>
+                                                <td data-label="Nombre">${e.nombre}</td>
+                                                <td data-label="Email">${e.email}</td>
+                                                <td data-label="Rol">${e.rol}</td>
+                                                <td data-label="Matrícula">${e.matricula}</td>
+                                                <td data-label="Acciones" class="table-actions">
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="mostrarToast('Modo demo: Función deshabilitada', 'info')">Eliminar</button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top: 20px; text-align: center;">
+                                <button type="button" class="btn btn-primary" onclick="location.reload()">
+                                    <i class="fas fa-sync"></i> Recargar página
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="cargarEstudiantes()">
+                                    <i class="fas fa-redo"></i> Reintentar
+                                </button>
                             </div>
                         `;
                     }
-                    throw new Error('No se pudieron cargar los estudiantes desde ningún endpoint disponible');
+                    console.warn('Modo demo activado - mostrando datos de prueba para estudiantes');
                 }
             }
         }
