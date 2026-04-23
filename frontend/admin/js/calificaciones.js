@@ -22,12 +22,12 @@ async function cargarCalificaciones() {
     let filtrosInfo = '';
     if (materiaId) {
         filtrosInfo = `
-            <div class="panel-card filtros-aplicados" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-secondary); border-left: 4px solid var(--primary);">
-                <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--primary); font-weight: 600;">
+            <div class="filtros-aplicados">
+                <h3>
                     <i class="fas fa-filter"></i> Filtro Aplicado
                 </h3>
-                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.9rem;">
-                    <span class="badge badge-info" style="background: var(--primary); color: white;">Materia: ${materiaNombre}</span>
+                <div class="filtros-badges">
+                    <span class="badge">Materia: ${materiaNombre}</span>
                 </div>
             </div>
         `;

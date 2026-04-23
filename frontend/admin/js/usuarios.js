@@ -69,18 +69,48 @@ async function cargarProfesores() {
 async function cargarEstudiantes() {
     try {
         console.log('Cargando estudiantes...');
+        console.log('API Base:', API_BASE);
+        
         // Intentar diferentes endpoints posibles
         let estudiantes = [];
+        let endpointsIntentados = [];
+        
         try {
+            console.log('Intentando endpoint: /admin/usuarios?rol=alumno');
             estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
-            console.log('Estudiantes cargados desde /admin/usuarios?rol=alumno:', estudiantes.length);
+            endpointsIntentados.push('/admin/usuarios?rol=alumno');
+            console.log('✅ Estudiantes cargados desde /admin/usuarios?rol=alumno:', estudiantes.length);
+            console.log('Datos de ejemplo:', estudiantes.slice(0, 2));
         } catch (error1) {
-            console.log('Error en primer endpoint, intentando alternativa:', error1.message);
+            console.log('❌ Error en primer endpoint:', error1.message);
+            console.log('Error completo:', error1);
+            endpointsIntentados.push('/admin/usuarios?rol=alumno (error: ' + error1.message + ')');
+            
             try {
+                console.log('Intentando endpoint alternativo: /admin/estudiantes');
                 estudiantes = await apiRequest('/admin/estudiantes');
-                console.log('Estudiantes cargados desde /admin/estudiantes:', estudiantes.length);
+                endpointsIntentados.push('/admin/estudiantes');
+                console.log('✅ Estudiantes cargados desde /admin/estudiantes:', estudiantes.length);
+                console.log('Datos de ejemplo:', estudiantes.slice(0, 2));
             } catch (error2) {
-                console.log('Error en segundo endpoint:', error2.message);
+                console.log('❌ Error en segundo endpoint:', error2.message);
+                console.log('Error completo:', error2);
+                endpointsIntentados.push('/admin/estudiantes (error: ' + error2.message + ')');
+                
+                // Mostrar información detallada del error
+                const container = document.getElementById('listaEstudiantes');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="alert alert-error">
+                            <h3>❌ Error al cargar estudiantes</h3>
+                            <p><strong>Endpoints intentados:</strong></p>
+                            <ul>${endpointsIntentados.map(e => `<li>${e}</li>`).join('')}</ul>
+                            <p><strong>API Base:</strong> ${API_BASE}</p>
+                            <p><strong>Último error:</strong> ${error2.message}</p>
+                            <button type="button" class="btn btn-primary" onclick="location.reload()">Recargar página</button>
+                        </div>
+                    `;
+                }
                 throw new Error('No se pudieron cargar los estudiantes desde ningún endpoint disponible');
             }
         }

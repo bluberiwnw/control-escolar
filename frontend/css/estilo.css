@@ -2236,22 +2236,37 @@ body.dark-mode .materia-resumen {
 }
 
 .filtros-aplicados {
-    border-radius: 0.5rem !important;
-    box-shadow: var(--shadow-sm) !important;
-    border: 1px solid var(--border) !important;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-left: 4px solid var(--primary);
+    border-radius: var(--radius-sm);
 }
 
 .filtros-aplicados h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: var(--primary);
+    font-weight: 600;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
+.filtros-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
 .filtros-aplicados .badge {
-    font-size: 0.8rem !important;
-    padding: 0.375rem 0.75rem !important;
-    border-radius: 0.5rem !important;
-    font-weight: 500 !important;
+    background: var(--primary);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    font-weight: 500;
 }
 
 /* Responsividad Historial Asistencia Alumno */

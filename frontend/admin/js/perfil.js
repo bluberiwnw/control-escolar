@@ -37,15 +37,40 @@ async function cargarDatosPerfil() {
 
 async function cargarEstadisticasAdmin() {
     try {
-        // Cargar estadísticas de usuarios
+        // Cargar datos del dashboard para mantener consistencia
+        const stats = await apiRequest('/admin/stats');
         const profesores = await apiRequest('/admin/usuarios?rol=profesor');
         const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
         const materias = await apiRequest('/materias');
+        const pendientes = stats.actividades || 0;
+
+        // Actualizar estadísticas como en el dashboard
+        const kpi = document.getElementById('statsAdmin');
+        if (kpi) {
+            kpi.innerHTML = `
+                <div class="kpi-card kpi-card--violet">
+                    <span class="kpi-card__label">Estudiantes</span>
+                    <span class="kpi-card__value">${stats.estudiantes}</span>
+                </div>
+                <div class="kpi-card kpi-card--teal">
+                    <span class="kpi-card__label">Materias activas</span>
+                    <span class="kpi-card__value">${stats.materias}</span>
+                </div>
+                <div class="kpi-card kpi-card--amber">
+                    <span class="kpi-card__label">Actividades</span>
+                    <span class="kpi-card__value">${pendientes}</span>
+                </div>
+                <div class="kpi-card kpi-card--rose">
+                    <span class="kpi-card__label">Profesores</span>
+                    <span class="kpi-card__value">${stats.profesores}</span>
+                </div>`;
+        }
         
-        document.getElementById('totalProfesores').textContent = profesores.length || 0;
-        document.getElementById('totalEstudiantes').textContent = estudiantes.length || 0;
-        document.getElementById('totalMaterias').textContent = materias.length || 0;
-        document.getElementById('totalUsuarios').textContent = (profesores.length + estudiantes.length) || 0;
+        // Mantener compatibilidad con elementos existentes por si se usan en otros lugares
+        document.getElementById('totalProfesores').textContent = stats.profesores || profesores.length || 0;
+        document.getElementById('totalEstudiantes').textContent = stats.estudiantes || estudiantes.length || 0;
+        document.getElementById('totalMaterias').textContent = stats.materias || materias.length || 0;
+        document.getElementById('totalUsuarios').textContent = (stats.profesores + stats.estudiantes) || (profesores.length + estudiantes.length) || 0;
         
     } catch (error) {
         console.error('Error al cargar estadísticas administrativas:', error);

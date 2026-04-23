@@ -37,59 +37,36 @@ async function cargarDatosPerfil() {
 
 async function cargarEstadisticasAcademicas() {
     try {
-        // Cargar materias del alumno
-        const materias = await apiRequest('/materias');
+        // Cargar datos del dashboard para mantener consistencia
+        const actividades = await apiRequest('/alumno/actividades');
+        const reportes = await apiRequest('/alumno/reportes');
+        const materias = await apiRequest('/alumno/materias');
+
+        const pendientes = actividades.filter((a) => !a.entregado).length;
+
+        // Actualizar estadísticas como en el dashboard
+        document.getElementById('statsAlumno').innerHTML = `
+            <div class="kpi-card kpi-card--violet">
+                <span class="kpi-card__label">Promedio general</span>
+                <span class="kpi-card__value">${Number(reportes.promedio_general || 0).toFixed(1)}</span>
+            </div>
+            <div class="kpi-card kpi-card--amber">
+                <span class="kpi-card__label">Tareas pendientes</span>
+                <span class="kpi-card__value">${pendientes}</span>
+            </div>
+            <div class="kpi-card kpi-card--teal">
+                <span class="kpi-card__label">Asistencia</span>
+                <span class="kpi-card__value">${reportes.asistencia_global}%</span>
+            </div>`;
+        
+        // Mantener compatibilidad con elementos existentes por si se usan en otros lugares
         document.getElementById('totalMaterias').textContent = materias.length || 0;
-        
-        // Calcular estadísticas de asistencia (simplificado)
-        let totalAsistencias = 0;
-        let totalPresentes = 0;
-        
-        for (const materia of materias) {
-            try {
-                // Obtener asistencias del último mes
-                const fechaActual = new Date();
-                const fechaMesPasado = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - 1, fechaActual.getDate());
-                const fechaStr = fechaMesPasado.toISOString().split('T')[0];
-                
-                const asistencias = await apiRequest(`/asistencia/${materia.id}/${fechaStr}`);
-                totalAsistencias += asistencias.length || 0;
-                totalPresentes += asistencias.filter(a => a.estado === 'presente').length || 0;
-            } catch (error) {
-                console.error(`Error al cargar asistencias de materia ${materia.id}:`, error);
-            }
-        }
-        
-        const porcentajeAsistencia = totalAsistencias > 0 ? ((totalPresentes / totalAsistencias) * 100).toFixed(1) : 0;
-        document.getElementById('porcentajeAsistencia').textContent = `${porcentajeAsistencia}%`;
-        
-        // Calcular promedio general (simplificado)
-        let sumaCalificaciones = 0;
-        let totalCalificaciones = 0;
-        
-        for (const materia of materias) {
-            try {
-                const calificaciones = await apiRequest(`/calificaciones/materia/${materia.id}`);
-                calificaciones.forEach(cal => {
-                    if (cal.calificacion) {
-                        sumaCalificaciones += parseFloat(cal.calificacion);
-                        totalCalificaciones++;
-                    }
-                });
-            } catch (error) {
-                console.error(`Error al cargar calificaciones de materia ${materia.id}:`, error);
-            }
-        }
-        
-        const promedio = totalCalificaciones > 0 ? (sumaCalificaciones / totalCalificaciones).toFixed(1) : '0.0';
-        document.getElementById('promedioGeneral').textContent = promedio;
+        document.getElementById('porcentajeAsistencia').textContent = `${reportes.asistencia_global}%`;
+        document.getElementById('promedioGeneral').textContent = Number(reportes.promedio_general || 0).toFixed(1);
         
     } catch (error) {
         console.error('Error al cargar estadísticas académicas:', error);
-        // Establecer valores por defecto en caso de error
-        document.getElementById('totalMaterias').textContent = '0';
-        document.getElementById('porcentajeAsistencia').textContent = '0%';
-        document.getElementById('promedioGeneral').textContent = '0.0';
+        mostrarToast('Error al cargar estadísticas académicas', 'error');
     }
 }
 

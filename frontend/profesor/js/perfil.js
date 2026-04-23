@@ -37,9 +37,12 @@ async function cargarDatosPerfil() {
 
 async function cargarEstadisticasDocentes() {
     try {
-        // Cargar materias del profesor
+        // Cargar datos del dashboard para mantener consistencia
+        const stats = await apiRequest('/profesores/estadisticas');
+        const actividades = await apiRequest('/profesores/actividades');
         const materias = await apiRequest('/materias');
-        document.getElementById('totalMaterias').textContent = materias.length || 0;
+
+        const pendientes = actividades.filter((a) => !a.entregado).length;
         
         // Calcular total de estudiantes
         let totalEstudiantes = 0;
@@ -51,24 +54,33 @@ async function cargarEstadisticasDocentes() {
                 console.error(`Error al cargar estudiantes de materia ${materia.id}:`, error);
             }
         }
-        document.getElementById('totalEstudiantes').textContent = totalEstudiantes;
-        
-        // Cargar estadísticas de asistencia (simplificado)
-        let totalAsistencias = 0;
-        for (const materia of materias) {
-            try {
-                // Obtener asistencias del último mes
-                const fechaActual = new Date();
-                const fechaMesPasado = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - 1, fechaActual.getDate());
-                const fechaStr = fechaMesPasado.toISOString().split('T')[0];
-                
-                const asistencias = await apiRequest(`/asistencia/${materia.id}/${fechaStr}`);
-                totalAsistencias += asistencias.length || 0;
-            } catch (error) {
-                console.error(`Error al cargar asistencias de materia ${materia.id}:`, error);
-            }
+
+        // Actualizar estadísticas como en el dashboard
+        const kpi = document.getElementById('statsProfesor');
+        if (kpi) {
+            kpi.innerHTML = `
+                <div class="kpi-card kpi-card--violet">
+                    <span class="kpi-card__label">Materias</span>
+                    <span class="kpi-card__value">${stats.totalMaterias || materias.length}</span>
+                </div>
+                <div class="kpi-card kpi-card--teal">
+                    <span class="kpi-card__label">Alumnos (aprox.)</span>
+                    <span class="kpi-card__value">${totalEstudiantes}</span>
+                </div>
+                <div class="kpi-card kpi-card--amber">
+                    <span class="kpi-card__label">Promedio general</span>
+                    <span class="kpi-card__value">${Number(stats.promedioGeneral || 0).toFixed(1)}</span>
+                </div>
+                <div class="kpi-card kpi-card--rose">
+                    <span class="kpi-card__label">Tareas pendientes</span>
+                    <span class="kpi-card__value">${pendientes}</span>
+                </div>`;
         }
-        document.getElementById('totalAsistencias').textContent = totalAsistencias;
+        
+        // Mantener compatibilidad con elementos existentes por si se usan en otros lugares
+        document.getElementById('totalMaterias').textContent = stats.totalMaterias || materias.length || 0;
+        document.getElementById('totalEstudiantes').textContent = totalEstudiantes;
+        document.getElementById('totalAsistencias').textContent = stats.totalAsistencias || 0;
         
     } catch (error) {
         console.error('Error al cargar estadísticas docentes:', error);
