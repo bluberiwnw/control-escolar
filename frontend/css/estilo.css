@@ -434,11 +434,13 @@ body {
 /*  ASISTENCIA  */
 .asistencia-header {
     background: var(--bg-card);
-    padding: 20px;
+    padding: 1.5rem;
     border-radius: var(--radius-md);
-    margin-bottom: 20px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
     display: flex;
-    gap: 15px;
+    gap: 1rem;
     flex-wrap: wrap;
     align-items: flex-end;
 }
@@ -446,7 +448,15 @@ body {
 .asistencia-tabla {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    overflow-x: auto;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.asistencia-tabla .table-responsive-wrap {
+    margin: 0;
+    padding: 1.5rem;
 }
 
 .asistencia-tabla table {
@@ -497,6 +507,42 @@ body {
 }
 
 /*  CALIFICACIONES  */
+.calificaciones-header,
+.calificaciones-tabla,
+.calificaciones-archivos {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.calificaciones-header {
+    padding: 1.5rem;
+}
+
+.calificaciones-tabla .table-responsive-wrap,
+.calificaciones-archivos .table-responsive-wrap {
+    margin: 0;
+    padding: 1.5rem;
+}
+
+/* Historial de asistencia del alumno */
+.alumno-asistencia-historial {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.alumno-asistencia-historial .table-responsive-wrap {
+    margin: 0;
+    padding: 1.5rem;
+}
+
 .upload-area {
     background: var(--bg-card);
     border: 2px dashed var(--border);

@@ -69,8 +69,21 @@ async function cargarProfesores() {
 async function cargarEstudiantes() {
     try {
         console.log('Cargando estudiantes...');
-        const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
-        console.log('Estudiantes cargados:', estudiantes.length);
+        // Intentar diferentes endpoints posibles
+        let estudiantes = [];
+        try {
+            estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
+            console.log('Estudiantes cargados desde /admin/usuarios?rol=alumno:', estudiantes.length);
+        } catch (error1) {
+            console.log('Error en primer endpoint, intentando alternativa:', error1.message);
+            try {
+                estudiantes = await apiRequest('/admin/estudiantes');
+                console.log('Estudiantes cargados desde /admin/estudiantes:', estudiantes.length);
+            } catch (error2) {
+                console.log('Error en segundo endpoint:', error2.message);
+                throw new Error('No se pudieron cargar los estudiantes desde ningún endpoint disponible');
+            }
+        }
         
         // Cache de usuarios para togglePassword
         const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');

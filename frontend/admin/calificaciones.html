@@ -30,7 +30,7 @@
     <main class="main-content-profesor">
         <div class="app-page-shell">
         <div class="top-bar"><h1>Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div class="panel-card">
+        <div class="calificaciones-header panel-card">
             <div class="panel-section__head">
                 <h2>Filtros de Calificaciones</h2>
             </div>
@@ -43,18 +43,18 @@
                 </button>
             </div>
         </div>
-        <div class="panel-card">
+        <div class="calificaciones-tabla panel-card">
             <div class="panel-section__head">
                 <h2>Lista de Calificaciones</h2>
             </div>
-            <div class="asistencia-tabla table-responsive-wrap" id="calificacionesContainer"></div>
+            <div class="table-responsive-wrap" id="calificacionesContainer"></div>
         </div>
-        <section class="panel-section panel-card">
+        <div class="calificaciones-archivos panel-card">
             <div class="panel-section__head">
                 <h2>📁 Archivos de Calificaciones</h2>
             </div>
             <div id="archivosCalificacionesContainer" class="table-responsive-wrap"></div>
-        </section>
+        </div>
         </div>
     </main>
     <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
