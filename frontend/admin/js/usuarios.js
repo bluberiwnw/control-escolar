@@ -69,7 +69,7 @@ async function cargarProfesores() {
 async function cargarEstudiantes() {
     try {
         console.log('Cargando estudiantes...');
-        console.log('API Base:', API_BASE);
+        console.log('API Base:', API_URL);
         
         // Intentar diferentes endpoints posibles
         let estudiantes = [];

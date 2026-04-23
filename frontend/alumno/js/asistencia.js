@@ -55,9 +55,22 @@ async function cargarHistorial() {
         el.innerHTML = '<div class="empty-state">No hay asistencias registradas.</div>';
         return;
     }
-    el.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
-        ${historial.map(h => `<tr><td data-label="Fecha"><span class="fecha-destacada">${formatearFecha(h.fecha)}</span></td><td data-label="Materia">${h.materia_nombre}</td><td data-label="Estado">${getEstadoBadge(h.estado)}</td></tr>`).join('')}
-        </tbody></table></div>`;
+    el.innerHTML = 
+        historial.map(h => `
+            <div class="panel-card asistencia-historial-item">
+                <div class="asistencia-historial-header">
+                    <div class="asistencia-historial-fecha">
+                        <span class="fecha-destacada">${formatearFecha(h.fecha)}</span>
+                    </div>
+                    <div class="asistencia-historial-estado">
+                        ${getEstadoBadge(h.estado)}
+                    </div>
+                </div>
+                <div class="asistencia-historial-body">
+                    <div class="asistencia-historial-materia">${h.materia_nombre}</div>
+                </div>
+            </div>
+        `).join('');
 }
 
 function getEstadoBadge(estado) {

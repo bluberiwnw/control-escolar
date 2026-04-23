@@ -38,9 +38,26 @@ async function cargarCalificaciones() {
         return;
     }
     const container = document.getElementById('calificacionesContainer');
-    container.innerHTML = filtrosInfo + `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
-        ${calificaciones.map(c => `<tr><td data-label="Materia"><span class="materia-destacada">${c.materia_nombre}</span></td><td data-label="Estudiante">${c.estudiante_nombre}</td><td data-label="Actividad">${c.actividad_titulo || c.tipo}</td><td data-label="Calificación">${c.calificacion}</td><td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button></td></tr>`).join('')}
-        </tbody></table></div>`;
+    container.innerHTML = filtrosInfo + 
+        calificaciones.map(c => `
+            <div class="panel-card calificacion-item">
+                <div class="calificacion-header">
+                    <div class="calificacion-info">
+                        <span class="materia-destacada">${c.materia_nombre}</span>
+                        <span class="estudiante-nombre">${c.estudiante_nombre}</span>
+                    </div>
+                    <div class="calificacion-valor">${c.calificacion}</div>
+                </div>
+                <div class="calificacion-body">
+                    <div class="calificacion-actividad">${c.actividad_titulo || c.tipo}</div>
+                    <div class="calificacion-fecha">${formatearFecha(c.fecha_registro)}</div>
+                    <div class="calificacion-actions">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
 }
 
 async function editarCalificacion(id, actual) {

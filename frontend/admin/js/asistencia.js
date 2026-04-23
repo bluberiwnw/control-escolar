@@ -66,9 +66,24 @@ async function cargarAsistencias() {
         return;
     }
     
-    document.getElementById('asistenciasContainer').innerHTML = filtrosInfo + `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-        ${asistencias.map(a => `<tr><td data-label="Materia"><span class="materia-destacada">${a.materia_nombre}</span></td><td data-label="Estudiante">${a.estudiante_nombre}</td><td data-label="Fecha">${formatearFecha(a.fecha)}</td><td data-label="Estado">${selectEstado(a)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button></td></tr>`).join('')}
-        </tbody></table></div>`;
+    document.getElementById('asistenciasContainer').innerHTML = filtrosInfo + 
+        asistencias.map(a => `
+            <div class="panel-card asistencia-item">
+                <div class="asistencia-header">
+                    <div class="asistencia-info">
+                        <span class="materia-destacada">${a.materia_nombre}</span>
+                        <span class="estudiante-nombre">${a.estudiante_nombre}</span>
+                    </div>
+                    <div class="asistencia-fecha">${formatearFecha(a.fecha)}</div>
+                </div>
+                <div class="asistencia-body">
+                    <div class="asistencia-estado">${selectEstado(a)}</div>
+                    <div class="asistencia-actions">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
 }
 
 async function actualizarAsistencia(id, estado) {
