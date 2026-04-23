@@ -13,16 +13,33 @@ async function cargarMaterias() {
 
 async function cargarCalificaciones() {
     const materiaId = document.getElementById('materiaSelect').value;
+    const materiaNombre = document.getElementById('materiaSelect').options[document.getElementById('materiaSelect').selectedIndex]?.text || 'Todas las materias';
     let url = '/admin/calificaciones';
     if (materiaId) url += `?materia_id=${materiaId}`;
     const calificaciones = await apiRequest(url);
+    
+    // Agregar información de filtros aplicados
+    let filtrosInfo = '';
+    if (materiaId) {
+        filtrosInfo = `
+            <div class="panel-card filtros-aplicados" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-secondary); border-left: 4px solid var(--primary);">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--primary); font-weight: 600;">
+                    <i class="fas fa-filter"></i> Filtro Aplicado
+                </h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.9rem;">
+                    <span class="badge badge-info" style="background: var(--primary); color: white;">Materia: ${materiaNombre}</span>
+                </div>
+            </div>
+        `;
+    }
+    
     if (!calificaciones.length) {
-        document.getElementById('calificacionesContainer').innerHTML = '<div class="empty-state">No hay calificaciones registradas.</div>';
+        document.getElementById('calificacionesContainer').innerHTML = filtrosInfo + '<div class="empty-state">No hay calificaciones registradas para esta materia.</div>';
         return;
     }
     const container = document.getElementById('calificacionesContainer');
-    container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
-        ${calificaciones.map(c => `<tr><td data-label="Materia">${c.materia_nombre}</td><td data-label="Estudiante">${c.estudiante_nombre}</td><td data-label="Actividad">${c.actividad_titulo || c.tipo}</td><td data-label="Calificación">${c.calificacion}</td><td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button></td></tr>`).join('')}
+    container.innerHTML = filtrosInfo + `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
+        ${calificaciones.map(c => `<tr><td data-label="Materia"><span class="materia-destacada">${c.materia_nombre}</span></td><td data-label="Estudiante">${c.estudiante_nombre}</td><td data-label="Actividad">${c.actividad_titulo || c.tipo}</td><td data-label="Calificación">${c.calificacion}</td><td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button><button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button></td></tr>`).join('')}
         </tbody></table></div>`;
 }
 

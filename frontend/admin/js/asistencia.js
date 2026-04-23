@@ -33,22 +33,41 @@ function selectEstado(asistencia) {
 
 async function cargarAsistencias() {
     const materiaId = document.getElementById('materiaSelect').value;
+    const materiaNombre = document.getElementById('materiaSelect').options[document.getElementById('materiaSelect').selectedIndex]?.text || 'Todas las materias';
     const fecha = document.getElementById('fechaAsistencia').value;
     const todasLasFechas = document.getElementById('todasLasFechas').checked;
-    let url = '/admin/asistencias';
-    const q = [];
-    if (todasLasFechas) q.push('todas=true');
-    else if (fecha) q.push(`fecha=${fecha}`);
-    if (materiaId) q.push(`materia_id=${materiaId}`);
-    if (q.length) url += `?${q.join('&')}`;
+    
+    let url = '/admin/asistencias?';
+    if (materiaId) url += `materia_id=${materiaId}&`;
+    if (fecha && !todasLasFechas) url += `fecha=${fecha}&`;
+    
     const asistencias = await apiRequest(url);
+    
+    // Agregar información de filtros aplicados
+    let filtrosInfo = '';
+    if (materiaId || fecha || todasLasFechas) {
+        filtrosInfo = `
+            <div class="panel-card filtros-aplicados" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-secondary); border-left: 4px solid var(--primary);">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--primary); font-weight: 600;">
+                    <i class="fas fa-filter"></i> Filtros Aplicados
+                </h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.9rem;">
+                    ${materiaId ? `<span class="badge badge-info" style="background: var(--primary); color: white;">Materia: ${materiaNombre}</span>` : ''}
+                    ${fecha && !todasLasFechas ? `<span class="badge badge-info" style="background: var(--primary); color: white;">Fecha: ${formatearFecha(fecha)}</span>` : ''}
+                    ${todasLasFechas ? `<span class="badge badge-info" style="background: var(--primary); color: white;">Todas las fechas</span>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
     if (!asistencias.length) {
         document.getElementById('asistenciasContainer').innerHTML =
             '<div class="empty-state">No hay asistencias para los filtros.</div>';
         return;
     }
-    document.getElementById('asistenciasContainer').innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-        ${asistencias.map(a => `<tr><td data-label="Materia">${a.materia_nombre}</td><td data-label="Estudiante">${a.estudiante_nombre}</td><td data-label="Fecha">${formatearFecha(a.fecha)}</td><td data-label="Estado">${selectEstado(a)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button></td></tr>`).join('')}
+    
+    document.getElementById('asistenciasContainer').innerHTML = filtrosInfo + `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        ${asistencias.map(a => `<tr><td data-label="Materia"><span class="materia-destacada">${a.materia_nombre}</span></td><td data-label="Estudiante">${a.estudiante_nombre}</td><td data-label="Fecha">${formatearFecha(a.fecha)}</td><td data-label="Estado">${selectEstado(a)}</td><td data-label="Acciones" class="table-actions"><button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button></td></tr>`).join('')}
         </tbody></table></div>`;
 }
 

@@ -56,8 +56,17 @@ async function cargarHistorial() {
         return;
     }
     el.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
-        ${historial.map(h => `<tr><td data-label="Fecha">${formatearFecha(h.fecha)}</td><td data-label="Materia">${h.materia_nombre}</td><td data-label="Estado">${h.estado}</td></tr>`).join('')}
+        ${historial.map(h => `<tr><td data-label="Fecha"><span class="fecha-destacada">${formatearFecha(h.fecha)}</span></td><td data-label="Materia">${h.materia_nombre}</td><td data-label="Estado">${getEstadoBadge(h.estado)}</td></tr>`).join('')}
         </tbody></table></div>`;
+}
+
+function getEstadoBadge(estado) {
+    const badges = {
+        'presente': '<span class="badge badge-success">Presente</span>',
+        'ausente': '<span class="badge badge-danger">Ausente</span>',
+        'retardo': '<span class="badge badge-warning">Retardo</span>'
+    };
+    return badges[estado] || `<span class="badge badge-info">${estado}</span>`;
 }
 
 async function cargarMateriasEnSelects() {

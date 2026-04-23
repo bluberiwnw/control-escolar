@@ -90,11 +90,10 @@ async function cargarEstudiantes() {
             container.innerHTML = '<div class="empty-state">No hay estudiantes registrados.</div>';
             return;
         }
-        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Email</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
+        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${estudiantes
                 .map(
                     (e) => `<tr>
-                <td data-label="Matrícula">${e.matricula || 'N/A'}</td>
                 <td data-label="Nombre">${e.nombre}</td>
                 <td data-label="Email">${e.email}</td>
                 <td data-label="Contraseña">
@@ -106,7 +105,7 @@ async function cargarEstudiantes() {
                     </div>
                 </td>
                 <td data-label="Acciones" class="table-actions">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarEstudiante(${e.id}, '${e.matricula?.replace(/'/g, "\\'") || ''}', '${e.nombre.replace(/'/g, "\\'")}', '${e.email.replace(/'/g, "\\'")}')">Editar</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarEstudiante(${e.id}, '${e.nombre.replace(/'/g, "\\'")}', '${e.email.replace(/'/g, "\\'")}')">Editar</button>
                     <button type="button" class="btn btn-warning btn-sm" onclick="cambiarContrasena(${e.id}, 'alumno')">Cambiar contraseña</button>
                     <button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${e.id},'alumno')">Eliminar</button>
                 </td>

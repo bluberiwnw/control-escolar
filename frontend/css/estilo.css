@@ -2159,6 +2159,55 @@ body.dark-mode .materia-resumen {
     }
 }
 
+/* Estilos para nombres de materia destacados y filtros aplicados */
+.materia-destacada {
+    font-weight: 600;
+    color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    display: inline-block;
+}
+
+.fecha-destacada {
+    font-weight: 600;
+    color: var(--text-primary);
+    background: rgba(var(--primary-rgb), 0.05);
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(var(--primary-rgb), 0.15);
+    display: inline-block;
+    font-size: 0.9rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.fecha-destacada:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.filtros-aplicados {
+    border-radius: 0.5rem !important;
+    box-shadow: var(--shadow-sm) !important;
+    border: 1px solid var(--border) !important;
+}
+
+.filtros-aplicados h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filtros-aplicados .badge {
+    font-size: 0.8rem !important;
+    padding: 0.375rem 0.75rem !important;
+    border-radius: 0.5rem !important;
+    font-weight: 500 !important;
+}
+
 /* Responsividad Historial Asistencia Alumno */
 @media (max-width: 768px) {
     .asistencia-tabla.panel-card {
