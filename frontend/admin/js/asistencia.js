@@ -67,23 +67,27 @@ async function cargarAsistencias() {
     }
     
     document.getElementById('asistenciasContainer').innerHTML = filtrosInfo + 
-        asistencias.map(a => `
-            <div class="panel-card asistencia-item">
-                <div class="asistencia-header">
-                    <div class="asistencia-info">
-                        <span class="materia-destacada">${a.materia_nombre}</span>
-                        <span class="estudiante-nombre">${a.estudiante_nombre}</span>
+        `<div class="asistencias-grid">
+            ${asistencias.map(a => `
+                <div class="asistencia-card">
+                    <div class="asistencia-materia">
+                        <span class="materia-badge">${a.materia_nombre}</span>
                     </div>
-                    <div class="asistencia-fecha">${formatearFecha(a.fecha)}</div>
-                </div>
-                <div class="asistencia-body">
-                    <div class="asistencia-estado">${selectEstado(a)}</div>
+                    <div class="asistencia-content">
+                        <div class="asistencia-info">
+                            <div class="asistencia-estudiante">${a.estudiante_nombre}</div>
+                            <div class="asistencia-fecha">${formatearFecha(a.fecha)}</div>
+                        </div>
+                        <div class="asistencia-estado">${selectEstado(a)}</div>
+                    </div>
                     <div class="asistencia-actions">
-                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `).join('')}
+        </div>`;
 }
 
 async function actualizarAsistencia(id, estado) {

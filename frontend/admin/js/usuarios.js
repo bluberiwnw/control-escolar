@@ -75,14 +75,14 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden (priorizando los que no usan columna 'anio')
+        // Lista de endpoints a intentar en orden (basado en errores observados)
         const endpoints = [
-            '/admin/estudiantes', // Endpoint específico para estudiantes
-            '/estudiantes',       // Endpoint general de estudiantes
-            '/admin/alumnos',     // Endpoint alternativo
-            '/alumnos',           // Endpoint general de alumnos
-            '/admin/usuarios?rol=alumno', // Puede tener error de columna 'anio'
-            '/usuarios?rol=alumno'        // Puede tener error de columna 'anio'
+            '/admin/usuarios?rol=alumno', // Endpoint principal que da 500 (error del servidor)
+            '/usuarios?rol=alumno',        // Endpoint alternativo
+            '/admin/estudiantes', // Endpoint específico para estudiantes (404)
+            '/estudiantes',       // Endpoint general de estudiantes (404)
+            '/admin/alumnos',     // Endpoint alternativo (404)
+            '/alumnos'           // Endpoint general de alumnos (404)
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
@@ -122,7 +122,7 @@ async function cargarEstudiantes() {
                                 <h3>❌ Error al cargar estudiantes</h3>
                                 <p><strong>Endpoints intentados:</strong></p>
                                 <ul>${endpointsIntentados.map(e => `<li>${e}</li>`).join('')}</ul>
-                                <p><strong>API Base:</strong> ${API_BASE}</p>
+                                <p><strong>API Base:</strong> ${API_URL}</p>
                                 <p><strong>Último error:</strong> ${error.message}</p>
                                 <button type="button" class="btn btn-primary" onclick="location.reload()">Recargar página</button>
                                 <button type="button" class="btn btn-secondary" onclick="cargarEstudiantes()">Reintentar</button>

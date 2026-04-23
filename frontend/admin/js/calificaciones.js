@@ -39,25 +39,31 @@ async function cargarCalificaciones() {
     }
     const container = document.getElementById('calificacionesContainer');
     container.innerHTML = filtrosInfo + 
-        calificaciones.map(c => `
-            <div class="panel-card calificacion-item">
-                <div class="calificacion-header">
-                    <div class="calificacion-info">
-                        <span class="materia-destacada">${c.materia_nombre}</span>
-                        <span class="estudiante-nombre">${c.estudiante_nombre}</span>
+        `<div class="calificaciones-grid">
+            ${calificaciones.map(c => `
+                <div class="calificacion-card">
+                    <div class="calificacion-materia">
+                        <span class="materia-badge">${c.materia_nombre}</span>
                     </div>
-                    <div class="calificacion-valor">${c.calificacion}</div>
-                </div>
-                <div class="calificacion-body">
-                    <div class="calificacion-actividad">${c.actividad_titulo || c.tipo}</div>
-                    <div class="calificacion-fecha">${formatearFecha(c.fecha_registro)}</div>
+                    <div class="calificacion-content">
+                        <div class="calificacion-info">
+                            <div class="calificacion-estudiante">${c.estudiante_nombre}</div>
+                            <div class="calificacion-actividad">${c.actividad_titulo || c.tipo}</div>
+                            <div class="calificacion-fecha">${formatearFecha(c.fecha_registro)}</div>
+                        </div>
+                        <div class="calificacion-valor">${c.calificacion}</div>
+                    </div>
                     <div class="calificacion-actions">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `).join('')}
+        </div>`;
 }
 
 async function editarCalificacion(id, actual) {

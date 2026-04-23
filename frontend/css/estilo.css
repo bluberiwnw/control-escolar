@@ -998,6 +998,11 @@ body.dark-mode .upload-area {
     font-size: 1.15rem;
     width: 1.5rem;
     text-align: center;
+    display: inline-block;
+    line-height: 1.2;
+    vertical-align: middle;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 .sidebar-header h2 {
