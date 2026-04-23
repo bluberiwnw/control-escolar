@@ -30,6 +30,34 @@ function extractTokenFromPayload(body) {
 const generarQR = async (req, res) => {
   const { materia_id, fecha, hora_inicio, hora_fin } = req.body;
   
+  // Validar datos básicos
+  if (!materia_id || !fecha || !hora_inicio || !hora_fin) {
+    return res.status(400).json({
+      error: 'Datos incompletos',
+      message: 'Se requieren materia, fecha, hora de inicio y hora de fin',
+    });
+  }
+  
+  // Validar que la materia exista y pertenezca al profesor
+  try {
+    const materiaCheck = await pool.query(
+      'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+      [materia_id, req.usuario.id]
+    );
+    if (materiaCheck.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Materia no encontrada',
+        message: 'La materia no existe o no tienes permisos para acceder a ella',
+      });
+    }
+  } catch (error) {
+    console.error('Error verificando materia:', error);
+    return res.status(500).json({
+      error: 'Error del servidor',
+      message: 'Error al verificar la materia',
+    });
+  }
+  
   // Validar horario 7am-9pm
   const [hi, mi] = hora_inicio.split(':').map(Number);
   const [hf, mf] = hora_fin.split(':').map(Number);

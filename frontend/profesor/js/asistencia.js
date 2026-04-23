@@ -182,8 +182,12 @@ async function generarQR() {
     try {
         mostrarToast('⏳ Generando código QR único y seguro...', 'info');
         
-        const data = await apiRequest('/qr/generar', {
+        const response = await fetch(`${API_BASE_URL}/qr/generar`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
             body: JSON.stringify({ 
                 materia_id: parseInt(materiaId), 
                 fecha, 
@@ -191,6 +195,13 @@ async function generarQR() {
                 hora_fin 
             })
         });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al generar QR');
+        }
+        
+        const data = await response.json();
 
         // Mostrar QR con información detallada y profesional
         const container = document.getElementById('qrContainer');

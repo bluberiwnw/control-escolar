@@ -117,20 +117,28 @@ const adminController = {
     async listarUsuarios(req, res) {
         try {
             const { rol } = req.query;
-            let query = '';
+            console.log(`Listando usuarios con rol: ${rol}`);
+            
             if (rol === 'profesor') {
-                query = 'SELECT id, nombre, email, rol, activo, created_at FROM usuarios WHERE rol IN ($1, $2) ORDER BY nombre';
+                const query = 'SELECT id, nombre, email, rol, activo, created_at FROM usuarios WHERE rol IN ($1, $2) ORDER BY nombre';
                 const result = await pool.query(query, ['profesor', 'administrador']);
+                console.log(`Profesores encontrados: ${result.rows.length}`);
                 res.json(result.rows);
             } else if (rol === 'alumno') {
-                query = 'SELECT id, matricula, nombre, anio, email, activo, created_at FROM estudiantes ORDER BY nombre';
+                const query = 'SELECT id, matricula, nombre, COALESCE(anio, 0) as anio, email, activo, created_at FROM estudiantes ORDER BY nombre';
                 const result = await pool.query(query);
+                console.log(`Estudiantes encontrados: ${result.rows.length}`);
                 res.json(result.rows);
             } else {
+                console.log('Rol no válido:', rol);
                 res.status(400).json({ error: 'Rol no válido' });
             }
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            console.error('Error en listarUsuarios:', error);
+            res.status(500).json({ 
+                error: 'Error al cargar usuarios', 
+                message: 'No se pudieron cargar los usuarios. Intenta de nuevo.' 
+            });
         }
     },
 
