@@ -30,14 +30,28 @@
         <div class="app-page-shell">
         <div class="top-bar"><h1>Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
         <div class="panel-card">
-        <div class="asistencia-header">
-            <select id="materiaSelect"><option value="">Todas las materias</option></select>
-            <button type="button" class="btn btn-primary" onclick="cargarCalificaciones()">Filtrar</button>
+            <div class="panel-section__head">
+                <h2>Filtros de Calificaciones</h2>
+            </div>
+            <div class="form-grid-asistencia-manual">
+                <select id="materiaSelect">
+                    <option value="">Todas las materias</option>
+                </select>
+                <button type="button" class="btn btn-primary" onclick="cargarCalificaciones()">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+            </div>
         </div>
+        <div class="panel-card">
+            <div class="panel-section__head">
+                <h2>Lista de Calificaciones</h2>
+            </div>
+            <div class="asistencia-tabla table-responsive-wrap" id="calificacionesContainer"></div>
         </div>
-        <div class="asistencia-tabla table-responsive-wrap" id="calificacionesContainer"></div>
-        <section class="panel-section">
-            <div class="panel-section__head"><h2>Archivos de calificaciones</h2></div>
+        <section class="panel-section panel-card">
+            <div class="panel-section__head">
+                <h2>📁 Archivos de Calificaciones</h2>
+            </div>
             <div id="archivosCalificacionesContainer" class="table-responsive-wrap"></div>
         </section>
         </div>

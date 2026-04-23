@@ -83,12 +83,15 @@ async function cargarEstudiantes() {
             container.innerHTML = '<div class="empty-state">No hay estudiantes registrados.</div>';
             return;
         }
-        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Email</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
+        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Año</th><th>Email</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${estudiantes
                 .map(
                     (e) => `<tr>
                 <td data-label="Matrícula">${e.matricula}</td>
                 <td data-label="Nombre">${e.nombre}</td>
+                <td data-label="Año">
+                    <span class="badge badge-info">${e.anio || 'N/A'}</span>
+                </td>
                 <td data-label="Email">${e.email}</td>
                 <td data-label="Contraseña">
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -214,6 +217,7 @@ function abrirModalEstudiante() {
     document.getElementById('modalEstudiante').style.display = 'flex';
     document.getElementById('estMatricula').value = '';
     document.getElementById('estNombre').value = '';
+    document.getElementById('estAnio').value = '';
     document.getElementById('estEmail').value = '';
     document.getElementById('estPass').value = '';
 }
@@ -226,6 +230,7 @@ async function guardarEstudiante(ev) {
     ev.preventDefault();
     const matricula = document.getElementById('estMatricula').value.trim();
     const nombre = document.getElementById('estNombre').value.trim();
+    const anio = document.getElementById('estAnio').value;
     const email = document.getElementById('estEmail').value.trim();
     const password = document.getElementById('estPass').value;
     if (!esMatriculaValida(matricula)) {
@@ -234,6 +239,10 @@ async function guardarEstudiante(ev) {
     }
     if (!esNombreValido(nombre)) {
         mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
+        return;
+    }
+    if (!anio || anio < 1 || anio > 6) {
+        mostrarToast('Selecciona un año válido (1-6)', 'error');
         return;
     }
     if (!esCorreoValido(email)) {
@@ -249,6 +258,7 @@ async function guardarEstudiante(ev) {
         body: JSON.stringify({
             matricula,
             nombre,
+            anio: parseInt(anio),
             email,
             password,
         }),

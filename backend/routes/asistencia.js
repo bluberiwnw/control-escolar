@@ -8,5 +8,6 @@ router.get('/:materia_id/:fecha', asistenciaController.getByMateriaYFecha);
 router.post('/', asistenciaController.save);
 router.post('/batch', asistenciaController.saveBatch);
 router.get('/estadisticas/:materia_id', asistenciaController.getEstadisticas);
+router.get('/historial/:materia_id', asistenciaController.getHistorialCompleto);
 
 module.exports = router;

@@ -30,12 +30,25 @@
         <div class="app-page-shell">
         <div class="top-bar"><h1>Control de Asistencia</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
         <div class="asistencia-header panel-card">
-            <select id="materiaSelect"><option value="">Todas las materias</option></select>
-            <input type="date" id="fechaAsistencia">
-            <label><input type="checkbox" id="todasLasFechas"> Ver todas las fechas</label>
-            <button class="btn btn-primary" onclick="cargarAsistencias()">Filtrar</button>
+            <div class="form-grid-asistencia-manual">
+                <select id="materiaSelect"><option value="">Todas las materias</option></select>
+                <input type="date" id="fechaAsistencia">
+                <button class="btn btn-primary" onclick="cargarAsistencias()">Filtrar</button>
+            </div>
+            <div class="form-group-modern">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="todasLasFechas">
+                    <span>Ver todas las fechas</span>
+                </label>
+            </div>
+            <div class="toolbar-actions">
+                <button class="btn btn-info" onclick="generarReportesAsistencia()">
+                    <i class="fas fa-chart-bar"></i> Generar Reportes
+                </button>
+            </div>
         </div>
         <div class="asistencia-tabla table-responsive-wrap" id="asistenciasContainer"></div>
+        <div id="reportesContainer"></div>
         </div>
     </main>
     <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>

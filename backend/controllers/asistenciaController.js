@@ -167,6 +167,34 @@ const asistenciaController = {
         } catch (error) {
             res.status(500).json({ message: 'Error en el servidor', error: error.message });
         }
+    },
+
+    async getHistorialCompleto(req, res) {
+        try {
+            const { materia_id } = req.params;
+            const materiaCheck = await pool.query(
+                'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materia_id, req.usuario.id]
+            );
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+            
+            const historial = await pool.query(
+                `SELECT a.*, e.nombre, e.matricula, 
+                        TO_CHAR(a.created_at, 'HH24:MI:SS') as hora_registro
+                 FROM asistencias a
+                 JOIN estudiantes e ON a.estudiante_id = e.id
+                 WHERE a.materia_id = $1
+                 ORDER BY a.fecha DESC, e.nombre`,
+                [materia_id]
+            );
+            
+            res.json(historial.rows);
+        } catch (error) {
+            console.error('Error al obtener historial completo:', error);
+            res.status(500).json({ message: 'Error en el servidor', error: error.message });
+        }
     }
 };
 

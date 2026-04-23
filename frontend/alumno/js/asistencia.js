@@ -128,7 +128,10 @@ async function iniciarLectorQR() {
     const region = document.getElementById('qrScannerRegion');
     const btnDet = document.getElementById('btnDetenerCamara');
     const btnIni = document.getElementById('btnIniciarCamara');
-    if (!readerEl || !region) return;
+    if (!readerEl || !region) {
+        mostrarToast('Error: elementos de cámara no encontrados', 'error');
+        return;
+    }
 
     if (html5QrCode) {
         await detenerCamara();
@@ -138,14 +141,27 @@ async function iniciarLectorQR() {
     region.hidden = false;
     if (btnDet) btnDet.hidden = false;
     if (btnIni) btnIni.hidden = true;
-    setMensajeInfo('Apunta al código del profesor. Si falla, revisa el mensaje: fecha u hora incorrecta.');
+    setMensajeInfo('Iniciando cámara... por favor espera.');
+
+    // Verificar si el navegador soporta la API de cámara
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        mostrarToast('Tu navegador no soporta acceso a la cámara', 'error');
+        setMensajeInfo('Usa un navegador moderno como Chrome, Firefox o Safari', true);
+        detenerCamara();
+        return;
+    }
 
     html5QrCode = new Html5Qrcode('reader');
     const w = Math.min(320, readerEl.clientWidth || 300);
-    const config = { fps: 8, qrbox: { width: Math.min(260, w - 20), height: Math.min(260, w - 20) } };
+    const config = { 
+        fps: 8, 
+        qrbox: { width: Math.min(260, w - 20), height: Math.min(260, w - 20) },
+        supportedScanTypes: [0] // Solo QR codes
+    };
 
-    html5QrCode
-        .start({ facingMode: 'environment' }, config, async (decodedText) => {
+    try {
+        // Intentar primero con la cámara trasera
+        await html5QrCode.start({ facingMode: 'environment' }, config, async (decodedText) => {
             if (escaneoBloqueado) return;
             const codigo = extraerCodigoQR(decodedText);
             if (!codigo) {
@@ -194,13 +210,71 @@ async function iniciarLectorQR() {
                     mostrarToast('Reinicia la cámara con el botón «Activar cámara».', 'error');
                 }
             }
-        })
-        .catch((err) => {
-            console.error('Error al iniciar lector:', err);
-            mostrarToast('No se pudo acceder a la cámara. Revisa permisos del navegador.', 'error');
-            setMensajeInfo('Permite el uso de la cámara para este sitio.', true);
-            detenerCamara();
         });
+        
+        setMensajeInfo('📷 Cámara activada. Apunta al código QR del profesor.');
+        
+    } catch (error) {
+        console.error('Error con cámara trasera:', error);
+        
+        // Intentar con cámara frontal como fallback
+        try {
+            setMensajeInfo('Intentando con cámara frontal...');
+            await html5QrCode.start({ facingMode: 'user' }, config, async (decodedText) => {
+                if (escaneoBloqueado) return;
+                const codigo = extraerCodigoQR(decodedText);
+                if (!codigo) {
+                    mostrarToast('No se pudo leer el código del QR', 'error');
+                    return;
+                }
+                escaneoBloqueado = true;
+                try {
+                    try {
+                        await html5QrCode.pause(true);
+                    } catch (_) {
+                        /* ignore */
+                    }
+                    const tiempoInicio = Date.now();
+                    const data = await apiRequest(
+                        '/qr/validar',
+                        {
+                            method: 'POST',
+                            body: JSON.stringify({ codigo, materia_id: mid }),
+                        },
+                        false
+                    );
+                    
+                    const tiempoFin = Date.now();
+                    const tiempoEscaneo = ((tiempoFin - tiempoInicio) / 1000).toFixed(2);
+                    
+                    const mensajeDetallado = `${data.message || 'Asistencia registrada'} (Tiempo: ${tiempoEscaneo}s)`;
+                    mostrarToast(mensajeDetallado, 'success');
+                    
+                    setMensajeInfo(`✅ Escaneo completado en ${tiempoEscaneo} segundos. Hora: ${new Date().toLocaleTimeString()}`, false);
+                    
+                    await cargarHistorial();
+                    await detenerCamara();
+                } catch (err) {
+                    const msg = err.message || 'No se pudo registrar la asistencia';
+                    mostrarToast(msg, 'error');
+                    setMensajeInfo(msg, true);
+                    escaneoBloqueado = false;
+                    try {
+                        await html5QrCode.resume();
+                    } catch (_) {
+                        await detenerCamara();
+                        mostrarToast('Reinicia la cámara con el botón «Activar cámara».', 'error');
+                    }
+                }
+            });
+            setMensajeInfo('📷 Cámara frontal activada. Apunta al código QR del profesor.');
+        } catch (fallbackError) {
+            console.error('Error con cámara frontal:', fallbackError);
+            mostrarToast('No se pudo acceder a ninguna cámara. Verifica los permisos.', 'error');
+            setMensajeInfo('💡 Asegúrate de permitir el acceso a la cámara en tu navegador y recarga la página.', true);
+            detenerCamara();
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

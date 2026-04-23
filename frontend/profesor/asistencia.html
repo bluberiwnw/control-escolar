@@ -49,7 +49,12 @@
         <div id="statsAsistencia"></div>
         <div id="qrContainer" style="text-align:center; margin:20px 0;"></div>
         <section class="panel-section">
-            <div class="panel-section__head"><h2>Lista manual (puedes modificar P / A / R en cualquier momento)</h2></div>
+            <div class="panel-section__head">
+                <h2>Lista manual (puedes modificar P / A / R en cualquier momento)</h2>
+                <button type="button" class="btn btn-info" onclick="cargarHistorialCompleto()" style="margin-left:auto;">
+                    <i class="fas fa-history"></i> Ver Historial Completo
+                </button>
+            </div>
             <p style="margin: 0 0 1rem; font-size: 0.95rem; opacity: 0.9;">Selecciona materia y fecha, luego marca la asistencia de cada alumno. Los cambios se guardan al instante y puedes corregirlos cuando lo necesites.</p>
             <div class="table-responsive-wrap">
                 <table class="data-table">
@@ -58,6 +63,7 @@
                 </table>
             </div>
         </section>
+        <div id="historialCompletoContainer"></div>
     </main>
     <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>

@@ -56,72 +56,213 @@ async function generarQR() {
     const materiaId = document.getElementById('materiaSelect').value;
     const fecha = document.getElementById('fechaAsistencia').value;
     if (!materiaId || !fecha) {
-        mostrarToast('Selecciona materia y fecha', 'error');
+        mostrarToast('⚠️ Selecciona materia y fecha antes de generar QR', 'error');
         return;
     }
 
-    // Obtener hora actual para sugerencias
+    // Obtener hora actual para sugerencias inteligentes
     const ahora = new Date();
     const horaActual = ahora.toTimeString().slice(0, 5);
-    const horaSugeridaInicio = horaActual;
-    const horaSugeridaFin = new Date(ahora.getTime() + 2 * 60 * 60 * 1000).toTimeString().slice(0, 5);
+    const horaActualNum = parseInt(horaActual.split(':')[0]) * 60 + parseInt(horaActual.split(':')[1]);
+    
+    // Sugerencias basadas en hora actual
+    let horaSugeridaInicio, horaSugeridaFin, mensajeEjemplo;
+    
+    if (horaActualNum >= 7 * 60 && horaActualNum < 9 * 60) {
+        // Clase de 7-9am
+        horaSugeridaInicio = "07:00";
+        horaSugeridaFin = "09:00";
+        mensajeEjemplo = "📚 Ejemplo: Clase matutina (7:00 - 9:00)";
+    } else if (horaActualNum >= 9 * 60 && horaActualNum < 11 * 60) {
+        // Clase de 9-11am
+        horaSugeridaInicio = "09:00";
+        horaSugeridaFin = "11:00";
+        mensajeEjemplo = "📚 Ejemplo: Clase de la mañana (9:00 - 11:00)";
+    } else if (horaActualNum >= 11 * 60 && horaActualNum < 13 * 60) {
+        // Clase de 11am-1pm
+        horaSugeridaInicio = "11:00";
+        horaSugeridaFin = "13:00";
+        mensajeEjemplo = "📚 Ejemplo: Clase de mediodía (11:00 - 13:00)";
+    } else if (horaActualNum >= 13 * 60 && horaActualNum < 15 * 60) {
+        // Clase de 1-3pm
+        horaSugeridaInicio = "13:00";
+        horaSugeridaFin = "15:00";
+        mensajeEjemplo = "📚 Ejemplo: Clase de la tarde (13:00 - 15:00)";
+    } else if (horaActualNum >= 15 * 60 && horaActualNum < 17 * 60) {
+        // Clase de 3-5pm
+        horaSugeridaInicio = "15:00";
+        horaSugeridaFin = "17:00";
+        mensajeEjemplo = "📚 Ejemplo: Clase vespertina (15:00 - 17:00)";
+    } else if (horaActualNum >= 17 * 60 && horaActualNum < 19 * 60) {
+        // Clase de 5-7pm
+        horaSugeridaInicio = "17:00";
+        horaSugeridaFin = "19:00";
+        mensajeEjemplo = "📚 Ejemplo: Clase de la tarde-noche (17:00 - 19:00)";
+    } else if (horaActualNum >= 19 * 60 && horaActualNum < 21 * 60) {
+        // Clase de 7-9pm
+        horaSugeridaInicio = "19:00";
+        horaSugeridaFin = "21:00";
+        mensajeEjemplo = "📚 Ejemplo: Última clase del día (19:00 - 21:00)";
+    } else {
+        // Fuera de horario, sugerir próxima clase
+        horaSugeridaInicio = "07:00";
+        horaSugeridaFin = "09:00";
+        mensajeEjemplo = "📚 Ejemplo: Primera clase del día (7:00 - 9:00)";
+    }
 
-    const hora_inicio = window.prompt(`Hora inicio (HH:MM):`, horaSugeridaInicio);
+    // Mostrar diálogo con ejemplos
+    const hora_inicio = window.prompt(
+        `⏰ HORA DE INICIO\n\n${mensajeEjemplo}\n\nFormato: HH:MM (24 horas)\nHorario escolar: 07:00 - 21:00\n\nEjemplos válidos:\n• 07:00 (7 AM)\n• 14:30 (2:30 PM)\n• 19:00 (7 PM)\n\nIngresa la hora de inicio:`, 
+        horaSugeridaInicio
+    );
+    
     if (!hora_inicio) return;
     
-    const hora_fin = window.prompt(`Hora fin (HH:MM):`, horaSugeridaFin);
+    // Validar formato de hora
+    if (!/^\d{2}:\d{2}$/.test(hora_inicio)) {
+        mostrarToast('❌ Formato inválido. Usa HH:MM (ej: 08:00, 14:30)', 'error');
+        return;
+    }
+    
+    const [hi, mi] = hora_inicio.split(':').map(Number);
+    if (hi < 7 || hi > 21 || mi < 0 || mi > 59) {
+        mostrarToast('❌ Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
+        return;
+    }
+    
+    const hora_fin = window.prompt(
+        `⏰ HORA DE FIN\n\nInicio: ${hora_inicio}\n${mensajeEjemplo}\n\nFormato: HH:MM (24 horas)\nMáximo 4 horas de diferencia\n\nEjemplos según inicio:\n• Si inicia 07:00 → fin 11:00\n• Si inicia 14:30 → fin 18:30\n• Si inicia 19:00 → fin 21:00\n\nIngresa la hora de fin:`, 
+        horaSugeridaFin
+    );
+    
     if (!hora_fin) return;
     
-    if (!/^\d{2}:\d{2}$/.test(hora_inicio) || !/^\d{2}:\d{2}$/.test(hora_fin)) {
-        mostrarToast('Usa formato de hora HH:MM (ej: 08:00)', 'error');
+    if (!/^\d{2}:\d{2}$/.test(hora_fin)) {
+        mostrarToast('❌ Formato inválido. Usa HH:MM (ej: 10:00, 16:30)', 'error');
+        return;
+    }
+    
+    const [hf, mf] = hora_fin.split(':').map(Number);
+    if (hf < 7 || hf > 21 || mf < 0 || mf > 59) {
+        mostrarToast('❌ Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
         return;
     }
     
     // Validar rango de horas
-    const [hi, mi] = hora_inicio.split(':').map(Number);
-    const [hf, mf] = hora_fin.split(':').map(Number);
     const minutosInicio = hi * 60 + mi;
     const minutosFin = hf * 60 + mf;
     
     if (minutosInicio >= minutosFin) {
-        mostrarToast('La hora final debe ser posterior a la hora inicial', 'error');
+        mostrarToast('❌ La hora final debe ser posterior a la hora inicial', 'error');
         return;
     }
     
     if (minutosFin - minutosInicio > 240) { // Máximo 4 horas
-        mostrarToast('El rango de tiempo no debe exceder 4 horas', 'error');
+        mostrarToast('❌ El rango no debe exceder 4 horas. Máximo permitido: 240 minutos', 'error');
         return;
     }
 
+    // Confirmación con detalles
+    const materiaNombre = document.getElementById('materiaSelect').options[document.getElementById('materiaSelect').selectedIndex].text;
+    const confirmacion = confirm(
+        `🔍 CONFIRMA LOS DATOS\n\n` +
+        `📚 Materia: ${materiaNombre}\n` +
+        `📅 Fecha: ${fecha}\n` +
+        `⏰ Horario: ${hora_inicio} - ${hora_fin}\n` +
+        `⏱️ Duración: ${Math.floor((minutosFin - minutosInicio) / 60)}h ${((minutosFin - minutosInicio) % 60)}min\n\n` +
+        `📋 Los alumnos podrán escanear:\n` +
+        `• Desde las ${hora_inicio}\n` +
+        `• Hasta las ${hora_fin}\n` +
+        `• Con 5 min de tolerancia antes y después\n\n` +
+        `¿Generar código QR con estos datos?`
+    );
+    
+    if (!confirmacion) return;
+
     try {
-        mostrarToast('Generando código QR...', 'info');
+        mostrarToast('⏳ Generando código QR único y seguro...', 'info');
+        
         const data = await apiRequest('/qr/generar', {
             method: 'POST',
-            body: JSON.stringify({ materia_id: parseInt(materiaId), fecha, hora_inicio, hora_fin })
+            body: JSON.stringify({ 
+                materia_id: parseInt(materiaId), 
+                fecha, 
+                hora_inicio, 
+                hora_fin 
+            })
         });
 
-        // Mostrar QR con información detallada
+        // Mostrar QR con información detallada y profesional
         const container = document.getElementById('qrContainer');
         container.innerHTML = `
-            <div class="panel-card" style="background:white; padding:20px; display:inline-block; border-radius:20px; max-width:100%;">
-                <h3 style="margin:0 0 15px 0; color:#333; text-align:center;">Código QR de Asistencia</h3>
-                <img src="${data.qrDataUrl}" style="max-width:300px; width:100%; height:auto;" alt="QR">
-                <div style="margin:15px 0; padding:10px; background:#f8f9fa; border-radius:8px; font-size:0.9rem; color:#666;">
-                    <strong>Materia:</strong> ${document.getElementById('materiaSelect').options[document.getElementById('materiaSelect').selectedIndex].text}<br>
-                    <strong>Fecha:</strong> ${fecha}<br>
-                    <strong>Válido:</strong> ${hora_inicio} - ${hora_fin}<br>
-                    <small style="color:#999;">Los alumnos tienen 5 minutos de tolerancia</small>
+            <div class="panel-card qr-generado" style="background:white; padding:25px; display:inline-block; border-radius:20px; max-width:100%; box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+                <div style="text-align:center; margin-bottom:20px;">
+                    <div style="display:inline-flex; align-items:center; gap:10px; background:#10b981; color:white; padding:8px 16px; border-radius:20px; margin-bottom:15px;">
+                        <i class="fas fa-check-circle"></i>
+                        <span style="font-weight:600;">QR Generado Exitosamente</span>
+                    </div>
+                    <h3 style="margin:0; color:#333; font-size:1.4rem;">Código QR de Asistencia</h3>
+                    <p style="margin:5px 0 0; color:#666; font-size:0.9rem;">${materiaNombre}</p>
                 </div>
-                <div style="text-align:center;">
-                    <a href="${data.download_url || data.qrDataUrl}" download="qr_asistencia_${fecha.replace(/-/g, '')}.png" class="btn btn-primary">
-                        <i class="fas fa-download"></i> Descargar QR
+                
+                <div style="text-align:center; margin:20px 0;">
+                    <img src="${data.qrDataUrl}" style="max-width:280px; width:100%; height:auto; border:3px solid #e5e7eb; border-radius:12px;" alt="QR Asistencia">
+                </div>
+                
+                <div style="background:#f8fafc; padding:15px; border-radius:12px; margin:15px 0; border:1px solid #e2e8f0;">
+                    <h4 style="margin:0 0 10px; color:#334155; font-size:0.95rem;">📋 Información del QR</h4>
+                    <div style="display:grid; gap:8px; font-size:0.85rem;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:#64748b;">📅 Fecha:</span>
+                            <span style="font-weight:600; color:#334155;">${fecha}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:#64748b;">⏰ Válido:</span>
+                            <span style="font-weight:600; color:#334155;">${hora_inicio} - ${hora_fin}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:#64748b;">⏱️ Duración:</span>
+                            <span style="font-weight:600; color:#334155;">${Math.floor((minutosFin - minutosInicio) / 60)}h ${((minutosFin - minutosInicio) % 60)}min</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:#64748b;">🔐 Código:</span>
+                            <span style="font-weight:600; color:#059669; font-family:monospace;">${data.codigo?.substring(0, 8)}...</span>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px; padding-top:10px; border-top:1px solid #e2e8f0;">
+                        <p style="margin:0; color:#059669; font-size:0.8rem; text-align:center;">
+                            <i class="fas fa-shield-alt"></i> QR único y seguro con tolerancia de 5 minutos
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="text-align:center; margin-top:20px;">
+                    <a href="${data.download_url || data.qrDataUrl}" download="qr_asistencia_${materiaNombre.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${fecha.replace(/-/g, '')}.png" 
+                       class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; text-decoration:none;">
+                        <i class="fas fa-download"></i>
+                        Descargar QR
                     </a>
+                </div>
+                
+                <div style="margin-top:15px; padding:12px; background:#fef3c7; border-radius:8px; border:1px solid #f59e0b;">
+                    <p style="margin:0; color:#92400e; font-size:0.8rem; text-align:center;">
+                        <i class="fas fa-info-circle"></i> <strong>Importante:</strong> Muestra este código a tus alumnos solo durante el horario especificado.
+                    </p>
                 </div>
             </div>
         `;
-        mostrarToast('QR generado correctamente. Muestra este código a tus alumnos.', 'success');
+        
+        mostrarToast('✅ QR generado correctamente. Muestra este código a tus alumnos.', 'success');
+        
+        // Actualizar automáticamente la lista de asistencia
+        setTimeout(() => {
+            cargarLista();
+            verAsistenciaEnTiempoReal();
+        }, 1000);
+        
     } catch (error) {
-        mostrarToast('Error al generar QR: ' + (error.message || 'Intenta de nuevo'), 'error');
+        console.error('Error generando QR:', error);
+        mostrarToast('❌ Error al generar QR: ' + (error.message || 'Verifica tu conexión'), 'error');
     }
 }
 
@@ -212,6 +353,135 @@ async function verAsistenciaEnTiempoReal() {
     }
 }
 
+async function cargarHistorialCompleto() {
+    const materiaId = document.getElementById('materiaSelect').value;
+    if (!materiaId) {
+        mostrarToast('Selecciona una materia para ver el historial', 'error');
+        return;
+    }
+    
+    try {
+        // Obtener todo el historial de asistencias de la materia
+        const historial = await apiRequest(`/asistencia/historial/${materiaId}`);
+        
+        const container = document.getElementById('historialCompletoContainer');
+        if (!container) return;
+        
+        if (!historial || historial.length === 0) {
+            container.innerHTML = `
+                <div class="panel-card">
+                    <h3>📋 Historial Completo de Asistencias</h3>
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-times" style="font-size:3rem; color:#94a3b8; margin-bottom:1rem;"></i>
+                        <p>No hay registros de asistencia para esta materia.</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        // Agrupar por fecha
+        const historialPorFecha = {};
+        historial.forEach(registro => {
+            if (!historialPorFecha[registro.fecha]) {
+                historialPorFecha[registro.fecha] = [];
+            }
+            historialPorFecha[registro.fecha].push(registro);
+        });
+        
+        // Ordenar fechas descendente
+        const fechasOrdenadas = Object.keys(historialPorFecha).sort((a, b) => new Date(b) - new Date(a));
+        
+        let html = `
+            <div class="panel-card">
+                <h3>📋 Historial Completo de Asistencias</h3>
+                <div class="historial-resumen">
+                    <div class="stats-grid">
+                        <div class="stat-item total">
+                            <span class="stat-number">${historial.length}</span>
+                            <span class="stat-label">Total Registros</span>
+                        </div>
+                        <div class="stat-item presente">
+                            <span class="stat-number">${historial.filter(a => a.estado === 'presente').length}</span>
+                            <span class="stat-label">Presentes</span>
+                        </div>
+                        <div class="stat-item ausente">
+                            <span class="stat-number">${historial.filter(a => a.estado === 'ausente').length}</span>
+                            <span class="stat-label">Ausentes</span>
+                        </div>
+                        <div class="stat-item retardo">
+                            <span class="stat-number">${historial.filter(a => a.estado === 'retardo').length}</span>
+                            <span class="stat-label">Retardos</span>
+                        </div>
+                    </div>
+                </div>
+        `;
+        
+        fechasOrdenadas.forEach(fecha => {
+            const registrosDia = historialPorFecha[fecha];
+            const presentes = registrosDia.filter(r => r.estado === 'presente').length;
+            const ausentes = registrosDia.filter(r => r.estado === 'ausente').length;
+            const retardos = registrosDia.filter(r => r.estado === 'retardo').length;
+            const total = registrosDia.length;
+            const porcentajeAsistencia = total > 0 ? ((presentes / total) * 100).toFixed(1) : 0;
+            
+            html += `
+                <div class="historial-dia panel-card panel-card--flat" style="margin-bottom:1rem;">
+                    <div class="historial-dia-header">
+                        <h4>📅 ${formatearFecha(fecha)}</h4>
+                        <div class="historial-dia-estadisticas">
+                            <span class="badge badge-success">${presentes} P</span>
+                            <span class="badge badge-danger">${ausentes} A</span>
+                            <span class="badge badge-warning">${retardos} R</span>
+                            <span class="badge badge-info">${porcentajeAsistencia}%</span>
+                        </div>
+                    </div>
+                    <div class="table-responsive-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Matrícula</th>
+                                    <th>Nombre</th>
+                                    <th>Estado</th>
+                                    <th>Hora Registro</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${registrosDia.map(registro => `
+                                    <tr>
+                                        <td data-label="Matrícula">${registro.matricula}</td>
+                                        <td data-label="Nombre">${registro.nombre}</td>
+                                        <td data-label="Estado">
+                                            <span class="badge badge-${registro.estado === 'presente' ? 'success' : registro.estado === 'ausente' ? 'danger' : 'warning'}">
+                                                ${registro.estado.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td data-label="Hora Registro">${registro.hora_registro || 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error al cargar historial:', error);
+        mostrarToast('Error al cargar historial: ' + (error.message || 'Intenta de nuevo'), 'error');
+    }
+}
+
+function formatearFecha(fechaStr) {
+    const fecha = new Date(fechaStr);
+    const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return fecha.toLocaleDateString('es-ES', opciones);
+}
+
 window.generarQR = generarQR;
 window.marcarTodos = marcarTodos;
 window.verAsistenciaEnTiempoReal = verAsistenciaEnTiempoReal;
+window.cargarHistorialCompleto = cargarHistorialCompleto;
