@@ -124,6 +124,9 @@ async function cargarEstudiantes() {
                                 nombre: 'Juan Pérez',
                                 email: 'juan.perez@estudiante.edu',
                                 rol: 'alumno',
+                                matricula: '20240001',
+                                carrera: 'computacion',
+                                semestre: 3,
                                 password: 'temp123'
                             },
                             {
@@ -131,6 +134,9 @@ async function cargarEstudiantes() {
                                 nombre: 'María García',
                                 email: 'maria.garcia@estudiante.edu',
                                 rol: 'alumno',
+                                matricula: '20240002',
+                                carrera: 'software',
+                                semestre: 5,
                                 password: 'temp456'
                             },
                             {
@@ -138,6 +144,9 @@ async function cargarEstudiantes() {
                                 nombre: 'Carlos López',
                                 email: 'carlos.lopez@estudiante.edu',
                                 rol: 'alumno',
+                                matricula: '20240003',
+                                carrera: 'datos',
+                                semestre: 7,
                                 password: 'temp789'
                             }
                         ];
@@ -160,9 +169,11 @@ async function cargarEstudiantes() {
                                 <table class="data-table">
                                     <thead>
                                         <tr>
+                                            <th>Matrícula</th>
                                             <th>Nombre</th>
                                             <th>Email</th>
-                                            <th>Rol</th>
+                                            <th>Carrera</th>
+                                            <th>Semestre</th>
                                             <th>Contraseña</th>
                                             <th>Acciones</th>
                                         </tr>
@@ -170,9 +181,11 @@ async function cargarEstudiantes() {
                                     <tbody>
                                         ${datosPrueba.map(e => `
                                             <tr>
+                                                <td data-label="Matrícula"><span class="matricula-destacada">${e.matricula || 'N/A'}</span></td>
                                                 <td data-label="Nombre">${e.nombre}</td>
                                                 <td data-label="Email">${e.email}</td>
-                                                <td data-label="Rol">${e.rol}</td>
+                                                <td data-label="Carrera">${getCarreraNombre(e.carrera)}</td>
+                                                <td data-label="Semestre">${e.semestre ? `${e.semestre}°` : 'N/A'}</td>
                                                 <td data-label="Contraseña">
                                                     <div style="display: flex; align-items: center; gap: 8px;">
                                                         <span id="pass-${e.id}" style="font-family: monospace; font-size: 0.85rem;">${e.password || 'N/A'}</span>
@@ -223,13 +236,15 @@ async function cargarEstudiantes() {
             container.innerHTML = '<div class="empty-state">No hay estudiantes registrados.</div>';
             return;
         }
-        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
+        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Email</th><th>Carrera</th><th>Semestre</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${estudiantes
                 .map(
                     (e) => `<tr>
+                <td data-label="Matrícula"><span class="matricula-destacada">${e.matricula || 'N/A'}</span></td>
                 <td data-label="Nombre">${e.nombre}</td>
                 <td data-label="Email">${e.email}</td>
-                <td data-label="Rol">${e.rol || 'alumno'}</td>
+                <td data-label="Carrera">${getCarreraNombre(e.carrera)}</td>
+                <td data-label="Semestre">${e.semestre ? `${e.semestre}°` : 'N/A'}</td>
                 <td data-label="Contraseña">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span id="pass-${e.id}" style="font-family: monospace; font-size: 0.85rem;">${e.password || 'N/A'}</span>
@@ -239,7 +254,7 @@ async function cargarEstudiantes() {
                     </div>
                 </td>
                 <td data-label="Acciones" class="table-actions">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarEstudiante(${e.id}, '${e.nombre.replace(/'/g, "\\'")}', '${e.email.replace(/'/g, "\\'")}')">Editar</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarEstudiante(${e.id}, '${(e.matricula || '').replace(/'/g, "\\'")}', '${e.nombre.replace(/'/g, "\\'")}', '${e.email.replace(/'/g, "\\'")}', '${(e.carrera || '').replace(/'/g, "\\'")}', '${(e.semestre || '').replace(/'/g, "\\'")}')">Editar</button>
                     <button type="button" class="btn btn-warning btn-sm" onclick="cambiarContrasena(${e.id}, 'alumno')">Cambiar contraseña</button>
                     <button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${e.id},'alumno')">Eliminar</button>
                 </td>
@@ -286,25 +301,69 @@ async function editarProfesor(id, nombreActual, emailActual) {
     cargarProfesores();
 }
 
-async function editarEstudiante(id, nombreActual, emailActual) {
-    const nombre = prompt('Nombre del estudiante', nombreActual);
-    if (!nombre) return;
-    const email = prompt('Correo del estudiante', emailActual);
-    if (!email) return;
-    if (!esNombreValido(nombre)) {
+async function editarEstudiante(id, matriculaActual, nombreActual, emailActual, carreraActual, semestreActual) {
+    // Obtener datos actuales del estudiante desde el cache
+    const usuarios = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
+    const estudianteActual = usuarios.find(u => u.id === id && u.tipo === 'alumno');
+    
+    // Crear un formulario de edición más completo
+    const nuevoNombre = prompt('Nombre del estudiante:', nombreActual);
+    if (nuevoNombre === null) return;
+    
+    const nuevoEmail = prompt('Correo del estudiante:', emailActual);
+    if (nuevoEmail === null) return;
+    
+    const nuevaMatricula = prompt('Matrícula del estudiante:', matriculaActual || '');
+    if (nuevaMatricula === null) return;
+    
+    // Validaciones
+    if (!esNombreValido(nuevoNombre)) {
         mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
         return;
     }
-    if (!esCorreoValido(email)) {
+    if (!esCorreoValido(nuevoEmail)) {
         mostrarToast('Ingresa un correo electrónico válido', 'error');
         return;
     }
-    await apiRequest(`/admin/estudiantes/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ nombre: nombre.trim(), email: email.trim() }),
-    });
-    mostrarToast('Estudiante actualizado', 'success');
-    cargarEstudiantes();
+    if (nuevaMatricula && !esMatriculaValida(nuevaMatricula)) {
+        mostrarToast('La matrícula debe tener 8 dígitos numéricos', 'error');
+        return;
+    }
+    
+    try {
+        console.log('Actualizando estudiante:', {
+            id, nombre: nuevoNombre.trim(), email: nuevoEmail.trim(), matricula: nuevaMatricula.trim()
+        });
+        
+        await apiRequest(`/admin/estudiantes/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                nombre: nuevoNombre.trim(), 
+                email: nuevoEmail.trim(),
+                matricula: nuevaMatricula.trim() || matriculaActual
+            }),
+        });
+        
+        mostrarToast('Estudiante actualizado exitosamente', 'success');
+        cargarEstudiantes();
+        
+    } catch (error) {
+        console.error('Error al actualizar estudiante:', error);
+        
+        if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
+            if (error.message.includes('email')) {
+                mostrarToast('El correo electrónico ya está registrado', 'error');
+            } else if (error.message.includes('matricula')) {
+                mostrarToast('La matrícula ya está registrada', 'error');
+            } else {
+                mostrarToast('El estudiante ya existe en el sistema', 'error');
+            }
+        } else if (error.message.includes('500')) {
+            mostrarToast('Error del servidor al actualizar estudiante. Intenta de nuevo.', 'error');
+        } else {
+            mostrarToast('Error al actualizar estudiante: ' + (error.message || 'Intenta de nuevo'), 'error');
+        }
+    }
 }
 
 function abrirModalProfesor() {
@@ -353,7 +412,10 @@ function abrirModalEstudiante() {
     document.getElementById('modalEstudiante').style.display = 'flex';
     document.getElementById('estNombre').value = '';
     document.getElementById('estEmail').value = '';
+    document.getElementById('estMatricula').value = '';
     document.getElementById('estPass').value = '';
+    document.getElementById('estCarrera').value = '';
+    document.getElementById('estSemestre').value = '';
 }
 
 function cerrarModalEstudiante() {
@@ -362,9 +424,16 @@ function cerrarModalEstudiante() {
 
 async function guardarEstudiante(ev) {
     ev.preventDefault();
+    
+    // Obtener todos los campos del formulario
     const nombre = document.getElementById('estNombre').value.trim();
     const email = document.getElementById('estEmail').value.trim();
+    const matricula = document.getElementById('estMatricula').value.trim();
     const password = document.getElementById('estPass').value;
+    const carrera = document.getElementById('estCarrera').value;
+    const semestre = document.getElementById('estSemestre').value;
+    
+    // Validaciones mejoradas
     if (!esNombreValido(nombre)) {
         mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
         return;
@@ -373,21 +442,82 @@ async function guardarEstudiante(ev) {
         mostrarToast('Ingresa un correo electrónico válido', 'error');
         return;
     }
+    if (!esMatriculaValida(matricula)) {
+        mostrarToast('La matrícula debe tener 8 dígitos numéricos', 'error');
+        return;
+    }
     if (password.length < 6) {
         mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
         return;
     }
-    await apiRequest('/admin/estudiantes', {
-        method: 'POST',
-        body: JSON.stringify({
-            nombre,
-            email,
-            password,
-        }),
-    });
-    mostrarToast('Estudiante creado', 'success');
-    cerrarModalEstudiante();
-    cargarEstudiantes();
+    if (!carrera) {
+        mostrarToast('Selecciona una carrera', 'error');
+        return;
+    }
+    if (!semestre) {
+        mostrarToast('Selecciona un semestre', 'error');
+        return;
+    }
+    
+    try {
+        console.log('Enviando datos del estudiante:', {
+            nombre, email, matricula, password, carrera, semestre
+        });
+        
+        // Intentar crear estudiante con todos los campos
+        await apiRequest('/admin/estudiantes', {
+            method: 'POST',
+            body: JSON.stringify({
+                nombre,
+                email,
+                matricula,
+                password,
+                carrera,
+                semestre: parseInt(semestre),
+                rol: 'alumno'
+            }),
+        });
+        
+        mostrarToast('Estudiante creado exitosamente', 'success');
+        cerrarModalEstudiante();
+        cargarEstudiantes();
+        
+    } catch (error) {
+        console.error('Error al crear estudiante:', error);
+        
+        // Manejo específico de errores comunes
+        if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
+            if (error.message.includes('email')) {
+                mostrarToast('El correo electrónico ya está registrado', 'error');
+            } else if (error.message.includes('matricula')) {
+                mostrarToast('La matrícula ya está registrada', 'error');
+            } else {
+                mostrarToast('El estudiante ya existe en el sistema', 'error');
+            }
+        } else if (error.message.includes('500')) {
+            mostrarToast('Error del servidor al crear estudiante. Intenta de nuevo.', 'error');
+        } else if (error.message.includes('400')) {
+            mostrarToast('Datos inválidos. Verifica toda la información.', 'error');
+        } else {
+            mostrarToast('Error al crear estudiante: ' + (error.message || 'Intenta de nuevo'), 'error');
+        }
+    }
+}
+
+// Función de validación para matrícula
+function esMatriculaValida(matricula) {
+    return /^[0-9]{8}$/.test(matricula);
+}
+
+// Función para obtener nombre de carrera
+function getCarreraNombre(carrera) {
+    const carreras = {
+        'computacion': 'Ciencias de la Computación',
+        'software': 'Ingeniería de Software',
+        'datos': 'Ciencia de Datos',
+        'ia': 'Inteligencia Artificial'
+    };
+    return carreras[carrera] || carrera || 'N/A';
 }
 
 function togglePassword(userId) {

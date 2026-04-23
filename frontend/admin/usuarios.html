@@ -85,19 +85,54 @@
             <form onsubmit="guardarEstudiante(event)">
                 <div class="form-group-modern">
                     <label for="estNombre">Nombre completo</label>
-                    <input type="text" id="estNombre" required>
+                    <input type="text" id="estNombre" required placeholder="Ej: Juan Pérez García">
+                    <small>Ingresa el nombre completo del estudiante (3-120 caracteres)</small>
                 </div>
                 <div class="form-group-modern">
-                    <label for="estEmail">Correo</label>
-                    <input type="email" id="estEmail" required>
+                    <label for="estEmail">Correo institucional</label>
+                    <input type="email" id="estEmail" required placeholder="Ej: estudiante@buap.mx">
+                    <small>Correo electrónico institucional del estudiante</small>
+                </div>
+                <div class="form-group-modern">
+                    <label for="estMatricula">Matrícula</label>
+                    <input type="text" id="estMatricula" required placeholder="Ej: 20240001" pattern="[0-9]{8}" maxlength="8">
+                    <small>Matrícula de 8 dígitos numéricos</small>
                 </div>
                 <div class="form-group-modern">
                     <label for="estPass">Contraseña temporal</label>
-                    <input type="password" id="estPass" required minlength="6">
+                    <input type="password" id="estPass" required minlength="6" placeholder="Mínimo 6 caracteres">
+                    <small>Contraseña temporal para el primer acceso</small>
+                </div>
+                <div class="form-group-modern">
+                    <label for="estCarrera">Carrera</label>
+                    <select id="estCarrera" required>
+                        <option value="">Seleccionar carrera</option>
+                        <option value="computacion">Ciencias de la Computación</option>
+                        <option value="software">Ingeniería de Software</option>
+                        <option value="datos">Ciencia de Datos</option>
+                        <option value="ia">Inteligencia Artificial</option>
+                    </select>
+                    <small>Programa académico del estudiante</small>
+                </div>
+                <div class="form-group-modern">
+                    <label for="estSemestre">Semestre</label>
+                    <select id="estSemestre" required>
+                        <option value="">Seleccionar semestre</option>
+                        <option value="1">1er Semestre</option>
+                        <option value="2">2do Semestre</option>
+                        <option value="3">3er Semestre</option>
+                        <option value="4">4to Semestre</option>
+                        <option value="5">5to Semestre</option>
+                        <option value="6">6to Semestre</option>
+                        <option value="7">7mo Semestre</option>
+                        <option value="8">8vo Semestre</option>
+                        <option value="9">9no Semestre</option>
+                    </select>
+                    <small>Semestre actual del estudiante</small>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-ghost" onclick="cerrarModalEstudiante()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Crear</button>
+                    <button type="submit" class="btn btn-primary">Crear Estudiante</button>
                 </div>
             </form>
         </div>
