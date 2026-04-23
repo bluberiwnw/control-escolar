@@ -124,21 +124,21 @@ async function cargarEstudiantes() {
                                 nombre: 'Juan Pérez',
                                 email: 'juan.perez@estudiante.edu',
                                 rol: 'alumno',
-                                matricula: '20240001'
+                                password: 'temp123'
                             },
                             {
                                 id: 2,
                                 nombre: 'María García',
                                 email: 'maria.garcia@estudiante.edu',
                                 rol: 'alumno',
-                                matricula: '20240002'
+                                password: 'temp456'
                             },
                             {
                                 id: 3,
                                 nombre: 'Carlos López',
                                 email: 'carlos.lopez@estudiante.edu',
                                 rol: 'alumno',
-                                matricula: '20240003'
+                                password: 'temp789'
                             }
                         ];
                         
@@ -163,7 +163,7 @@ async function cargarEstudiantes() {
                                             <th>Nombre</th>
                                             <th>Email</th>
                                             <th>Rol</th>
-                                            <th>Matrícula</th>
+                                            <th>Contraseña</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
@@ -173,8 +173,16 @@ async function cargarEstudiantes() {
                                                 <td data-label="Nombre">${e.nombre}</td>
                                                 <td data-label="Email">${e.email}</td>
                                                 <td data-label="Rol">${e.rol}</td>
-                                                <td data-label="Matrícula">${e.matricula}</td>
+                                                <td data-label="Contraseña">
+                                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                                        <span id="pass-${e.id}" style="font-family: monospace; font-size: 0.85rem;">${e.password || 'N/A'}</span>
+                                                        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePassword(${e.id})" style="padding: 4px 8px;">
+                                                            <i class="fas fa-eye" id="eye-${e.id}"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
                                                 <td data-label="Acciones" class="table-actions">
+                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="mostrarToast('Modo demo: Función deshabilitada', 'info')">Editar</button>
                                                     <button type="button" class="btn btn-danger btn-sm" onclick="mostrarToast('Modo demo: Función deshabilitada', 'info')">Eliminar</button>
                                                 </td>
                                             </tr>

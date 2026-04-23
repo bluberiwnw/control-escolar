@@ -39,42 +39,19 @@ async function cargarCalificaciones() {
     }
     const container = document.getElementById('calificacionesContainer');
     container.innerHTML = filtrosInfo + 
-        `<div class="calificaciones-grid">
-            ${calificaciones.map(c => `
-                <div class="calificacion-card">
-                    <div class="calificacion-header">
-                        <div class="calificacion-materia">
-                            <span class="materia-badge">${c.materia_nombre}</span>
-                        </div>
-                        <div class="calificacion-valor">
-                            <span class="calificacion-score">${c.calificacion}</span>
-                            <span class="calificacion-label">Calificación</span>
-                        </div>
-                    </div>
-                    <div class="calificacion-body">
-                        <div class="calificacion-info">
-                            <div class="calificacion-estudiante">
-                                <i class="fas fa-user"></i> ${c.estudiante_nombre}
-                            </div>
-                            <div class="calificacion-actividad">
-                                <i class="fas fa-tasks"></i> ${c.actividad_titulo || c.tipo}
-                            </div>
-                            <div class="calificacion-fecha">
-                                <i class="fas fa-calendar"></i> ${formatearFecha(c.fecha_registro)}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="calificacion-actions">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">
-                            <i class="fas fa-edit"></i> Editar
-                        </button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">
-                            <i class="fas fa-trash"></i> Eliminar
-                        </button>
-                    </div>
-                </div>
-            `).join('')}
-        </div>`;
+        `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
+            ${calificaciones.map(c => `<tr>
+                <td data-label="Materia"><span class="materia-destacada">${c.materia_nombre}</span></td>
+                <td data-label="Estudiante">${c.estudiante_nombre}</td>
+                <td data-label="Actividad">${c.actividad_titulo || c.tipo}</td>
+                <td data-label="Calificación">${c.calificacion}</td>
+                <td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td>
+                <td data-label="Acciones" class="table-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button>
+                </td>
+            </tr>`).join('')}
+        </tbody></table></div>`;
 }
 
 async function editarCalificacion(id, actual) {

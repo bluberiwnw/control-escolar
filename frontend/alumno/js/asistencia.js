@@ -56,25 +56,13 @@ async function cargarHistorial() {
         return;
     }
     el.innerHTML = 
-        `<div class="asistencias-historial-grid">
-            ${historial.map(h => `
-                <div class="asistencia-historial-card">
-                    <div class="asistencia-historial-header">
-                        <div class="asistencia-historial-fecha">
-                            <i class="fas fa-calendar"></i> ${formatearFecha(h.fecha)}
-                        </div>
-                        <div class="asistencia-historial-estado">
-                            ${getEstadoBadge(h.estado)}
-                        </div>
-                    </div>
-                    <div class="asistencia-historial-body">
-                        <div class="asistencia-historial-materia">
-                            <i class="fas fa-book"></i> ${h.materia_nombre}
-                        </div>
-                    </div>
-                </div>
-            `).join('')}
-        </div>`;
+        `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Estado</th></tr></thead><tbody>
+            ${historial.map(h => `<tr>
+                <td data-label="Fecha"><span class="fecha-destacada">${formatearFecha(h.fecha)}</span></td>
+                <td data-label="Materia">${h.materia_nombre}</td>
+                <td data-label="Estado">${getEstadoBadge(h.estado)}</td>
+            </tr>`).join('')}
+        </tbody></table></div>`;
 }
 
 function getEstadoBadge(estado) {
