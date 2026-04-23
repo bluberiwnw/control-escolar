@@ -89,7 +89,8 @@ async function cargarEstudiantes() {
             const endpoint = endpoints[i];
             try {
                 console.log(`Intentando endpoint ${i + 1}: ${endpoint}`);
-                estudiantes = await apiRequest(endpoint);
+                const response = await apiRequest(endpoint);
+                estudiantes = Array.isArray(response) ? response : [];
                 endpointsIntentados.push(endpoint);
                 console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantes.length);
                 console.log('Datos de ejemplo:', estudiantes.slice(0, 2));

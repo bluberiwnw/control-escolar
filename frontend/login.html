@@ -319,6 +319,51 @@
                 right: calc(4px + env(safe-area-inset-right));
             }
         }
+        
+        @media (max-width: 320px) {
+            .login-theme-btn {
+                width: 32px;
+                height: 32px;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                top: calc(2px + env(safe-area-inset-top));
+                right: calc(2px + env(safe-area-inset-right));
+            }
+        }
+        
+        @media (max-width: 280px) {
+            .login-theme-btn {
+                width: 28px;
+                height: 28px;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                top: calc(1px + env(safe-area-inset-top));
+                right: calc(1px + env(safe-area-inset-right));
+            }
+        }
+        
+        /* Optimización para dispositivos táctiles */
+        @media (hover: none) and (pointer: coarse) {
+            .login-theme-btn {
+                min-width: 44px;
+                min-height: 44px;
+                border-width: 3px;
+            }
+            
+            @media (max-width: 480px) {
+                .login-theme-btn {
+                    min-width: 40px;
+                    min-height: 40px;
+                }
+            }
+            
+            @media (max-width: 360px) {
+                .login-theme-btn {
+                    min-width: 36px;
+                    min-height: 36px;
+                }
+            }
+        }
         /* Estilos para modal de reestablecer contraseña */
         .modal {
             position: fixed;

@@ -36,58 +36,26 @@ async function cargarDatosPerfil() {
 }
 
 async function cargarEstadisticasDocentes() {
+    // Las estadísticas han sido eliminadas del perfil del profesor
+    // Solo mantenemos compatibilidad con elementos existentes
     try {
-        // Cargar datos del dashboard para mantener consistencia
-        const stats = await apiRequest('/profesores/estadisticas');
-        const actividades = await apiRequest('/profesores/actividades');
-        const materias = await apiRequest('/materias');
-
-        const pendientes = actividades.filter((a) => !a.entregado).length;
-        
-        // Calcular total de estudiantes
-        let totalEstudiantes = 0;
-        for (const materia of materias) {
-            try {
-                const estudiantes = await apiRequest(`/materias/${materia.id}/estudiantes-inscritos`);
-                totalEstudiantes += estudiantes.length || 0;
-            } catch (error) {
-                console.error(`Error al cargar estudiantes de materia ${materia.id}:`, error);
-            }
-        }
-
-        // Actualizar estadísticas como en el dashboard
-        const kpi = document.getElementById('statsProfesor');
-        if (kpi) {
-            kpi.innerHTML = `
-                <div class="kpi-card kpi-card--violet">
-                    <span class="kpi-card__label">Materias</span>
-                    <span class="kpi-card__value">${stats.totalMaterias || materias.length}</span>
-                </div>
-                <div class="kpi-card kpi-card--teal">
-                    <span class="kpi-card__label">Alumnos (aprox.)</span>
-                    <span class="kpi-card__value">${totalEstudiantes}</span>
-                </div>
-                <div class="kpi-card kpi-card--amber">
-                    <span class="kpi-card__label">Promedio general</span>
-                    <span class="kpi-card__value">${Number(stats.promedioGeneral || 0).toFixed(1)}</span>
-                </div>
-                <div class="kpi-card kpi-card--rose">
-                    <span class="kpi-card__label">Tareas pendientes</span>
-                    <span class="kpi-card__value">${pendientes}</span>
-                </div>`;
+        const statsContainer = document.getElementById('statsProfesor');
+        if (statsContainer) {
+            statsContainer.innerHTML = '';
+            statsContainer.style.display = 'none';
         }
         
-        // Mantener compatibilidad con elementos existentes por si se usan en otros lugares
-        document.getElementById('totalMaterias').textContent = stats.totalMaterias || materias.length || 0;
-        document.getElementById('totalEstudiantes').textContent = totalEstudiantes;
-        document.getElementById('totalAsistencias').textContent = stats.totalAsistencias || 0;
+        // Establecer valores por defecto para compatibilidad
+        const totalMaterias = document.getElementById('totalMaterias');
+        const totalEstudiantes = document.getElementById('totalEstudiantes');
+        const totalAsistencias = document.getElementById('totalAsistencias');
+        
+        if (totalMaterias) totalMaterias.textContent = '0';
+        if (totalEstudiantes) totalEstudiantes.textContent = '0';
+        if (totalAsistencias) totalAsistencias.textContent = '0';
         
     } catch (error) {
-        console.error('Error al cargar estadísticas docentes:', error);
-        // Establecer valores por defecto en caso de error
-        document.getElementById('totalMaterias').textContent = '0';
-        document.getElementById('totalEstudiantes').textContent = '0';
-        document.getElementById('totalAsistencias').textContent = '0';
+        console.error('Error al limpiar estadísticas docentes:', error);
     }
 }
 

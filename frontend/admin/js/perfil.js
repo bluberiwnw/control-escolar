@@ -36,49 +36,28 @@ async function cargarDatosPerfil() {
 }
 
 async function cargarEstadisticasAdmin() {
+    // Las estadísticas han sido eliminadas del perfil del admin
+    // Solo mantenemos compatibilidad con elementos existentes
     try {
-        // Cargar datos del dashboard para mantener consistencia
-        const stats = await apiRequest('/admin/stats');
-        const profesores = await apiRequest('/admin/usuarios?rol=profesor');
-        const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
-        const materias = await apiRequest('/materias');
-        const pendientes = stats.actividades || 0;
-
-        // Actualizar estadísticas como en el dashboard
-        const kpi = document.getElementById('statsAdmin');
-        if (kpi) {
-            kpi.innerHTML = `
-                <div class="kpi-card kpi-card--violet">
-                    <span class="kpi-card__label">Estudiantes</span>
-                    <span class="kpi-card__value">${stats.estudiantes}</span>
-                </div>
-                <div class="kpi-card kpi-card--teal">
-                    <span class="kpi-card__label">Materias activas</span>
-                    <span class="kpi-card__value">${stats.materias}</span>
-                </div>
-                <div class="kpi-card kpi-card--amber">
-                    <span class="kpi-card__label">Actividades</span>
-                    <span class="kpi-card__value">${pendientes}</span>
-                </div>
-                <div class="kpi-card kpi-card--rose">
-                    <span class="kpi-card__label">Profesores</span>
-                    <span class="kpi-card__value">${stats.profesores}</span>
-                </div>`;
+        const statsContainer = document.getElementById('statsAdmin');
+        if (statsContainer) {
+            statsContainer.innerHTML = '';
+            statsContainer.style.display = 'none';
         }
         
-        // Mantener compatibilidad con elementos existentes por si se usan en otros lugares
-        document.getElementById('totalProfesores').textContent = stats.profesores || profesores.length || 0;
-        document.getElementById('totalEstudiantes').textContent = stats.estudiantes || estudiantes.length || 0;
-        document.getElementById('totalMaterias').textContent = stats.materias || materias.length || 0;
-        document.getElementById('totalUsuarios').textContent = (stats.profesores + stats.estudiantes) || (profesores.length + estudiantes.length) || 0;
+        // Establecer valores por defecto para compatibilidad
+        const totalProfesores = document.getElementById('totalProfesores');
+        const totalEstudiantes = document.getElementById('totalEstudiantes');
+        const totalMaterias = document.getElementById('totalMaterias');
+        const totalUsuarios = document.getElementById('totalUsuarios');
+        
+        if (totalProfesores) totalProfesores.textContent = '0';
+        if (totalEstudiantes) totalEstudiantes.textContent = '0';
+        if (totalMaterias) totalMaterias.textContent = '0';
+        if (totalUsuarios) totalUsuarios.textContent = '0';
         
     } catch (error) {
-        console.error('Error al cargar estadísticas administrativas:', error);
-        // Establecer valores por defecto en caso de error
-        document.getElementById('totalProfesores').textContent = '0';
-        document.getElementById('totalEstudiantes').textContent = '0';
-        document.getElementById('totalMaterias').textContent = '0';
-        document.getElementById('totalUsuarios').textContent = '0';
+        console.error('Error al limpiar estadísticas administrativas:', error);
     }
 }
 

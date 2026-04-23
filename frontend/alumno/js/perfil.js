@@ -36,37 +36,26 @@ async function cargarDatosPerfil() {
 }
 
 async function cargarEstadisticasAcademicas() {
+    // Las estadísticas han sido eliminadas del perfil del alumno
+    // Solo mantenemos compatibilidad con elementos existentes
     try {
-        // Cargar datos del dashboard para mantener consistencia
-        const actividades = await apiRequest('/alumno/actividades');
-        const reportes = await apiRequest('/alumno/reportes');
-        const materias = await apiRequest('/alumno/materias');
-
-        const pendientes = actividades.filter((a) => !a.entregado).length;
-
-        // Actualizar estadísticas como en el dashboard
-        document.getElementById('statsAlumno').innerHTML = `
-            <div class="kpi-card kpi-card--violet">
-                <span class="kpi-card__label">Promedio general</span>
-                <span class="kpi-card__value">${Number(reportes.promedio_general || 0).toFixed(1)}</span>
-            </div>
-            <div class="kpi-card kpi-card--amber">
-                <span class="kpi-card__label">Tareas pendientes</span>
-                <span class="kpi-card__value">${pendientes}</span>
-            </div>
-            <div class="kpi-card kpi-card--teal">
-                <span class="kpi-card__label">Asistencia</span>
-                <span class="kpi-card__value">${reportes.asistencia_global}%</span>
-            </div>`;
+        const statsContainer = document.getElementById('statsAlumno');
+        if (statsContainer) {
+            statsContainer.innerHTML = '';
+            statsContainer.style.display = 'none';
+        }
         
-        // Mantener compatibilidad con elementos existentes por si se usan en otros lugares
-        document.getElementById('totalMaterias').textContent = materias.length || 0;
-        document.getElementById('porcentajeAsistencia').textContent = `${reportes.asistencia_global}%`;
-        document.getElementById('promedioGeneral').textContent = Number(reportes.promedio_general || 0).toFixed(1);
+        // Establecer valores por defecto para compatibilidad
+        const totalMaterias = document.getElementById('totalMaterias');
+        const porcentajeAsistencia = document.getElementById('porcentajeAsistencia');
+        const promedioGeneral = document.getElementById('promedioGeneral');
+        
+        if (totalMaterias) totalMaterias.textContent = '0';
+        if (porcentajeAsistencia) porcentajeAsistencia.textContent = '0%';
+        if (promedioGeneral) promedioGeneral.textContent = '0.0';
         
     } catch (error) {
-        console.error('Error al cargar estadísticas académicas:', error);
-        mostrarToast('Error al cargar estadísticas académicas', 'error');
+        console.error('Error al limpiar estadísticas académicas:', error);
     }
 }
 
