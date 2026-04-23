@@ -67,11 +67,11 @@ async function cargarHistorial() {
 
 function getEstadoBadge(estado) {
     const badges = {
-        'presente': '<span class="badge badge-success">Presente</span>',
-        'ausente': '<span class="badge badge-danger">Ausente</span>',
-        'retardo': '<span class="badge badge-warning">Retardo</span>'
+        'presente': '<span class="badge badge-success" style="font-size: 0.85rem; padding: 4px 8px; border-radius: 12px; font-weight: 600;">✓ Presente</span>',
+        'ausente': '<span class="badge badge-danger" style="font-size: 0.85rem; padding: 4px 8px; border-radius: 12px; font-weight: 600;">✗ Ausente</span>',
+        'retardo': '<span class="badge badge-warning" style="font-size: 0.85rem; padding: 4px 8px; border-radius: 12px; font-weight: 600;">⏱ Retardo</span>'
     };
-    return badges[estado] || `<span class="badge badge-info">${estado}</span>`;
+    return badges[estado] || `<span class="badge badge-info" style="font-size: 0.85rem; padding: 4px 8px; border-radius: 12px; font-weight: 600;">${estado}</span>`;
 }
 
 async function cargarMateriasEnSelects() {

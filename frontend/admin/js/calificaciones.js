@@ -18,20 +18,8 @@ async function cargarCalificaciones() {
     if (materiaId) url += `?materia_id=${materiaId}`;
     const calificaciones = await apiRequest(url);
     
-    // Agregar información de filtros aplicados
+    // Ocultar información de filtros para mejor encaje visual
     let filtrosInfo = '';
-    if (materiaId) {
-        filtrosInfo = `
-            <div class="filtros-aplicados">
-                <h3>
-                    <i class="fas fa-filter"></i> Filtro Aplicado
-                </h3>
-                <div class="filtros-badges">
-                    <span class="badge">Materia: ${materiaNombre}</span>
-                </div>
-            </div>
-        `;
-    }
     
     if (!calificaciones.length) {
         document.getElementById('calificacionesContainer').innerHTML = filtrosInfo + '<div class="empty-state">No hay calificaciones registradas para esta materia.</div>';

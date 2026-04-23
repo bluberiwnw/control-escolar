@@ -286,17 +286,11 @@ async function editarProfesor(id, nombreActual, emailActual) {
     cargarProfesores();
 }
 
-async function editarEstudiante(id, matriculaActual, nombreActual, emailActual) {
-    const matricula = prompt('Matrícula del estudiante', matriculaActual);
-    if (!matricula) return;
+async function editarEstudiante(id, nombreActual, emailActual) {
     const nombre = prompt('Nombre del estudiante', nombreActual);
     if (!nombre) return;
     const email = prompt('Correo del estudiante', emailActual);
     if (!email) return;
-    if (!esMatriculaValida(matricula)) {
-        mostrarToast('La matrícula debe contener entre 4 y 20 caracteres válidos', 'error');
-        return;
-    }
     if (!esNombreValido(nombre)) {
         mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
         return;
@@ -307,7 +301,7 @@ async function editarEstudiante(id, matriculaActual, nombreActual, emailActual) 
     }
     await apiRequest(`/admin/estudiantes/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ matricula: matricula.trim(), nombre: nombre.trim(), email: email.trim() }),
+        body: JSON.stringify({ nombre: nombre.trim(), email: email.trim() }),
     });
     mostrarToast('Estudiante actualizado', 'success');
     cargarEstudiantes();
@@ -357,9 +351,7 @@ async function guardarProfesor(ev) {
 
 function abrirModalEstudiante() {
     document.getElementById('modalEstudiante').style.display = 'flex';
-    document.getElementById('estMatricula').value = '';
     document.getElementById('estNombre').value = '';
-    document.getElementById('estAnio').value = '';
     document.getElementById('estEmail').value = '';
     document.getElementById('estPass').value = '';
 }

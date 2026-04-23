@@ -43,22 +43,8 @@ async function cargarAsistencias() {
     
     const asistencias = await apiRequest(url);
     
-    // Agregar información de filtros aplicados
+    // Ocultar información de filtros para mejor encaje visual
     let filtrosInfo = '';
-    if (materiaId || fecha || todasLasFechas) {
-        filtrosInfo = `
-            <div class="filtros-aplicados">
-                <h3>
-                    <i class="fas fa-filter"></i> Filtros Aplicados
-                </h3>
-                <div class="filtros-badges">
-                    ${materiaId ? `<span class="badge">Materia: ${materiaNombre}</span>` : ''}
-                    ${fecha && !todasLasFechas ? `<span class="badge">Fecha: ${formatearFecha(fecha)}</span>` : ''}
-                    ${todasLasFechas ? `<span class="badge">Todas las fechas</span>` : ''}
-                </div>
-            </div>
-        `;
-    }
     
     if (!asistencias.length) {
         document.getElementById('asistenciasContainer').innerHTML =
