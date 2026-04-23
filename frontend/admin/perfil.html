@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Perfil - Alumno BUAP</title>
+    <title>Mi Perfil - Administrador BUAP</title>
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,11 +14,11 @@
     <aside class="sidebar" id="appSidebar">
         <div class="sidebar-header">
             <div class="university-logo"><i class="fas fa-university"></i></div>
-            <h2>Portal del Alumno</h2>
+            <h2>Panel Administrador</h2>
             <p>BUAP · FCC</p>
         </div>
         <div class="teacher-info">
-            <div class="teacher-avatar"><i class="fas fa-user-graduate"></i></div>
+            <div class="teacher-avatar"><i class="fas fa-user-cog"></i></div>
             <div class="teacher-details">
                 <h3 id="userName"></h3>
                 <p id="userEmail"></p>
@@ -26,11 +26,12 @@
         </div>
         <nav class="sidebar-menu">
             <a data-nav="dashboard" href="dashboard.html"><span class="nav-emoji" aria-hidden="true">📊</span> Dashboard</a>
-            <a data-nav="materias" href="materias.html"><span class="nav-emoji" aria-hidden="true">📚</span> Mis Materias</a>
+            <a data-nav="materias" href="materias.html"><span class="nav-emoji" aria-hidden="true">📚</span> Materias</a>
             <a data-nav="actividades" href="actividades.html"><span class="nav-emoji" aria-hidden="true">✏️</span> Actividades</a>
             <a data-nav="asistencia" href="asistencia.html"><span class="nav-emoji" aria-hidden="true">📅</span> Asistencia</a>
             <a data-nav="calificaciones" href="calificaciones.html"><span class="nav-emoji" aria-hidden="true">📈</span> Calificaciones</a>
             <a data-nav="reportes" href="reportes.html"><span class="nav-emoji" aria-hidden="true">📑</span> Reportes</a>
+            <a data-nav="usuarios" href="usuarios.html"><span class="nav-emoji" aria-hidden="true">👥</span> Usuarios</a>
             <a data-nav="perfil" href="perfil.html" class="active"><span class="nav-emoji" aria-hidden="true">👤</span> Mi Perfil</a>
         </nav>
         <div class="sidebar-footer">
@@ -56,7 +57,7 @@
                 <div class="panel-section__body">
                     <div class="profile-info">
                         <div class="profile-avatar">
-                            <i class="fas fa-user-circle"></i>
+                            <i class="fas fa-user-cog"></i>
                         </div>
                         <div class="profile-details">
                             <div class="info-item">
@@ -69,11 +70,11 @@
                             </div>
                             <div class="info-item">
                                 <label>Rol:</label>
-                                <span class="badge badge-primary">Alumno</span>
+                                <span class="badge badge-primary">Administrador</span>
                             </div>
                             <div class="info-item">
-                                <label>Matrícula:</label>
-                                <span id="profileMatricula">Cargando...</span>
+                                <label>Departamento:</label>
+                                <span id="profileDepartamento">Sistemas Escolares</span>
                             </div>
                         </div>
                     </div>
@@ -111,6 +112,49 @@
             </div>
         </div>
 
+        <h2 class="section-heading">Estadísticas Administrativas</h2>
+        <div class="stats-grid-profesor" id="statsAdmin">
+            <div class="panel-card">
+                <div class="panel-section__head">
+                    <h3><i class="fas fa-users"></i> Total Usuarios</h3>
+                </div>
+                <div class="panel-section__body">
+                    <div class="stat-number" id="totalUsuarios">0</div>
+                    <div class="stat-label">Usuarios registrados</div>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-section__head">
+                    <h3><i class="fas fa-chalkboard-teacher"></i> Profesores</h3>
+                </div>
+                <div class="panel-section__body">
+                    <div class="stat-number" id="totalProfesores">0</div>
+                    <div class="stat-label">Profesores activos</div>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-section__head">
+                    <h3><i class="fas fa-user-graduate"></i> Estudiantes</h3>
+                </div>
+                <div class="panel-section__body">
+                    <div class="stat-number" id="totalEstudiantes">0</div>
+                    <div class="stat-label">Estudiantes inscritos</div>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-section__head">
+                    <h3><i class="fas fa-book"></i> Materias</h3>
+                </div>
+                <div class="panel-section__body">
+                    <div class="stat-number" id="totalMaterias">0</div>
+                    <div class="stat-label">Materias activas</div>
+                </div>
+            </div>
+        </div>
+
         <h2 class="section-heading">Seguridad y Recomendaciones</h2>
         <div class="panel-card">
             <div class="panel-section__head">
@@ -142,39 +186,10 @@
                         <i class="fas fa-check-circle text-success"></i>
                         <span>Usa contraseñas diferentes para cada sistema</span>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <h2 class="section-heading">Estadísticas Académicas</h2>
-        <div class="stats-grid-profesor" id="statsAcademicas">
-            <div class="panel-card">
-                <div class="panel-section__head">
-                    <h3><i class="fas fa-book"></i> Materias Inscritas</h3>
-                </div>
-                <div class="panel-section__body">
-                    <div class="stat-number" id="totalMaterias">0</div>
-                    <div class="stat-label">Materias activas</div>
-                </div>
-            </div>
-
-            <div class="panel-card">
-                <div class="panel-section__head">
-                    <h3><i class="fas fa-calendar-check"></i> Asistencia General</h3>
-                </div>
-                <div class="panel-section__body">
-                    <div class="stat-number" id="porcentajeAsistencia">0%</div>
-                    <div class="stat-label">Asistencia total</div>
-                </div>
-            </div>
-
-            <div class="panel-card">
-                <div class="panel-section__head">
-                    <h3><i class="fas fa-chart-line"></i> Promedio General</h3>
-                </div>
-                <div class="panel-section__body">
-                    <div class="stat-number" id="promedioGeneral">0.0</div>
-                    <div class="stat-label">Calificación promedio</div>
+                    <div class="tip-item">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        <span>Como administrador, mantén tu contraseña especialmente segura</span>
+                    </div>
                 </div>
             </div>
         </div>

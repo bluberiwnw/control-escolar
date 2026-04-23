@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarInfoUsuario();
     mostrarFechaActual();
     await cargarDatosPerfil();
-    await cargarEstadisticasAcademicas();
+    await cargarEstadisticasAdmin();
     
     // Configurar formulario de cambio de contraseña
     const form = document.getElementById('formCambiarContrasena');
@@ -23,10 +23,10 @@ async function cargarDatosPerfil() {
         // Actualizar información del perfil
         document.getElementById('profileNombre').textContent = usuario.nombre || 'No disponible';
         document.getElementById('profileEmail').textContent = usuario.email || 'No disponible';
-        document.getElementById('profileMatricula').textContent = usuario.matricula || 'No disponible';
+        document.getElementById('profileDepartamento').textContent = usuario.departamento || 'Sistemas Escolares';
         
         // Actualizar información del sidebar
-        document.getElementById('userName').textContent = usuario.nombre || 'Usuario';
+        document.getElementById('userName').textContent = usuario.nombre || 'Administrador';
         document.getElementById('userEmail').textContent = usuario.email || '';
         
     } catch (error) {
@@ -35,61 +35,25 @@ async function cargarDatosPerfil() {
     }
 }
 
-async function cargarEstadisticasAcademicas() {
+async function cargarEstadisticasAdmin() {
     try {
-        // Cargar materias del alumno
+        // Cargar estadísticas de usuarios
+        const profesores = await apiRequest('/admin/usuarios?rol=profesor');
+        const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
         const materias = await apiRequest('/materias');
+        
+        document.getElementById('totalProfesores').textContent = profesores.length || 0;
+        document.getElementById('totalEstudiantes').textContent = estudiantes.length || 0;
         document.getElementById('totalMaterias').textContent = materias.length || 0;
-        
-        // Calcular estadísticas de asistencia (simplificado)
-        let totalAsistencias = 0;
-        let totalPresentes = 0;
-        
-        for (const materia of materias) {
-            try {
-                // Obtener asistencias del último mes
-                const fechaActual = new Date();
-                const fechaMesPasado = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - 1, fechaActual.getDate());
-                const fechaStr = fechaMesPasado.toISOString().split('T')[0];
-                
-                const asistencias = await apiRequest(`/asistencia/${materia.id}/${fechaStr}`);
-                totalAsistencias += asistencias.length || 0;
-                totalPresentes += asistencias.filter(a => a.estado === 'presente').length || 0;
-            } catch (error) {
-                console.error(`Error al cargar asistencias de materia ${materia.id}:`, error);
-            }
-        }
-        
-        const porcentajeAsistencia = totalAsistencias > 0 ? ((totalPresentes / totalAsistencias) * 100).toFixed(1) : 0;
-        document.getElementById('porcentajeAsistencia').textContent = `${porcentajeAsistencia}%`;
-        
-        // Calcular promedio general (simplificado)
-        let sumaCalificaciones = 0;
-        let totalCalificaciones = 0;
-        
-        for (const materia of materias) {
-            try {
-                const calificaciones = await apiRequest(`/calificaciones/materia/${materia.id}`);
-                calificaciones.forEach(cal => {
-                    if (cal.calificacion) {
-                        sumaCalificaciones += parseFloat(cal.calificacion);
-                        totalCalificaciones++;
-                    }
-                });
-            } catch (error) {
-                console.error(`Error al cargar calificaciones de materia ${materia.id}:`, error);
-            }
-        }
-        
-        const promedio = totalCalificaciones > 0 ? (sumaCalificaciones / totalCalificaciones).toFixed(1) : '0.0';
-        document.getElementById('promedioGeneral').textContent = promedio;
+        document.getElementById('totalUsuarios').textContent = (profesores.length + estudiantes.length) || 0;
         
     } catch (error) {
-        console.error('Error al cargar estadísticas académicas:', error);
+        console.error('Error al cargar estadísticas administrativas:', error);
         // Establecer valores por defecto en caso de error
+        document.getElementById('totalProfesores').textContent = '0';
+        document.getElementById('totalEstudiantes').textContent = '0';
         document.getElementById('totalMaterias').textContent = '0';
-        document.getElementById('porcentajeAsistencia').textContent = '0%';
-        document.getElementById('promedioGeneral').textContent = '0.0';
+        document.getElementById('totalUsuarios').textContent = '0';
     }
 }
 
