@@ -125,4 +125,93 @@ async function generarQR() {
     }
 }
 
+async function marcarTodos(estado) {
+    const materiaId = document.getElementById('materiaSelect').value;
+    const fecha = document.getElementById('fechaAsistencia').value;
+    if (!materiaId || !fecha) {
+        mostrarToast('Selecciona la materia y la fecha antes de marcar asistencia', 'error');
+        return;
+    }
+    
+    if (!confirm(`¿Marcar a todos los estudiantes como ${estado}?`)) return;
+    
+    try {
+        // Obtener todos los estudiantes inscritos
+        const estudiantes = await apiRequest(`/materias/${materiaId}/estudiantes-inscritos`);
+        
+        // Crear array de asistencias para enviar
+        const asistencias = estudiantes.map(e => ({
+            materia_id: parseInt(materiaId, 10),
+            estudiante_id: e.id,
+            fecha,
+            estado
+        }));
+        
+        await apiRequest('/asistencia/batch', {
+            method: 'POST',
+            body: JSON.stringify(asistencias)
+        });
+        
+        mostrarToast(`Todos los estudiantes marcados como ${estado}`, 'success');
+        cargarLista(); // Recargar para mostrar cambios
+    } catch (error) {
+        mostrarToast('Error al marcar asistencia: ' + (error.message || 'Intenta de nuevo'), 'error');
+    }
+}
+
+async function verAsistenciaEnTiempoReal() {
+    const materiaId = document.getElementById('materiaSelect').value;
+    const fecha = document.getElementById('fechaAsistencia').value;
+    if (!materiaId || !fecha) {
+        mostrarToast('Selecciona la materia y la fecha', 'error');
+        return;
+    }
+    
+    try {
+        // Obtener asistencias del día
+        const asistencias = await apiRequest(`/asistencia/${materiaId}/${fecha}`);
+        
+        // Mostrar estadísticas en tiempo real
+        const presentes = asistencias.filter(a => a.estado === 'presente').length;
+        const ausentes = asistencias.filter(a => a.estado === 'ausente').length;
+        const retardos = asistencias.filter(a => a.estado === 'retardo').length;
+        const total = asistencias.length;
+        
+        const statsDiv = document.getElementById('statsAsistencia');
+        if (statsDiv) {
+            const porcentajePresentes = total > 0 ? ((presentes / total) * 100).toFixed(1) : 0;
+            statsDiv.innerHTML = `
+                <div class="panel-card">
+                    <h4>Estadísticas en Tiempo Real</h4>
+                    <div class="stats-grid">
+                        <div class="stat-item presente">
+                            <span class="stat-number">${presentes}</span>
+                            <span class="stat-label">Presentes (${porcentajePresentes}%)</span>
+                        </div>
+                        <div class="stat-item ausente">
+                            <span class="stat-number">${ausentes}</span>
+                            <span class="stat-label">Ausentes</span>
+                        </div>
+                        <div class="stat-item retardo">
+                            <span class="stat-number">${retardos}</span>
+                            <span class="stat-label">Retardos</span>
+                        </div>
+                        <div class="stat-item total">
+                            <span class="stat-number">${total}</span>
+                            <span class="stat-label">Total</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Actualizar cada 30 segundos
+        setTimeout(verAsistenciaEnTiempoReal, 30000);
+    } catch (error) {
+        console.error('Error al obtener estadísticas:', error);
+    }
+}
+
 window.generarQR = generarQR;
+window.marcarTodos = marcarTodos;
+window.verAsistenciaEnTiempoReal = verAsistenciaEnTiempoReal;

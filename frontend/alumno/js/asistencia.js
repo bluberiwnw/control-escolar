@@ -159,6 +159,7 @@ async function iniciarLectorQR() {
                 } catch (_) {
                     /* ignore */
                 }
+                const tiempoInicio = Date.now();
                 const data = await apiRequest(
                     '/qr/validar',
                     {
@@ -167,8 +168,18 @@ async function iniciarLectorQR() {
                     },
                     false
                 );
-                mostrarToast(data.message || 'Asistencia registrada', 'success');
-                setMensajeInfo('');
+                
+                const tiempoFin = Date.now();
+                const tiempoEscaneo = ((tiempoFin - tiempoInicio) / 1000).toFixed(2);
+                
+                // Mostrar mensaje detallado con tiempo de escaneo
+                const mensajeDetallado = `${data.message || 'Asistencia registrada'} (Tiempo: ${tiempoEscaneo}s)`;
+                mostrarToast(mensajeDetallado, 'success');
+                
+                // Mostrar información adicional en el mensaje QR
+                setMensajeInfo(`✅ Escaneo completado en ${tiempoEscaneo} segundos. Hora: ${new Date().toLocaleTimeString()}`, false);
+                
+                // Agregar al historial con timestamp
                 await cargarHistorial();
                 await detenerCamara();
             } catch (err) {

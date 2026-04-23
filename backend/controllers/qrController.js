@@ -29,22 +29,80 @@ function extractTokenFromPayload(body) {
 
 const generarQR = async (req, res) => {
   const { materia_id, fecha, hora_inicio, hora_fin } = req.body;
-  const codigo = crypto.randomBytes(16).toString('hex');
+  
+  // Validar horario 7am-9pm
+  const [hi, mi] = hora_inicio.split(':').map(Number);
+  const [hf, mf] = hora_fin.split(':').map(Number);
+  const minutosInicio = hi * 60 + mi;
+  const minutosFin = hf * 60 + mf;
+  const minutosMinimoDia = 7 * 60; // 7:00 AM
+  const minutosMaximoDia = 21 * 60; // 9:00 PM
+  
+  if (minutosInicio < minutosMinimoDia || minutosFin > minutosMaximoDia) {
+    return res.status(400).json({
+      error: 'Horario fuera de rango',
+      message: 'El horario de asistencia debe estar entre 7:00 AM y 9:00 PM',
+    });
+  }
+  
+  // Generar código único con más entropía
+  const timestamp = Date.now();
+  const randomBytes = crypto.randomBytes(32);
+  const codigo = crypto.createHash('sha256')
+    .update(`${materia_id}-${fecha}-${req.usuario.id}-${timestamp}-${randomBytes.toString('hex')}`)
+    .digest('hex')
+    .substring(0, 32);
+  
+  // Verificar que el código no exista
+  const existente = await pool.query('SELECT id FROM qr_asistencia WHERE codigo = $1', [codigo]);
+  if (existente.rows.length > 0) {
+    return res.status(500).json({
+      error: 'Error de generación',
+      message: 'No se pudo generar un código único. Intenta de nuevo.',
+    });
+  }
+  
   await pool.query(
-    `INSERT INTO qr_asistencia (materia_id, codigo, fecha, hora_inicio, hora_fin)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [materia_id, codigo, fecha, hora_inicio, hora_fin]
+    `INSERT INTO qr_asistencia (materia_id, codigo, fecha, hora_inicio, hora_fin, profesor_id, creado_en)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+    [materia_id, codigo, fecha, hora_inicio, hora_fin, req.usuario.id]
   );
+  
   const payload = {
     materia_id: Number(materia_id),
     fecha,
     profesor_id: req.usuario.id,
     token_unico: codigo,
+    timestamp,
+    version: '2.0',
   };
+  
   const qrPayload = JSON.stringify(payload);
-  const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 320, margin: 2 });
+  const qrDataUrl = await QRCode.toDataURL(qrPayload, { 
+    width: 320, 
+    margin: 2,
+    errorCorrectionLevel: 'H' // Mayor nivel de corrección de errores
+  });
+  
   const url = `${req.protocol}://${req.get('host')}/qr/validar?code=${codigo}`;
-  res.json({ qrDataUrl, codigo, payload, url, download_url: qrDataUrl });
+  
+  // Registrar log de generación para auditoría
+  await pool.query(
+    `INSERT INTO qr_logs (qr_id, profesor_id, accion, detalles)
+     VALUES ($1, $2, 'generar', $3)`,
+    [codigo, req.usuario.id, JSON.stringify({ materia_id, fecha, hora_inicio, hora_fin })]
+  );
+  
+  res.json({ 
+    qrDataUrl, 
+    codigo, 
+    payload, 
+    url, 
+    download_url: qrDataUrl,
+    mensaje: 'QR generado exitosamente. Válido solo para el día y horario especificados.',
+    horario_permitido: `${hora_inicio} - ${hora_fin}`,
+    tolerancia: '5 minutos antes y después'
+  });
 };
 
 const registrarAsistenciaQR = async (req, res) => {
@@ -97,8 +155,19 @@ const registrarAsistenciaQR = async (req, res) => {
   const horaActual = ahora.toTimeString().slice(0, 5); // HH:MM
   const [horaInicio, horaFin] = [qr.hora_inicio, qr.hora_fin];
   
-  // Convertir a minutos para comparación
+  // Validar que la hora actual esté entre 7am y 9pm
   const minutosActuales = parseInt(horaActual.split(':')[0]) * 60 + parseInt(horaActual.split(':')[1]);
+  const minutosMinimoDia = 7 * 60; // 7:00 AM = 420 minutos
+  const minutosMaximoDia = 21 * 60; // 9:00 PM = 1260 minutos
+  
+  if (minutosActuales < minutosMinimoDia || minutosActuales > minutosMaximoDia) {
+    return res.status(400).json({
+      error: 'Fuera de horario escolar',
+      message: `El sistema de asistencia funciona solo de 7:00 AM a 9:00 PM. Hora actual: ${horaActual}`,
+    });
+  }
+  
+  // Convertir a minutos para comparación
   const minutosInicio = parseInt(horaInicio.split(':')[0]) * 60 + parseInt(horaInicio.split(':')[1]) - 5; // 5 min antes
   const minutosFin = parseInt(horaFin.split(':')[0]) * 60 + parseInt(horaFin.split(':')[1]) + 5; // 5 min después
   

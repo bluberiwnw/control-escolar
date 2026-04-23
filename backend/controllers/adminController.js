@@ -856,6 +856,46 @@ const adminController = {
             res.status(500).json({ message: 'Error al actualizar contraseña' });
         }
     },
+
+    // Reportes generales de asistencia para admin
+    async getReportesAsistenciaGeneral(req, res) {
+        try {
+            // Estadísticas generales
+            const totales = await pool.query(
+                `SELECT 
+                    SUM(CASE WHEN a.estado = 'presente' THEN 1 ELSE 0 END) as total_presentes,
+                    SUM(CASE WHEN a.estado = 'ausente' THEN 1 ELSE 0 END) as total_ausentes,
+                    SUM(CASE WHEN a.estado = 'retardo' THEN 1 ELSE 0 END) as total_retardos,
+                    COUNT(DISTINCT a.fecha) as total_clases
+                 FROM asistencias a`
+            );
+
+            // Estadísticas por materia
+            const porMateria = await pool.query(
+                `SELECT 
+                    m.nombre as materia_nombre,
+                    SUM(CASE WHEN a.estado = 'presente' THEN 1 ELSE 0 END) as presentes,
+                    SUM(CASE WHEN a.estado = 'ausente' THEN 1 ELSE 0 END) as ausentes,
+                    SUM(CASE WHEN a.estado = 'retardo' THEN 1 ELSE 0 END) as retardos,
+                    COUNT(*) as total
+                 FROM asistencias a
+                 JOIN materias m ON a.materia_id = m.id
+                 GROUP BY m.id, m.nombre
+                 ORDER BY m.nombre`
+            );
+
+            res.json({
+                total_clases: totales.rows[0]?.total_clases || 0,
+                total_presentes: totales.rows[0]?.total_presentes || 0,
+                total_ausentes: totales.rows[0]?.total_ausentes || 0,
+                total_retardos: totales.rows[0]?.total_retardos || 0,
+                por_materia: porMateria.rows
+            });
+        } catch (error) {
+            console.error('Error al generar reportes generales:', error);
+            res.status(500).json({ message: 'Error al generar reportes', error: error.message });
+        }
+    },
 };
 
 module.exports = adminController;

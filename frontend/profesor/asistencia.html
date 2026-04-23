@@ -30,7 +30,23 @@
             <select id="materiaSelect"></select>
             <input type="date" id="fechaAsistencia">
             <button type="button" class="btn btn-primary" onclick="generarQR()">Generar QR</button>
+            <button type="button" class="btn btn-success" onclick="verAsistenciaEnTiempoReal()">Ver Estadísticas</button>
         </div>
+        <div class="panel-card">
+            <h3>Acciones Rápidas</h3>
+            <div class="toolbar-actions">
+                <button type="button" class="btn btn-secondary" onclick="marcarTodos('presente')">
+                    <i class="fas fa-check-circle"></i> Marcar Todos Presentes
+                </button>
+                <button type="button" class="btn btn-danger" onclick="marcarTodos('ausente')">
+                    <i class="fas fa-times-circle"></i> Marcar Todos Ausentes
+                </button>
+                <button type="button" class="btn btn-warning" onclick="marcarTodos('retardo')">
+                    <i class="fas fa-clock"></i> Marcar Todos con Retardo
+                </button>
+            </div>
+        </div>
+        <div id="statsAsistencia"></div>
         <div id="qrContainer" style="text-align:center; margin:20px 0;"></div>
         <section class="panel-section">
             <div class="panel-section__head"><h2>Lista manual (puedes modificar P / A / R en cualquier momento)</h2></div>

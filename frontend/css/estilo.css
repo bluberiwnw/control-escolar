@@ -1746,3 +1746,118 @@ body.dark-mode .materia-resumen {
         min-height: 180px;
     }
 }
+
+/* Estilos para estadísticas de asistencia */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 16px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-item.presente {
+    border-color: #10b981;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+}
+
+.stat-item.ausente {
+    border-color: #ef4444;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+}
+
+.stat-item.retardo {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+}
+
+.stat-item.total {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1) 0%, rgba(var(--primary-rgb), 0.05) 100%);
+}
+
+.stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 4px;
+}
+
+.stat-item.presente .stat-number {
+    color: #10b981;
+}
+
+.stat-item.ausente .stat-number {
+    color: #ef4444;
+}
+
+.stat-item.retardo .stat-number {
+    color: #f59e0b;
+}
+
+.stat-item.total .stat-number {
+    color: var(--primary);
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+/* Botones de estado de asistencia */
+.estado-asistencia {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-estado {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-estado:hover {
+    transform: scale(1.05);
+}
+
+.btn-estado.presente {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+.btn-estado.ausente {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+}
+
+.btn-estado.retardo {
+    background: #f59e0b;
+    color: white;
+    border-color: #f59e0b;
+}
