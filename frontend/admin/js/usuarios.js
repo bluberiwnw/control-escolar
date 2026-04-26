@@ -75,14 +75,14 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden (basado en errores observados)
+        // Lista de endpoints a intentar en orden
         const endpoints = [
-            '/admin/usuarios?rol=alumno', // Endpoint principal que da 500 (error del servidor)
+            '/admin/estudiantes', // Endpoint específico para estudiantes
+            '/estudiantes',       // Endpoint general de estudiantes  
+            '/admin/usuarios?rol=alumno', // Endpoint general con filtro
             '/usuarios?rol=alumno',        // Endpoint alternativo
-            '/admin/estudiantes', // Endpoint específico para estudiantes (404)
-            '/estudiantes',       // Endpoint general de estudiantes (404)
-            '/admin/alumnos',     // Endpoint alternativo (404)
-            '/alumnos'           // Endpoint general de alumnos (404)
+            '/admin/alumnos',     // Endpoint alternativo
+            '/alumnos'           // Endpoint general de alumnos
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
@@ -415,14 +415,15 @@ async function guardarEstudiante(ev) {
     try {
         console.log('Enviando datos del estudiante:', { nombre, email, password });
         
-        // Crear estudiante con campos básicos
+        // Crear estudiante con campos básicos + anio requerido por backend
         await apiRequest('/admin/estudiantes', {
             method: 'POST',
             body: JSON.stringify({
                 nombre,
                 email,
                 password,
-                rol: 'alumno'
+                rol: 'alumno',
+                anio: 1  // Valor por defecto requerido por backend
             }),
         });
         

@@ -218,6 +218,13 @@ async function generarQR() {
     try {
         mostrarToast('Generando código QR...', 'info');
         
+        console.log('Enviando petición QR:', {
+            materia_id: parseInt(materiaId),
+            fecha,
+            hora_inicio,
+            hora_fin
+        });
+        
         const data = await apiRequest('/qr/generar', {
             method: 'POST',
             body: JSON.stringify({ 
@@ -227,6 +234,8 @@ async function generarQR() {
                 hora_fin 
             })
         });
+        
+        console.log('Respuesta QR recibida:', data);
 
         // Mostrar QR con información detallada y profesional
         const container = document.getElementById('qrContainer');
