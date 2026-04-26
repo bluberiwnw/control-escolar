@@ -105,9 +105,12 @@ async function cargarEstudiantes() {
                 
                 // Verificar si es el error específico de columna 'anio'
                 const esErrorAnio = error.message && error.message.includes('column "anio" does not exist');
-                if (esErrorAnio) {
-                    console.log('⚠️ Error de columna "anio" detectado, continuando con siguiente endpoint...');
-                    endpointsIntentados.push(`${endpoint} (error: columna "anio" no existe)`);
+                const esErrorColumna = error.message && error.message.includes('column') && error.message.includes('does not exist');
+                
+                if (esErrorAnio || esErrorColumna) {
+                    console.log('⚠️ Error de columna detectado, continuando con siguiente endpoint...');
+                    const nombreColumna = esErrorAnio ? 'anio' : 'columna desconocida';
+                    endpointsIntentados.push(`${endpoint} (error: columna "${nombreColumna}" no existe)`);
                 } else {
                     endpointsIntentados.push(`${endpoint} (error: ${error.message})`);
                 }
@@ -415,15 +418,14 @@ async function guardarEstudiante(ev) {
     try {
         console.log('Enviando datos del estudiante:', { nombre, email, password });
         
-        // Crear estudiante con campos básicos + anio requerido por backend
+        // Crear estudiante con campos básicos (sin anio para evitar error de columna)
         await apiRequest('/admin/estudiantes', {
             method: 'POST',
             body: JSON.stringify({
                 nombre,
                 email,
                 password,
-                rol: 'alumno',
-                anio: 1  // Valor por defecto requerido por backend
+                rol: 'alumno'
             }),
         });
         
@@ -447,6 +449,8 @@ async function guardarEstudiante(ev) {
             mostrarToast('Datos inválidos. Verifica toda la información.', 'error');
         } else if (error.message.includes('relation') && error.message.includes('does not exist')) {
             mostrarToast('Error: Tabla no encontrada en la base de datos. Contacta al administrador.', 'error');
+        } else if (error.message.includes('column') && error.message.includes('does not exist')) {
+            mostrarToast('Error: Columna faltante en la base de datos. Contacta al administrador.', 'error');
         } else {
             mostrarToast('Error al crear estudiante: ' + (error.message || 'Intenta de nuevo'), 'error');
         }
