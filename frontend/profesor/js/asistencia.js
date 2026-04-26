@@ -218,17 +218,13 @@ async function generarQR() {
     try {
         mostrarToast('Generando código QR...', 'info');
         
-        const sessionId = generarSessionId(materiaId, fecha, hora_inicio);
-        
         const data = await apiRequest('/qr/generar', {
             method: 'POST',
             body: JSON.stringify({ 
                 materia_id: parseInt(materiaId), 
                 fecha, 
                 hora_inicio, 
-                hora_fin,
-                session_id: sessionId,  // Identificador único de sesión
-                profesor_id: obtenerProfesorId()  // ID del docente actual
+                hora_fin 
             })
         });
 
