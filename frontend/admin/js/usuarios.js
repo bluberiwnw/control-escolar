@@ -392,14 +392,12 @@ async function editarProfesor(id, nombreActual, emailActual) {
 }
 
 async function editarEstudiante(id, nombreActual, emailActual) {
-    // Crear un formulario de edición simple
     const nuevoNombre = prompt('Nombre del estudiante:', nombreActual);
     if (nuevoNombre === null) return;
     
     const nuevoEmail = prompt('Correo del estudiante:', emailActual);
     if (nuevoEmail === null) return;
     
-    // Validaciones
     if (!esNombreValido(nuevoNombre)) {
         mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
         return;

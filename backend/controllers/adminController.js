@@ -125,7 +125,7 @@ const adminController = {
                 console.log(`Profesores encontrados: ${result.rows.length}`);
                 res.json(result.rows);
             } else if (rol === 'alumno') {
-                const query = 'SELECT id, matricula, nombre, email, activo, created_at FROM estudiantes ORDER BY nombre';
+                const query = 'SELECT id, nombre, email, activo, created_at FROM estudiantes ORDER BY nombre';
                 const result = await pool.query(query);
                 console.log(`Estudiantes encontrados: ${result.rows.length}`);
                 res.json(result.rows);
@@ -173,19 +173,8 @@ const adminController = {
     // Crear estudiante
     async crearEstudiante(req, res) {
         try {
-            const { matricula, nombre, email, password } = req.body;
+            const { nombre, email, password } = req.body;
             
-            // Generar matrícula automáticamente si no se proporciona
-            let matriculaFinal = matricula;
-            if (!matricula) {
-                const year = new Date().getFullYear();
-                const randomNum = Math.floor(Math.random() * 9000) + 1000;
-                matriculaFinal = `${year}-${randomNum}`;
-            }
-            
-            if (matricula && !validarMatricula(matricula)) {
-                return res.status(400).json({ message: 'La matrícula debe contener entre 4 y 20 caracteres válidos.' });
-            }
             if (!validarNombre(nombre)) {
                 return res.status(400).json({ message: 'El nombre debe tener entre 3 y 120 caracteres.' });
             }
@@ -198,8 +187,8 @@ const adminController = {
             const bcrypt = require('bcryptjs');
             const hashedPassword = bcrypt.hashSync(password, 10);
             const result = await pool.query(
-                'INSERT INTO estudiantes (matricula, nombre, email, password, activo) VALUES ($1, $2, $3, $4, true) RETURNING id',
-                [matriculaFinal, nombre, email, hashedPassword]
+                'INSERT INTO estudiantes (nombre, email, password, activo) VALUES ($1, $2, $3, true) RETURNING id',
+                [nombre, email, hashedPassword]
             );
             res.status(201).json({ id: result.rows[0].id, message: 'Estudiante creado' });
         } catch (error) {
@@ -247,10 +236,7 @@ const adminController = {
     async actualizarEstudiante(req, res) {
         try {
             const { id } = req.params;
-            const { matricula, nombre, email } = req.body;
-            if (!validarMatricula(matricula)) {
-                return res.status(400).json({ message: 'La matrícula debe contener entre 4 y 20 caracteres válidos.' });
-            }
+            const { nombre, email } = req.body;
             if (!validarNombre(nombre)) {
                 return res.status(400).json({ message: 'El nombre debe tener entre 3 y 120 caracteres.' });
             }
@@ -258,8 +244,8 @@ const adminController = {
                 return res.status(400).json({ message: 'Ingresa un correo electrónico válido.' });
             }
             await pool.query(
-                'UPDATE estudiantes SET matricula = $1, nombre = $2, email = $3 WHERE id = $4',
-                [matricula, nombre, email, id]
+                'UPDATE estudiantes SET nombre = $1, email = $2 WHERE id = $3',
+                [nombre, email, id]
             );
             res.json({ message: 'Estudiante actualizado' });
         } catch (error) {

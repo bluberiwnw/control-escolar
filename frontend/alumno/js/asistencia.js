@@ -357,30 +357,12 @@ function obtenerAlumnoId() {
     return userData.id || userData.alumno_id || userData.usuario_id;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    verificarSesion();
-    mostrarInfoUsuario();
-    mostrarFechaActual();
-    const fechaManual = document.getElementById('fechaManualAsistencia');
-    if (fechaManual) {
-        fechaManual.valueAsDate = new Date();
-    }
-
-    document.getElementById('materiaQRSelect')?.addEventListener('change', actualizarEstadoMateria);
-
-    document.getElementById('btnIniciarCamara')?.addEventListener('click', () => {
-        iniciarLectorQR();
-    });
-    document.getElementById('btnDetenerCamara')?.addEventListener('click', () => {
-        detenerCamara();
-    });
-
-    // Limpiar asistencias pendientes para evitar problemas
-    localStorage.removeItem('asistenciasPendientes');
-    console.log('✅ Asistencias pendientes limpiadas para fresh start');
-
-    await cargarHistorial();
-    await cargarMateriasEnSelects();
+// Event listeners para botones de cámara
+document.getElementById('btnIniciarCamara')?.addEventListener('click', () => {
+    iniciarLectorQR();
+});
+document.getElementById('btnDetenerCamara')?.addEventListener('click', () => {
+    detenerCamara();
 });
 
 window.registrarAsistenciaManual = registrarAsistenciaManual;
@@ -391,6 +373,7 @@ async function sincronizarAsistenciasPendientes() {
         const asistenciasPendientes = JSON.parse(localStorage.getItem('asistenciasPendientes') || '[]');
         
         if (asistenciasPendientes.length === 0) {
+            console.log('✅ No hay asistencias pendientes de sincronización');
             return;
         }
         
@@ -399,44 +382,72 @@ async function sincronizarAsistenciasPendientes() {
         const asistenciasSincronizadas = [];
         const asistenciasError = [];
         
+        // Intentar sincronizar cada asistencia pendiente hasta 3 veces
         for (const asistencia of asistenciasPendientes) {
-            try {
-                const response = await apiRequest(
-                    '/qr/validar',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({ 
-                            codigo: asistencia.codigo, 
-                            materia_id: asistencia.materia_id,
-                            timestamp: asistencia.timestamp,
-                            alumno_id: asistencia.alumno_id
-                        }),
-                    },
-                    false
-                );
-                
-                asistenciasSincronizadas.push(asistencia);
-                console.log(`✅ Asistencia sincronizada: ${asistencia.materia_nombre}`);
-                
-            } catch (error) {
-                console.log(`❌ Error sincronizando asistencia: ${error.message}`);
-                asistenciasError.push(asistencia);
+            let intentos = 0;
+            const maxIntentos = 3;
+            let sincronizado = false;
+            
+            while (intentos < maxIntentos && !sincronizado) {
+                try {
+                    intentos++;
+                    console.log(`🔄 Intento ${intentos}/${maxIntentos} para sincronizar: ${asistencia.materia_nombre}`);
+                    
+                    const response = await apiRequest(
+                        '/qr/validar',
+                        {
+                            method: 'POST',
+                            body: JSON.stringify({ 
+                                codigo: asistencia.codigo, 
+                                materia_id: asistencia.materia_id,
+                                timestamp: Date.now(), // Timestamp actual para evitar duplicados
+                                alumno_id: asistencia.alumno_id
+                            }),
+                        },
+                        false
+                    );
+                    
+                    asistenciasSincronizadas.push(asistencia);
+                    sincronizado = true;
+                    console.log(`✅ Asistencia sincronizada exitosamente: ${asistencia.materia_nombre}`);
+                    
+                } catch (error) {
+                    console.log(`❌ Intento ${intentos} fallido: ${error.message}`);
+                    
+                    if (intentos >= maxIntentos) {
+                        asistenciasError.push(asistencia);
+                        console.log(`❌ Asistencia no sincronizada después de ${maxIntentos} intentos: ${asistencia.materia_nombre}`);
+                    } else {
+                        // Esperar un poco antes de reintentar
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
             }
         }
         
         // Actualizar localStorage con las asistencias que no se pudieron sincronizar
         localStorage.setItem('asistenciasPendientes', JSON.stringify(asistenciasError));
         
+        // Mostrar resultados
         if (asistenciasSincronizadas.length > 0) {
             mostrarToast(`✅ ${asistenciasSincronizadas.length} asistencias sincronizadas correctamente`, 'success');
+            
+            // Limpiar el mensaje de pendientes si todo se sincronizó
+            if (asistenciasError.length === 0) {
+                const pendientesMsg = document.getElementById('asistenciasPendientesMsg');
+                if (pendientesMsg) {
+                    pendientesMsg.style.display = 'none';
+                }
+            }
         }
         
         if (asistenciasError.length > 0) {
-            mostrarToast(`⚠️ ${asistenciasError.length} asistencias pendientes de sincronización`, 'warning');
+            mostrarToast(`⚠️ ${asistenciasError.length} asistencias pendientes de sincronización. Se reintentará automáticamente.`, 'warning');
         }
         
     } catch (error) {
         console.log('Error en sincronización de asistencias:', error.message);
+        mostrarToast('Error en el proceso de sincronización. Se reintentará más tarde.', 'error');
     }
 }
 

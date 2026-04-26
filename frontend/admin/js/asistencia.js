@@ -14,11 +14,18 @@ function toggleFiltroFechas() {
 }
 
 async function cargarMaterias() {
-    const materias = await apiRequest('/admin/materias');
-    const select = document.getElementById('materiaSelect');
-    select.innerHTML =
-        '<option value="">Todas las materias</option>' +
-        materias.map((m) => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    try {
+        const materias = await apiRequest('/admin/materias');
+        const select = document.getElementById('materiaSelect');
+        select.innerHTML =
+            '<option value="">Todas las materias</option>' +
+            materias.map((m) => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    } catch (error) {
+        console.error('Error cargando materias:', error);
+        const select = document.getElementById('materiaSelect');
+        select.innerHTML = '<option value="">Error cargando materias</option>';
+        mostrarToast('Error al cargar materias. Intenta recargar la página.', 'warning');
+    }
 }
 
 function selectEstado(asistencia) {
@@ -41,44 +48,61 @@ async function cargarAsistencias() {
     if (materiaId) url += `materia_id=${materiaId}&`;
     if (fecha && !todasLasFechas) url += `fecha=${fecha}&`;
     
-    const asistencias = await apiRequest(url);
-    
-    // Ocultar información de filtros para mejor encaje visual
-    let filtrosInfo = '';
-    
-    if (!asistencias.length) {
-        document.getElementById('asistenciasContainer').innerHTML =
-            '<div class="empty-state">No hay asistencias para los filtros.</div>';
-        return;
+    try {
+        const asistencias = await apiRequest(url);
+        
+        // Ocultar información de filtros para mejor encaje visual
+        let filtrosInfo = '';
+        
+        if (!asistencias.length) {
+            document.getElementById('asistenciasContainer').innerHTML =
+                '<div class="empty-state">No hay asistencias para los filtros.</div>';
+            return;
+        }
+        
+        document.getElementById('asistenciasContainer').innerHTML = filtrosInfo + 
+            `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+                ${asistencias.map(a => `<tr>
+                    <td data-label="Materia"><span class="materia-destacada">${a.materia_nombre}</span></td>
+                    <td data-label="Estudiante">${a.estudiante_nombre}</td>
+                    <td data-label="Fecha">${formatearFecha(a.fecha)}</td>
+                    <td data-label="Estado">${selectEstado(a)}</td>
+                    <td data-label="Acciones" class="table-actions">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button>
+                    </td>
+                </tr>`).join('')}
+            </tbody></table></div>`;
+    } catch (error) {
+        console.error('Error cargando asistencias:', error);
+        document.getElementById('asistenciasContainer').innerHTML = 
+            '<div class="empty-state">Error al cargar asistencias. El servidor puede estar temporalmente no disponible. Intenta recargar la página.</div>';
+        mostrarToast('Error al cargar asistencias. El servidor está temporalmente no disponible.', 'warning');
     }
-    
-    document.getElementById('asistenciasContainer').innerHTML = filtrosInfo + 
-        `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-            ${asistencias.map(a => `<tr>
-                <td data-label="Materia"><span class="materia-destacada">${a.materia_nombre}</span></td>
-                <td data-label="Estudiante">${a.estudiante_nombre}</td>
-                <td data-label="Fecha">${formatearFecha(a.fecha)}</td>
-                <td data-label="Estado">${selectEstado(a)}</td>
-                <td data-label="Acciones" class="table-actions">
-                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarAsistencia(${a.id})">Eliminar</button>
-                </td>
-            </tr>`).join('')}
-        </tbody></table></div>`;
 }
 
 async function actualizarAsistencia(id, estado) {
-    await apiRequest(`/admin/asistencias/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ estado }),
-    });
-    mostrarToast('Asistencia actualizada', 'success');
+    try {
+        await apiRequest(`/admin/asistencias/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ estado }),
+        });
+        mostrarToast('Asistencia actualizada', 'success');
+    } catch (error) {
+        console.error('Error actualizando asistencia:', error);
+        mostrarToast('Error al actualizar asistencia. El servidor está temporalmente no disponible.', 'error');
+    }
 }
 
 async function eliminarAsistencia(id) {
     if (!confirm('Eliminar este registro de asistencia?')) return;
-    await apiRequest(`/admin/asistencias/${id}`, { method: 'DELETE' });
-    mostrarToast('Asistencia eliminada', 'success');
-    cargarAsistencias();
+    try {
+        await apiRequest(`/admin/asistencias/${id}`, { method: 'DELETE' });
+        mostrarToast('Asistencia eliminada', 'success');
+        cargarAsistencias();
+    } catch (error) {
+        console.error('Error eliminando asistencia:', error);
+        mostrarToast('Error al eliminar asistencia. El servidor está temporalmente no disponible.', 'error');
+    }
 }
 async function generarReportesAsistencia() {
     const materiaId = document.getElementById('materiaSelect')?.value;
@@ -88,15 +112,48 @@ async function generarReportesAsistencia() {
         let datos;
         if (todasLasMaterias) {
             // Reporte general de todas las materias
-            datos = await apiRequest('/admin/asistencias/reportes/general');
+            try {
+                datos = await apiRequest('/admin/asistencias/reportes/general');
+            } catch (error) {
+                console.error('Error en reporte general:', error);
+                // Datos de fallback si el servidor falla
+                datos = {
+                    total_clases: 0,
+                    total_presentes: 0,
+                    total_ausentes: 0,
+                    total_retardos: 0,
+                    por_materia: []
+                };
+                mostrarToast('El servidor no está disponible. Mostrando datos limitados.', 'warning');
+            }
         } else {
             // Reporte específico de una materia
-            datos = await apiRequest(`/asistencia/estadisticas/${materiaId}`);
+            try {
+                datos = await apiRequest(`/asistencia/estadisticas/${materiaId}`);
+            } catch (error) {
+                console.error('Error en estadísticas de materia:', error);
+                // Datos de fallback si el servidor falla
+                datos = {
+                    totales: {
+                        total_presentes: 0,
+                        total_ausentes: 0,
+                        total_retardos: 0,
+                        total_clases: 0
+                    },
+                    por_fecha: []
+                };
+                mostrarToast('El servidor no está disponible. Mostrando datos limitados.', 'warning');
+            }
         }
         
         mostrarReportesAsistencia(datos, todasLasMaterias);
     } catch (error) {
-        mostrarToast('Error al generar reportes: ' + (error.message || 'Intenta de nuevo'), 'error');
+        console.error('Error general en generarReportesAsistencia:', error);
+        const container = document.getElementById('reportesContainer');
+        if (container) {
+            container.innerHTML = '<div class="panel-card"><h3>📊 Reportes de Asistencia</h3><p>Error al generar reportes. El servidor está temporalmente no disponible.</p></div>';
+        }
+        mostrarToast('Error al generar reportes. El servidor está temporalmente no disponible.', 'error');
     }
 }
 
