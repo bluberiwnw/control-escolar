@@ -431,11 +431,18 @@ async function cargarHistorialCompleto() {
     }
     
     try {
+        console.log('Cargando historial de asistencia para materia:', materiaId);
+        
         // Obtener todo el historial de asistencias de la materia
         const historial = await apiRequest(`/asistencia/historial/${materiaId}`);
         
+        console.log('Historial recibido:', historial);
+        
         const container = document.getElementById('historialCompletoContainer');
-        if (!container) return;
+        if (!container) {
+            console.error('Contenedor historialCompletoContainer no encontrado');
+            return;
+        }
         
         if (!historial || historial.length === 0) {
             container.innerHTML = `
@@ -444,6 +451,7 @@ async function cargarHistorialCompleto() {
                     <div class="empty-state">
                         <i class="fas fa-calendar-times" style="font-size:3rem; color:#94a3b8; margin-bottom:1rem;"></i>
                         <p>No hay registros de asistencia para esta materia.</p>
+                        <p style="font-size: 0.85rem; color: #666;">Intenta registrar asistencia primero para ver el historial.</p>
                     </div>
                 </div>
             `;
@@ -516,7 +524,23 @@ async function cargarHistorialCompleto() {
         
     } catch (error) {
         console.error('Error al cargar historial:', error);
-        mostrarToast('Error al cargar historial de asistencias', 'error');
+        
+        const container = document.getElementById('historialCompletoContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="panel-card">
+                    <h3>Historial Completo de Asistencias</h3>
+                    <div class="alert alert-error">
+                        <h4>❌ Error al cargar historial</h4>
+                        <p>No se pudieron cargar los registros de asistencia.</p>
+                        <p><strong>Detalles:</strong> ${error.message || 'Error desconocido'}</p>
+                        <p>Verifica la conexión con el servidor o intenta más tarde.</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        mostrarToast('Error al cargar historial: ' + (error.message || 'Intenta de nuevo'), 'error');
     }
 }
 

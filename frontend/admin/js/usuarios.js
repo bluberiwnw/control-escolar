@@ -442,9 +442,11 @@ async function guardarEstudiante(ev) {
                 mostrarToast('El estudiante ya existe en el sistema', 'error');
             }
         } else if (error.message.includes('500')) {
-            mostrarToast('Error del servidor al crear estudiante. Intenta de nuevo.', 'error');
+            mostrarToast('Error del servidor. Posiblemente falta tabla en la base de datos.', 'error');
         } else if (error.message.includes('400')) {
             mostrarToast('Datos inválidos. Verifica toda la información.', 'error');
+        } else if (error.message.includes('relation') && error.message.includes('does not exist')) {
+            mostrarToast('Error: Tabla no encontrada en la base de datos. Contacta al administrador.', 'error');
         } else {
             mostrarToast('Error al crear estudiante: ' + (error.message || 'Intenta de nuevo'), 'error');
         }
