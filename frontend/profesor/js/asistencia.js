@@ -240,11 +240,34 @@ async function generarQR() {
         } catch (qrError) {
             console.error('Error en generación QR:', qrError);
             
-            // Si el error es por tabla qr_logs faltante, generar QR localmente
-            if (qrError.message.includes('qr_logs') && qrError.message.includes('does not exist')) {
-                console.log('Generando QR localmente debido a tabla faltante...');
+            // Detectar errores relacionados con tabla qr_logs
+            const esErrorQrLogs = qrError.message && (
+                qrError.message.includes('qr_logs') && 
+                (qrError.message.includes('does not exist') || qrError.message.includes('no existe'))
+            );
+            
+            const esErrorTabla = qrError.message && (
+                qrError.message.includes('relation') && 
+                qrError.message.includes('does not exist')
+            );
+            
+            const esErrorBaseDatos = qrError.message && (
+                qrError.message.includes('42P01') || // PostgreSQL error code for undefined_table
+                qrError.message.includes('database') ||
+                qrError.message.includes('conexion')
+            );
+            
+            // Si es cualquier error de base de datos o tabla faltante, usar modo local
+            if (esErrorQrLogs || esErrorTabla || esErrorBaseDatos) {
+                console.log('🔄 Activando modo local QR debido a error de base de datos...');
+                console.log('Tipo de error detectado:', {
+                    qr_logs: esErrorQrLogs,
+                    tabla: esErrorTabla,
+                    base_datos: esErrorBaseDatos
+                });
                 data = generarQRLocal(materiaId, fecha, hora_inicio, hora_fin, materiaNombre);
             } else {
+                console.log('🚨 Error no manejado, re-lanzando...');
                 throw qrError; // Re-lanzar otros errores
             }
         }

@@ -81,6 +81,8 @@ async function cargarEstudiantes() {
             '/usuarios?rol=alumno',        // Endpoint alternativo (sin anio)
             '/admin/alumnos',     // Endpoint alternativo (sin anio)
             '/alumnos',           // Endpoint general de alumnos (sin anio)
+            '/users?role=alumno', // Endpoint con parámetro diferente
+            '/user?role=alumno',  // Endpoint singular
             '/estudiantes',       // Endpoint general de estudiantes  
             '/admin/estudiantes'  // Endpoint específico para estudiantes (con anio)
         ];
@@ -103,14 +105,32 @@ async function cargarEstudiantes() {
                 console.log(`❌ Error en endpoint ${endpoint}:`, error.message);
                 console.log('Error completo:', error);
                 
-                // Verificar si es el error específico de columna 'anio'
-                const esErrorAnio = error.message && error.message.includes('column "anio" does not exist');
-                const esErrorColumna = error.message && error.message.includes('column') && error.message.includes('does not exist');
+                // Verificar si es el error específico de columna 'anio' o cualquier error de columna
+                const esErrorAnio = error.message && (
+                    error.message.includes('column "anio" does not exist') ||
+                    error.message.includes('columna "anio" no existe') ||
+                    error.message.includes('anio') && error.message.includes('does not exist')
+                );
                 
-                if (esErrorAnio || esErrorColumna) {
-                    console.log('⚠️ Error de columna detectado, continuando con siguiente endpoint...');
-                    const nombreColumna = esErrorAnio ? 'anio' : 'columna desconocida';
-                    endpointsIntentados.push(`${endpoint} (error: columna "${nombreColumna}" no existe)`);
+                const esErrorColumna = error.message && (
+                    error.message.includes('column') && error.message.includes('does not exist') ||
+                    error.message.includes('columna') && error.message.includes('no existe') ||
+                    error.message.includes('42703') // PostgreSQL error code for undefined_column
+                );
+                
+                const esErrorBaseDatos = error.message && (
+                    error.message.includes('relation') && error.message.includes('does not exist') ||
+                    error.message.includes('42P01') // PostgreSQL error code for undefined_table
+                );
+                
+                if (esErrorAnio || esErrorColumna || esErrorBaseDatos) {
+                    console.log('⚠️ Error de base de datos detectado, continuando con siguiente endpoint...');
+                    let tipoError = 'columna desconocida';
+                    if (esErrorAnio) tipoError = 'anio';
+                    else if (esErrorColumna) tipoError = 'columna';
+                    else if (esErrorBaseDatos) tipoError = 'tabla';
+                    
+                    endpointsIntentados.push(`${endpoint} (error: ${tipoError} no existe)`);
                 } else {
                     endpointsIntentados.push(`${endpoint} (error: ${error.message})`);
                 }
@@ -120,8 +140,22 @@ async function cargarEstudiantes() {
                     // Mostrar información detallada del error
                     const container = document.getElementById('listaEstudiantes');
                     if (container) {
-                        // Verificar si el error principal es de columna anio
-                        const hayErrorAnio = endpointsIntentados.some(ep => ep.includes('columna "anio" no existe'));
+                        // Verificar si el error principal es de columna anio o cualquier error de base de datos
+                        const hayErrorAnio = endpointsIntentados.some(ep => 
+                            ep.includes('anio no existe') || 
+                            ep.includes('columna anio') ||
+                            ep.includes('error: anio')
+                        );
+                        
+                        const hayErrorColumna = endpointsIntentados.some(ep => 
+                            ep.includes('columna no existe') || 
+                            ep.includes('error: columna')
+                        );
+                        
+                        const hayErrorTabla = endpointsIntentados.some(ep => 
+                            ep.includes('tabla no existe') || 
+                            ep.includes('error: tabla')
+                        );
                         
                         // Datos de prueba para fallback
                         const datosPrueba = [
@@ -150,26 +184,57 @@ async function cargarEstudiantes() {
                         
                         // Mensaje específico según el error
                         let mensajeError = 'No se pudieron cargar los estudiantes desde el servidor.';
+                        let tipoAlerta = 'warning';
+                        let tituloAlerta = '⚠️ No se pudieron cargar los estudiantes';
+                        let solucionEspecifica = '';
+                        
                         if (hayErrorAnio) {
                             mensajeError = 'Error: La columna "anio" no existe en la base de datos. El sistema está operando en modo temporal.';
-                        }
-                        
-                        container.innerHTML = `
-                            <div class="alert alert-${hayErrorAnio ? 'error' : 'warning'}">
-                                <h3>${hayErrorAnio ? '🚨 Error de Base de Datos' : '⚠️ No se pudieron cargar los estudiantes'}</h3>
-                                <p><strong>${mensajeError}</strong></p>
-                                <p><strong>Endpoints intentados:</strong></p>
-                                <ul>${endpointsIntentados.map(e => `<li>${e}</li>`).join('')}</ul>
-                                <p><strong>API Base:</strong> ${API_URL}</p>
-                                <p><strong>Último error:</strong> ${error.message}</p>
-                                ${hayErrorAnio ? `
+                            tipoAlerta = 'error';
+                            tituloAlerta = '🚨 Error de Base de Datos - Columna faltante';
+                            solucionEspecifica = `
                                 <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
                                     <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
                                     <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
                                         El administrador debe ejecutar: <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</code>
                                     </p>
                                 </div>
-                                ` : ''}
+                            `;
+                        } else if (hayErrorColumna) {
+                            mensajeError = 'Error: Una columna requerida no existe en la base de datos. El sistema está operando en modo temporal.';
+                            tipoAlerta = 'error';
+                            tituloAlerta = '🚨 Error de Base de Datos - Columna faltante';
+                            solucionEspecifica = `
+                                <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
+                                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
+                                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
+                                        El administrador debe revisar la estructura de la base de datos y agregar las columnas faltantes.
+                                    </p>
+                                </div>
+                            `;
+                        } else if (hayErrorTabla) {
+                            mensajeError = 'Error: Una tabla requerida no existe en la base de datos. El sistema está operando en modo temporal.';
+                            tipoAlerta = 'error';
+                            tituloAlerta = '🚨 Error de Base de Datos - Tabla faltante';
+                            solucionEspecifica = `
+                                <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
+                                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
+                                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
+                                        El administrador debe ejecutar las migraciones de la base de datos para crear las tablas faltantes.
+                                    </p>
+                                </div>
+                            `;
+                        }
+                        
+                        container.innerHTML = `
+                            <div class="alert alert-${tipoAlerta}">
+                                <h3>${tituloAlerta}</h3>
+                                <p><strong>${mensajeError}</strong></p>
+                                <p><strong>Endpoints intentados:</strong></p>
+                                <ul>${endpointsIntentados.map(e => `<li>${e}</li>`).join('')}</ul>
+                                <p><strong>API Base:</strong> ${API_URL}</p>
+                                <p><strong>Último error:</strong> ${error.message}</p>
+                                ${solucionEspecifica}
                                 <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border);">
                                 <p><strong>📋 Mostrando datos de prueba:</strong></p>
                                 <p style="color: var(--text-secondary); font-size: 0.9rem;">
