@@ -329,11 +329,45 @@ async function cargarEstudiantes() {
 
 async function eliminarUsuario(id, tipo) {
     if (!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.')) return;
-    await apiRequest(`/admin/usuarios/${id}/${tipo}`, { method: 'DELETE' });
-    mostrarToast('Usuario eliminado', 'success');
-    if (tipo === 'profesor') cargarProfesores();
-    else if (tipo === 'administrador') cargarAdministradores();
-    else cargarEstudiantes();
+    
+    // Mapear tipos para el endpoint correcto
+    let tipoEndpoint = tipo;
+    if (tipo === 'administrador') {
+        tipoEndpoint = 'administrador'; // Usar 'administrador' en lugar de 'admin'
+    } else if (tipo === 'alumno') {
+        tipoEndpoint = 'alumno';
+    }
+    
+    try {
+        await apiRequest(`/admin/usuarios/${id}/${tipoEndpoint}`, { method: 'DELETE' });
+        mostrarToast('Usuario eliminado', 'success');
+        
+        // Recargar la sección correspondiente
+        if (tipo === 'profesor') cargarProfesores();
+        else if (tipo === 'administrador') cargarAdministradores();
+        else cargarEstudiantes();
+        
+    } catch (error) {
+        console.error('Error al eliminar usuario:', error);
+        
+        // Si el endpoint específico falla, intentar con endpoint general
+        if (error.message.includes('Tipo no válido') || error.message.includes('400')) {
+            try {
+                // Intentar con el endpoint de eliminación general
+                await apiRequest(`/admin/usuarios/${id}`, { method: 'DELETE' });
+                mostrarToast('Usuario eliminado', 'success');
+                
+                if (tipo === 'profesor') cargarProfesores();
+                else if (tipo === 'administrador') cargarAdministradores();
+                else cargarEstudiantes();
+                
+            } catch (fallbackError) {
+                mostrarToast('No se pudo eliminar el usuario. Contacta al administrador.', 'error');
+            }
+        } else {
+            mostrarToast('Error al eliminar usuario: ' + (error.message || 'Intenta de nuevo'), 'error');
+        }
+    }
 }
 
 async function editarProfesor(id, nombreActual, emailActual) {
@@ -486,15 +520,14 @@ async function guardarEstudiante(ev) {
     try {
         console.log('Enviando datos del estudiante:', { nombre, email, password });
         
-        // Usar el endpoint correcto para crear estudiantes
+        // Usar el endpoint correcto para crear estudiantes sin campo año
         console.log(' Creando estudiante con endpoint correcto...');
         const response = await apiRequest('/admin/estudiantes', {
             method: 'POST',
             body: JSON.stringify({
                 nombre,
                 email,
-                password,
-                anio: 1 // Año por defecto (1-6)
+                password
             }),
         });
         console.log(' Estudiante creado exitosamente:', response);

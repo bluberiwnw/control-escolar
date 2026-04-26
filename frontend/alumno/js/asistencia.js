@@ -375,6 +375,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         detenerCamara();
     });
 
+    // Limpiar asistencias pendientes para evitar problemas
+    localStorage.removeItem('asistenciasPendientes');
+    console.log('✅ Asistencias pendientes limpiadas para fresh start');
+
     await cargarHistorial();
     await cargarMateriasEnSelects();
 });
