@@ -21,8 +21,13 @@ function esMatriculaValida(matricula) {
 
 async function cargarProfesores() {
     try {
-        const lista = await apiRequest('/admin/usuarios?rol=profesor');
-        const profesores = lista.filter((p) => p.rol === 'profesor');
+        console.log('Cargando profesores...');
+        const lista = await apiRequest('/admin/usuarios', {
+            method: 'POST',
+            body: JSON.stringify({ rol: 'profesor' })
+        });
+        const profesores = Array.isArray(lista) ? lista.filter((p) => p.rol === 'profesor') : [];
+        console.log('✅ Profesores cargados:', profesores.length);
         
         // Cache de usuarios para togglePassword
         const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
@@ -520,15 +525,10 @@ async function guardarEstudiante(ev) {
         
         for (const endpoint of endpointsCrear) {
             try {
-                console.log(`Intentando crear estudiante en: ${endpoint}`);
-                await apiRequest(endpoint, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        nombre,
-                        email,
-                        password,
-                        rol: 'alumno'
-                    }),
+                console.log(`Intentando crear estudiante en: ${endpoint.url}`);
+                await apiRequest(endpoint.url, {
+                    method: endpoint.method,
+                    body: endpoint.body ? JSON.stringify(endpoint.body) : null,
                 });
                 estudianteCreado = true;
                 break;

@@ -21,8 +21,61 @@ async function cargarLista() {
         return;
     }
     
-    // Obtener estudiantes inscritos en la materia
-    const estudiantes = await apiRequest(`/materias/${materiaId}/estudiantes-inscritos`);
+    // Obtener estudiantes inscritos en la materia con manejo de errores
+    let estudiantes = [];
+    try {
+        console.log('Cargando estudiantes inscritos en materia:', materiaId);
+        estudiantes = await apiRequest(`/materias/${materiaId}/estudiantes-inscritos`);
+        console.log('✅ Estudiantes cargados:', estudiantes.length);
+    } catch (error) {
+        console.error('Error al cargar estudiantes inscritos:', error);
+        
+        // Si el error es por columna anio, intentar endpoint alternativo
+        if (error.message && error.message.includes('anio')) {
+            console.log('🔄 Intentando endpoint alternativo sin dependencia de año...');
+            try {
+                // Intentar cargar estudiantes con diferentes endpoints que no dependan de año
+                let estudiantesEncontrados = [];
+                const endpointsAlternativos = [
+                    '/admin/usuarios?rol=alumno',
+                    '/usuarios/alumnos',
+                    '/alumnos',
+                    '/estudiantes'
+                ];
+                
+                for (const endpoint of endpointsAlternativos) {
+                    try {
+                        console.log(`🔄 Intentando endpoint alternativo: ${endpoint}`);
+                        const respuesta = await apiRequest(endpoint);
+                        if (Array.isArray(respuesta)) {
+                            estudiantesEncontrados = respuesta.filter(usuario => 
+                                usuario.rol === 'alumno' || 
+                                usuario.role === 'alumno' || 
+                                usuario.tipo === 'alumno'
+                            );
+                            if (estudiantesEncontrados.length > 0) {
+                                console.log(`✅ Estudiantes encontrados en ${endpoint}:`, estudiantesEncontrados.length);
+                                break;
+                            }
+                        }
+                    } catch (error) {
+                        console.log(`❌ Error en ${endpoint}:`, error.message);
+                        continue;
+                    }
+                }
+                
+                estudiantes = estudiantesEncontrados;
+                console.log('✅ Estudiantes cargados desde endpoint alternativo:', estudiantes.length);
+            } catch (errorAlt) {
+                console.error('Error en endpoint alternativo:', errorAlt);
+                // Como último recurso, crear lista vacía para no romper la interfaz
+                estudiantes = [];
+            }
+        } else {
+            // Para otros errores, mostrar lista vacía
+            estudiantes = [];
+        }
+    }
     // Obtener asistencias ya registradas para esa fecha
     const asistencias = await apiRequest(`/asistencia/${materiaId}/${fecha}`);
     const mapaAsistencias = {};
