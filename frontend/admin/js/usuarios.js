@@ -171,19 +171,29 @@ async function cargarEstudiantes() {
                 console.log(`  Usuario ${index + 1}:`, {
                     id: usuario.id,
                     nombre: usuario.nombre,
+                    email: usuario.email,
                     rol: usuario.rol,
                     role: usuario.role,
-                    tipo: usuario.tipo
+                    tipo: usuario.tipo,
+                    activo: usuario.activo
                 });
             });
             
+            // Análisis de roles únicos para identificar posibles estudiantes
+            const rolesUnicos = [...new Set(todosLosUsuarios.map(u => u.rol))];
+            console.log('🔍 Roles únicos encontrados:', rolesUnicos);
+            
             estudiantes = todosLosUsuarios.filter(usuario => {
-                const esEstudiante = usuario.rol === 'alumno' || 
-                                     usuario.role === 'alumno' || 
-                                     usuario.tipo === 'alumno' ||
-                                     usuario.rol === 'estudiante' ||
-                                     usuario.role === 'estudiante' ||
-                                     usuario.tipo === 'estudiante';
+                // Búsqueda exhaustiva de estudiantes
+                const esEstudianteDirecto = usuario.rol === 'alumno' || 
+                                         usuario.role === 'alumno' || 
+                                         usuario.tipo === 'alumno' ||
+                                         usuario.rol === 'estudiante' ||
+                                         usuario.role === 'estudiante' ||
+                                         usuario.tipo === 'estudiante' ||
+                                         usuario.rol === 'student' ||
+                                         usuario.role === 'student' ||
+                                         usuario.tipo === 'student';
                 
                 const noEsProfesorNiAdmin = usuario.rol !== 'profesor' && 
                                          usuario.role !== 'profesor' && 
@@ -195,13 +205,16 @@ async function cargarEstudiantes() {
                                          usuario.role !== 'administrador' && 
                                          usuario.tipo !== 'administrador';
                 
+                const resultadoFinal = esEstudianteDirecto || noEsProfesorNiAdmin;
+                
                 console.log(`  🔍 Análisis usuario ${usuario.nombre}:`, {
-                    esEstudiante: esEstudiante,
+                    rol: usuario.rol,
+                    esEstudianteDirecto: esEstudianteDirecto,
                     noEsProfesorNiAdmin: noEsProfesorNiAdmin,
-                    resultadoFinal: esEstudiante || noEsProfesorNiAdmin
+                    resultadoFinal: resultadoFinal
                 });
                 
-                return esEstudiante || noEsProfesorNiAdmin;
+                return resultadoFinal;
             });
             console.log('✅ Estudiantes extraidos de datos guardados:', estudiantes.length);
         } else {
@@ -474,37 +487,39 @@ async function guardarEstudiante(ev) {
     try {
         console.log('Enviando datos del estudiante:', { nombre, email, password });
         
-        // Intentar diferentes endpoints para crear estudiante
-        let estudianteCreado = false;
-        const endpointsCrear = [
-            '/admin/usuarios',            // Endpoint principal
-            '/usuarios/crear',           // Endpoint de creación
-            '/admin/estudiantes/crear',   // Endpoint específico
-            '/estudiantes/crear'         // Endpoint general
-        ];
-        
-        for (const endpoint of endpointsCrear) {
+        // Usar el mismo método que funciona para profesores
+        try {
+            console.log('🔄 Intentando crear estudiante con método de profesores...');
+            await apiRequest('/admin/usuarios', {
+                method: 'POST',
+                body: JSON.stringify({
+                    nombre,
+                    email,
+                    password,
+                    rol: 'alumno'
+                }),
+            });
+            console.log('✅ Estudiante creado exitosamente');
+        } catch (error) {
+            console.log('❌ Error creando estudiante con método de profesores:', error.message);
+            
+            // Si falla, intentar con rol 'estudiante'
             try {
-                console.log(`Intentando crear estudiante en: ${endpoint}`);
-                await apiRequest(endpoint, {
+                console.log('🔄 Intentando con rol estudiante...');
+                await apiRequest('/admin/usuarios', {
                     method: 'POST',
                     body: JSON.stringify({
                         nombre,
                         email,
                         password,
-                        rol: 'alumno'
+                        rol: 'estudiante'
                     }),
                 });
-                estudianteCreado = true;
-                break;
-            } catch (error) {
-                console.log(`Error creando estudiante en ${endpoint}:`, error.message);
-                continue;
+                console.log('✅ Estudiante creado con rol estudiante');
+            } catch (error2) {
+                console.log('❌ Error con rol estudiante:', error2.message);
+                throw new Error('No se pudo crear el estudiante. El servidor no está disponible o los endpoints no existen.');
             }
-        }
-        
-        if (!estudianteCreado) {
-            throw new Error('No se pudo crear el estudiante. El servidor no está disponible o los endpoints no existen.');
         }
         
         mostrarToast('Estudiante creado exitosamente', 'success');
