@@ -176,6 +176,37 @@ async function cargarEstudiantes() {
                     else if (esErrorBaseDatos) tipoError = 'tabla';
                     
                     endpointsIntentados.push(`${endpoint} (error: ${tipoError} no existe)`);
+                    
+                    // Si es error de columna anio, mostrar solución específica y detener
+                    if (esErrorAnio) {
+                        console.log('🚨 Error crítico: La columna "anio" no existe en la base de datos');
+                        console.log('🔧 Solución: El administrador debe ejecutar:');
+                        console.log('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;');
+                        
+                        // Mostrar mensaje de error específico para columna anio
+                        const container = document.getElementById('listaEstudiantes');
+                        if (container) {
+                            container.innerHTML = `
+                                <div class="alert alert-error">
+                                    <h3>🚨 Error Crítico de Base de Datos</h3>
+                                    <p><strong>La columna "anio" no existe en la tabla usuarios</strong></p>
+                                    <p>Este error impide cargar los estudiantes de la base de datos.</p>
+                                    <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
+                                        <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
+                                        <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
+                                            El administrador de la base de datos debe ejecutar el siguiente comando SQL:
+                                        </p>
+                                        <pre style="background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 0.85rem; overflow-x: auto;">
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</pre>
+                                        <p style="margin: 10px 0 0 0; color: #7f1d1d; font-size: 0.8rem;">
+                                            Después de ejecutar este comando, recarga esta página para ver los estudiantes.
+                                        </p>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        return; // Detener la búsqueda
+                    }
                 } else if (esErrorRol) {
                     console.log('⚠️ Error de rol detectado, continuando con siguiente endpoint...');
                     endpointsIntentados.push(`${endpoint} (error: rol no válido)`);
@@ -192,93 +223,50 @@ async function cargarEstudiantes() {
                     continue;
                 }
                 
-                // Si es el último endpoint, mostrar error y datos de prueba
+                // Si es el último endpoint, mostrar error real sin datos de prueba
                 if (i === endpoints.length - 1) {
                     // Mostrar información detallada del error
                     const container = document.getElementById('listaEstudiantes');
                     if (container) {
-                        // Verificar si el error principal es de columna anio o cualquier error de base de datos
+                        // Verificar si el error principal es de columna anio
                         const hayErrorAnio = endpointsIntentados.some(ep => 
                             ep.includes('anio no existe') || 
                             ep.includes('columna anio') ||
                             ep.includes('error: anio')
                         );
                         
-                        const hayErrorColumna = endpointsIntentados.some(ep => 
-                            ep.includes('columna no existe') || 
-                            ep.includes('error: columna')
-                        );
-                        
-                        const hayErrorTabla = endpointsIntentados.some(ep => 
-                            ep.includes('tabla no existe') || 
-                            ep.includes('error: tabla')
-                        );
-                        
-                        // Datos de prueba para fallback
-                        const datosPrueba = [
-                            {
-                                id: 1,
-                                nombre: 'Juan Pérez',
-                                email: 'juan.perez@estudiante.edu',
-                                rol: 'alumno',
-                                password: 'temp123'
-                            },
-                            {
-                                id: 2,
-                                nombre: 'María García',
-                                email: 'maria.garcia@estudiante.edu',
-                                rol: 'alumno',
-                                password: 'temp456'
-                            },
-                            {
-                                id: 3,
-                                nombre: 'Carlos López',
-                                email: 'carlos.lopez@estudiante.edu',
-                                rol: 'alumno',
-                                password: 'temp789'
-                            }
-                        ];
-                        
                         // Mensaje específico según el error
                         let mensajeError = 'No se pudieron cargar los estudiantes desde el servidor.';
-                        let tipoAlerta = 'warning';
-                        let tituloAlerta = '⚠️ No se pudieron cargar los estudiantes';
+                        let tipoAlerta = 'error';
+                        let tituloAlerta = '🚨 Error de Conexión a la Base de Datos';
                         let solucionEspecifica = '';
                         
                         if (hayErrorAnio) {
-                            mensajeError = 'Error: La columna "anio" no existe en la base de datos. El sistema está operando en modo temporal.';
-                            tipoAlerta = 'error';
+                            mensajeError = 'Error: La columna "anio" no existe en la tabla usuarios.';
                             tituloAlerta = '🚨 Error de Base de Datos - Columna faltante';
                             solucionEspecifica = `
                                 <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
                                     <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
                                     <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                                        El administrador debe ejecutar: <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</code>
+                                        El administrador de la base de datos debe ejecutar el siguiente comando SQL:
+                                    </p>
+                                    <pre style="background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 0.85rem; overflow-x: auto;">
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</pre>
+                                    <p style="margin: 10px 0 0 0; color: #7f1d1d; font-size: 0.8rem;">
+                                        Después de ejecutar este comando, recarga esta página para ver los estudiantes.
                                     </p>
                                 </div>
                             `;
-                        } else if (hayErrorColumna) {
-                            mensajeError = 'Error: Una columna requerida no existe en la base de datos. El sistema está operando en modo temporal.';
-                            tipoAlerta = 'error';
-                            tituloAlerta = '🚨 Error de Base de Datos - Columna faltante';
+                        } else {
                             solucionEspecifica = `
                                 <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
-                                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
-                                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                                        El administrador debe revisar la estructura de la base de datos y agregar las columnas faltantes.
-                                    </p>
-                                </div>
-                            `;
-                        } else if (hayErrorTabla) {
-                            mensajeError = 'Error: Una tabla requerida no existe en la base de datos. El sistema está operando en modo temporal.';
-                            tipoAlerta = 'error';
-                            tituloAlerta = '🚨 Error de Base de Datos - Tabla faltante';
-                            solucionEspecifica = `
-                                <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
-                                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
-                                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                                        El administrador debe ejecutar las migraciones de la base de datos para crear las tablas faltantes.
-                                    </p>
+                                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Soluciones Posibles:</h4>
+                                    <ul style="margin: 0; color: #7f1d1d; font-size: 0.9rem; padding-left: 20px;">
+                                        <li>Verifica que el servidor backend esté en ejecución</li>
+                                        <li>Revisa la configuración de la base de datos</li>
+                                        <li>Verifica que los endpoints del servidor existan</li>
+                                        <li>Revisa los logs del servidor para más detalles</li>
+                                    </ul>
                                 </div>
                             `;
                         }
@@ -293,57 +281,18 @@ async function cargarEstudiantes() {
                                 <p><strong>Último error:</strong> ${error.message}</p>
                                 ${solucionEspecifica}
                                 <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border);">
-                                <p><strong>📋 Mostrando datos de prueba:</strong></p>
-                                <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                                    Estos son datos de ejemplo para que puedas probar la funcionalidad del módulo. 
-                                    Cuando el servidor esté disponible, los datos reales se cargarán automáticamente.
-                                </p>
-                            </div>
-                            <div class="table-responsive-wrap">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Nombre</th>
-                                            <th>Email</th>
-                                            <th>Rol</th>
-                                            <th>Contraseña</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${datosPrueba.map(e => `
-                                            <tr>
-                                                <td data-label="Nombre">${e.nombre}</td>
-                                                <td data-label="Email">${e.email}</td>
-                                                <td data-label="Rol">${e.rol}</td>
-                                                <td data-label="Contraseña">
-                                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                                        <span id="pass-${e.id}" style="font-family: monospace; font-size: 0.85rem;">${e.password || 'N/A'}</span>
-                                                        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePassword(${e.id})" style="padding: 4px 8px;">
-                                                            <i class="fas fa-eye" id="eye-${e.id}"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td data-label="Acciones" class="table-actions">
-                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="mostrarToast('Modo demo: Función deshabilitada', 'info')">Editar</button>
-                                                    <button type="button" class="btn btn-danger btn-sm" onclick="mostrarToast('Modo demo: Función deshabilitada', 'info')">Eliminar</button>
-                                                </td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div style="margin-top: 20px; text-align: center;">
-                                <button type="button" class="btn btn-primary" onclick="location.reload()">
-                                    <i class="fas fa-sync"></i> Recargar página
-                                </button>
-                                <button type="button" class="btn btn-secondary" onclick="cargarEstudiantes()">
-                                    <i class="fas fa-redo"></i> Reintentar
-                                </button>
+                                <div style="margin-top: 20px; text-align: center;">
+                                    <button type="button" class="btn btn-primary" onclick="location.reload()">
+                                        <i class="fas fa-sync"></i> Recargar página
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="cargarEstudiantes()">
+                                        <i class="fas fa-redo"></i> Reintentar
+                                    </button>
+                                </div>
                             </div>
                         `;
                     }
-                    console.warn('Modo demo activado - mostrando datos de prueba para estudiantes');
+                    console.error('No se pudieron cargar los estudiantes - todos los endpoints fallaron');
                 }
             }
         }
@@ -356,12 +305,7 @@ async function cargarEstudiantes() {
         });
         localStorage.setItem('usuariosCache', JSON.stringify(usuariosActualizados));
         
-        // Agregar estudiantes locales si existen
-        const estudiantesLocales = JSON.parse(localStorage.getItem('estudiantes_temp') || '[]');
-        if (estudiantesLocales.length > 0) {
-            console.log(`Agregando ${estudiantesLocales.length} estudiantes del almacenamiento local`);
-            estudiantes = [...estudiantes, ...estudiantesLocales];
-        }
+        // Eliminado: ya no se usan estudiantes locales
         
         const container = document.getElementById('listaEstudiantes');
         if (!container) {
@@ -595,24 +539,7 @@ async function guardarEstudiante(ev) {
         }
         
         if (!estudianteCreado) {
-            console.log('Todos los endpoints fallaron, usando almacenamiento local temporal...');
-            
-            // Crear estudiante en almacenamiento local
-            const estudiantesLocales = JSON.parse(localStorage.getItem('estudiantes_temp') || '[]');
-            const nuevoEstudiante = {
-                id: Date.now(), // ID temporal
-                nombre,
-                email,
-                rol: 'alumno',
-                creado_localmente: true,
-                timestamp: new Date().toISOString()
-            };
-            
-            estudiantesLocales.push(nuevoEstudiante);
-            localStorage.setItem('estudiantes_temp', JSON.stringify(estudiantesLocales));
-            
-            console.log('Estudiante creado localmente:', nuevoEstudiante);
-            mostrarToast('Estudiante creado localmente (modo temporal)', 'warning');
+            throw new Error('No se pudo crear el estudiante. El servidor no está disponible o los endpoints no existen.');
         }
         
         mostrarToast('Estudiante creado exitosamente', 'success');
