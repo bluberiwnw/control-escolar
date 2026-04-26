@@ -75,14 +75,14 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden
+        // Lista de endpoints a intentar en orden (priorizando los que no usan columna anio)
         const endpoints = [
-            '/admin/estudiantes', // Endpoint específico para estudiantes
+            '/admin/usuarios?rol=alumno', // Endpoint general con filtro (sin anio)
+            '/usuarios?rol=alumno',        // Endpoint alternativo (sin anio)
+            '/admin/alumnos',     // Endpoint alternativo (sin anio)
+            '/alumnos',           // Endpoint general de alumnos (sin anio)
             '/estudiantes',       // Endpoint general de estudiantes  
-            '/admin/usuarios?rol=alumno', // Endpoint general con filtro
-            '/usuarios?rol=alumno',        // Endpoint alternativo
-            '/admin/alumnos',     // Endpoint alternativo
-            '/alumnos'           // Endpoint general de alumnos
+            '/admin/estudiantes'  // Endpoint específico para estudiantes (con anio)
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
@@ -120,6 +120,9 @@ async function cargarEstudiantes() {
                     // Mostrar información detallada del error
                     const container = document.getElementById('listaEstudiantes');
                     if (container) {
+                        // Verificar si el error principal es de columna anio
+                        const hayErrorAnio = endpointsIntentados.some(ep => ep.includes('columna "anio" no existe'));
+                        
                         // Datos de prueba para fallback
                         const datosPrueba = [
                             {
@@ -145,13 +148,28 @@ async function cargarEstudiantes() {
                             }
                         ];
                         
+                        // Mensaje específico según el error
+                        let mensajeError = 'No se pudieron cargar los estudiantes desde el servidor.';
+                        if (hayErrorAnio) {
+                            mensajeError = 'Error: La columna "anio" no existe en la base de datos. El sistema está operando en modo temporal.';
+                        }
+                        
                         container.innerHTML = `
-                            <div class="alert alert-warning">
-                                <h3>⚠️ No se pudieron cargar los estudiantes desde el servidor</h3>
+                            <div class="alert alert-${hayErrorAnio ? 'error' : 'warning'}">
+                                <h3>${hayErrorAnio ? '🚨 Error de Base de Datos' : '⚠️ No se pudieron cargar los estudiantes'}</h3>
+                                <p><strong>${mensajeError}</strong></p>
                                 <p><strong>Endpoints intentados:</strong></p>
                                 <ul>${endpointsIntentados.map(e => `<li>${e}</li>`).join('')}</ul>
                                 <p><strong>API Base:</strong> ${API_URL}</p>
                                 <p><strong>Último error:</strong> ${error.message}</p>
+                                ${hayErrorAnio ? `
+                                <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
+                                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
+                                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
+                                        El administrador debe ejecutar: <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</code>
+                                    </p>
+                                </div>
+                                ` : ''}
                                 <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border);">
                                 <p><strong>📋 Mostrando datos de prueba:</strong></p>
                                 <p style="color: var(--text-secondary); font-size: 0.9rem;">
