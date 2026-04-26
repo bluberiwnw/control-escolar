@@ -242,7 +242,28 @@ async function cargarEstudiantes() {
         }
         
         if (estudiantes.length === 0) {
-            container.innerHTML = '<div class="empty-state">No hay estudiantes registrados.</div>';
+            console.log('📊 Resumen de usuarios:', {
+                total: todosLosUsuarios.length,
+                profesores: todosLosUsuarios.filter(u => u.rol === 'profesor').length,
+                administradores: todosLosUsuarios.filter(u => u.rol === 'admin' || u.rol === 'administrador').length,
+                estudiantes: estudiantes.length
+            });
+            
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>🎓 No hay estudiantes registrados</h3>
+                    <p>Actualmente solo hay profesores y administradores en el sistema.</p>
+                    <p><strong>Total de usuarios:</strong> ${todosLosUsuarios.length}</p>
+                    <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
+                        <li>Profesores: ${todosLosUsuarios.filter(u => u.rol === 'profesor').length}</li>
+                        <li>Administradores: ${todosLosUsuarios.filter(u => u.rol === 'admin' || u.rol === 'administrador').length}</li>
+                        <li>Estudiantes: 0</li>
+                    </ul>
+                    <p style="margin-top: 20px;">
+                        <strong>Para agregar estudiantes:</strong> Usa el botón "Nuevo estudiante" arriba.
+                    </p>
+                </div>
+            `;
             return;
         }
         container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
@@ -448,10 +469,15 @@ async function guardarEstudiante(ev) {
         
         for (const endpoint of endpointsCrear) {
             try {
-                console.log(`Intentando crear estudiante en: ${endpoint.url}`);
-                await apiRequest(endpoint.url, {
-                    method: endpoint.method,
-                    body: endpoint.body ? JSON.stringify(endpoint.body) : null,
+                console.log(`Intentando crear estudiante en: ${endpoint}`);
+                await apiRequest(endpoint, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        nombre,
+                        email,
+                        password,
+                        rol: 'alumno'
+                    }),
                 });
                 estudianteCreado = true;
                 break;
