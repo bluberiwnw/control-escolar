@@ -493,7 +493,8 @@ async function guardarEstudiante(ev) {
             body: JSON.stringify({
                 nombre,
                 email,
-                password
+                password,
+                anio: 1 // Año por defecto (1-6)
             }),
         });
         console.log(' Estudiante creado exitosamente:', response);
@@ -571,15 +572,22 @@ async function guardarAdministrador(ev) {
     try {
         console.log('Enviando datos del administrador:', { nombre, email, password });
         
-        await apiRequest('/admin/usuarios', {
-            method: 'POST',
-            body: JSON.stringify({
-                nombre,
-                email,
-                password,
-                rol: 'admin',
-            }),
-        });
+        // Usar el mismo endpoint que funciona para profesores
+        try {
+            const response = await apiRequest('/admin/profesores', {
+                method: 'POST',
+                body: JSON.stringify({
+                    nombre,
+                    email,
+                    password,
+                    rol: 'administrador'
+                }),
+            });
+            console.log('✅ Administrador creado exitosamente:', response);
+        } catch (error) {
+            console.log('❌ Error creando administrador con endpoint de profesores:', error.message);
+            throw new Error('No se pudo crear el administrador. El endpoint específico no está disponible.');
+        }
         
         mostrarToast('Administrador creado exitosamente', 'success');
         cerrarModalAdministrador();
