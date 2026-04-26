@@ -41,6 +41,14 @@
 
         <section class="panel-section">
             <div class="panel-section__head">
+                <h2>Administradores</h2>
+                <button type="button" class="btn btn-secondary" onclick="abrirModalAdministrador()"><i class="fas fa-plus"></i> Nuevo administrador</button>
+            </div>
+            <div id="listaAdministradores" class="table-responsive-wrap"></div>
+        </section>
+
+        <section class="panel-section">
+            <div class="panel-section__head">
                 <h2>Estudiantes</h2>
                 <button type="button" class="btn btn-primary" onclick="abrirModalEstudiante()"><i class="fas fa-plus"></i> Nuevo estudiante</button>
             </div>
@@ -101,6 +109,36 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn-ghost" onclick="cerrarModalEstudiante()">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Crear Estudiante</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalAdministrador" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo administrador</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalAdministrador()">&times;</button>
+            </div>
+            <form onsubmit="guardarAdministrador(event)">
+                <div class="form-group-modern">
+                    <label for="adminNombre">Nombre completo</label>
+                    <input type="text" id="adminNombre" required placeholder="Ej: Ana María López">
+                    <small>Ingresa el nombre completo del administrador (3-120 caracteres)</small>
+                </div>
+                <div class="form-group-modern">
+                    <label for="adminEmail">Correo institucional</label>
+                    <input type="email" id="adminEmail" required placeholder="Ej: admin@buap.mx">
+                    <small>Correo electrónico institucional del administrador</small>
+                </div>
+                <div class="form-group-modern">
+                    <label for="adminPass">Contraseña temporal</label>
+                    <input type="password" id="adminPass" required minlength="6" placeholder="Mínimo 6 caracteres">
+                    <small>Contraseña temporal para el primer acceso</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalAdministrador()">Cancelar</button>
+                    <button type="submit" class="btn btn-secondary">Crear Administrador</button>
                 </div>
             </form>
         </div>

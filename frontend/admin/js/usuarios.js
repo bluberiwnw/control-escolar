@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarInfoUsuario();
     mostrarFechaActual();
     await cargarProfesores();
+    await cargarAdministradores();
     await cargarEstudiantes();
 });
 
@@ -68,6 +69,60 @@ async function cargarProfesores() {
     }
 }
 
+async function cargarAdministradores() {
+    try {
+        console.log('Cargando administradores...');
+        const lista = await apiRequest('/admin/usuarios?rol=admin');
+        const administradores = Array.isArray(lista) ? lista.filter((a) => a.rol === 'admin' || a.rol === 'administrador') : [];
+        console.log('✅ Administradores cargados:', administradores.length);
+        
+        // Cache de usuarios para togglePassword
+        const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
+        const usuariosActualizados = usuariosCache.filter(u => u.tipo !== 'administrador');
+        administradores.forEach(a => {
+            usuariosActualizados.push({...a, tipo: 'administrador'});
+        });
+        localStorage.setItem('usuariosCache', JSON.stringify(usuariosActualizados));
+        
+        const container = document.getElementById('listaAdministradores');
+        if (administradores.length === 0) {
+            container.innerHTML = '<div class="empty-state">No hay administradores registrados.</div>';
+            return;
+        }
+        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
+            ${administradores
+                .map(
+                    (a) => `<tr>
+                <td data-label="Nombre">${a.nombre}</td>
+                <td data-label="Email">${a.email}</td>
+                <td data-label="Rol">${a.rol || 'admin'}</td>
+                <td data-label="Contraseña">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="pass-${a.id}" style="font-family: monospace; font-size: 0.85rem;">${a.password || 'N/A'}</span>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePassword(${a.id})" style="padding: 4px 8px;">
+                            <i class="fas fa-eye" id="eye-${a.id}"></i>
+                        </button>
+                    </div>
+                </td>
+                <td data-label="Acciones" class="table-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarAdministrador(${a.id}, '${a.nombre.replace(/'/g, "\\'")}', '${a.email.replace(/'/g, "\\'")}')">Editar</button>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="cambiarContrasena(${a.id}, 'administrador')">Cambiar contraseña</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarUsuario(${a.id},'administrador')">Eliminar</button>
+                </td>
+            </tr>`
+                )
+                .join('')}
+        </tbody></table></div>`;
+    } catch (error) {
+        console.error('Error al cargar administradores:', error);
+        const container = document.getElementById('listaAdministradores');
+        if (container) {
+            container.innerHTML = '<p class="alert alert-error">No se pudieron cargar los administradores. Intenta recargar la página.</p>';
+        }
+        mostrarToast('Error al cargar administradores. Verifica tu conexión e intenta de nuevo.', 'error');
+    }
+}
+
 async function cargarEstudiantes() {
     try {
         console.log('Cargando estudiantes...');
@@ -120,7 +175,16 @@ async function cargarEstudiantes() {
                                    usuario.rol === 'estudiante' ||
                                    usuario.role === 'estudiante' ||
                                    usuario.tipo === 'estudiante' ||
-                                   (usuario.rol !== 'profesor' && usuario.role !== 'profesor' && usuario.tipo !== 'profesor')
+                                   // También verificar si no es profesor ni administrador (asumir que es estudiante)
+                                   (usuario.rol !== 'profesor' && 
+                                    usuario.role !== 'profesor' && 
+                                    usuario.tipo !== 'profesor' &&
+                                    usuario.rol !== 'admin' && 
+                                    usuario.role !== 'admin' && 
+                                    usuario.tipo !== 'admin' &&
+                                    usuario.rol !== 'administrador' && 
+                                    usuario.role !== 'administrador' && 
+                                    usuario.tipo !== 'administrador')
                         });
                         console.log(`✅ Estudiantes extraidos de datos de profesores:`, estudiantesEndpoint.length);
                     } else {
@@ -142,8 +206,16 @@ async function cargarEstudiantes() {
                                usuario.rol === 'estudiante' ||
                                usuario.role === 'estudiante' ||
                                usuario.tipo === 'estudiante' ||
-                               // También verificar si no es profesor (asumir que es estudiante)
-                               (usuario.rol !== 'profesor' && usuario.role !== 'profesor' && usuario.tipo !== 'profesor')
+                               // También verificar si no es profesor ni administrador (asumir que es estudiante)
+                               (usuario.rol !== 'profesor' && 
+                                usuario.role !== 'profesor' && 
+                                usuario.tipo !== 'profesor' &&
+                                usuario.rol !== 'admin' && 
+                                usuario.role !== 'admin' && 
+                                usuario.tipo !== 'admin' &&
+                                usuario.rol !== 'administrador' && 
+                                usuario.role !== 'administrador' && 
+                                usuario.tipo !== 'administrador')
                     });
                     console.log(`✅ Estudiantes filtrados desde ${endpointUrl}:`, estudiantesEndpoint.length);
                     console.log('Muestra de estudiantes encontrados:', estudiantesEndpoint.slice(0, 2));
@@ -796,10 +868,131 @@ window.guardarProfesor = guardarProfesor;
 window.abrirModalEstudiante = abrirModalEstudiante;
 window.cerrarModalEstudiante = cerrarModalEstudiante;
 window.guardarEstudiante = guardarEstudiante;
+// Funciones para administradores
+function abrirModalAdministrador() {
+    document.getElementById('modalAdministrador').style.display = 'flex';
+    document.getElementById('adminNombre').value = '';
+    document.getElementById('adminEmail').value = '';
+    document.getElementById('adminPass').value = '';
+}
+
+function cerrarModalAdministrador() {
+    document.getElementById('modalAdministrador').style.display = 'none';
+}
+
+async function guardarAdministrador(ev) {
+    ev.preventDefault();
+    const nombre = document.getElementById('adminNombre').value.trim();
+    const email = document.getElementById('adminEmail').value.trim();
+    const password = document.getElementById('adminPass').value;
+    
+    if (!esNombreValido(nombre)) {
+        mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
+        return;
+    }
+    if (!esCorreoValido(email)) {
+        mostrarToast('Ingresa un correo electrónico válido', 'error');
+        return;
+    }
+    if (password.length < 6) {
+        mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
+        return;
+    }
+    
+    try {
+        console.log('Enviando datos del administrador:', { nombre, email, password });
+        
+        await apiRequest('/admin/usuarios', {
+            method: 'POST',
+            body: JSON.stringify({
+                nombre,
+                email,
+                password,
+                rol: 'admin',
+            }),
+        });
+        
+        mostrarToast('Administrador creado exitosamente', 'success');
+        cerrarModalAdministrador();
+        cargarAdministradores();
+        
+    } catch (error) {
+        console.error('Error al crear administrador:', error);
+        
+        if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
+            if (error.message.includes('email')) {
+                mostrarToast('El correo electrónico ya está registrado', 'error');
+            } else {
+                mostrarToast('El administrador ya existe en el sistema', 'error');
+            }
+        } else if (error.message.includes('500')) {
+            mostrarToast('Error del servidor. Posiblemente falta tabla en la base de datos.', 'error');
+        } else if (error.message.includes('400')) {
+            mostrarToast('Datos inválidos. Verifica toda la información.', 'error');
+        } else {
+            mostrarToast('Error al crear administrador: ' + (error.message || 'Intenta de nuevo'), 'error');
+        }
+    }
+}
+
+async function editarAdministrador(id, nombreActual, emailActual) {
+    const nuevoNombre = prompt('Nombre del administrador:', nombreActual);
+    if (nuevoNombre === null) return;
+    
+    const nuevoEmail = prompt('Correo del administrador:', emailActual);
+    if (nuevoEmail === null) return;
+    
+    if (!esNombreValido(nuevoNombre)) {
+        mostrarToast('El nombre debe tener entre 3 y 120 caracteres', 'error');
+        return;
+    }
+    if (!esCorreoValido(nuevoEmail)) {
+        mostrarToast('Ingresa un correo electrónico válido', 'error');
+        return;
+    }
+    
+    try {
+        console.log('Actualizando administrador:', {
+            id, nombre: nuevoNombre.trim(), email: nuevoEmail.trim()
+        });
+        
+        await apiRequest(`/admin/administradores/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                nombre: nuevoNombre.trim(), 
+                email: nuevoEmail.trim()
+            }),
+        });
+        
+        mostrarToast('Administrador actualizado exitosamente', 'success');
+        cargarAdministradores();
+        
+    } catch (error) {
+        console.error('Error al actualizar administrador:', error);
+        
+        if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
+            if (error.message.includes('email')) {
+                mostrarToast('El correo electrónico ya está registrado', 'error');
+            } else {
+                mostrarToast('El administrador ya existe en el sistema', 'error');
+            }
+        } else if (error.message.includes('500')) {
+            mostrarToast('Error del servidor al actualizar administrador. Intenta de nuevo.', 'error');
+        } else {
+            mostrarToast('Error al actualizar administrador: ' + (error.message || 'Intenta de nuevo'), 'error');
+        }
+    }
+}
+
+// Exponer funciones globales
 window.eliminarUsuario = eliminarUsuario;
 window.editarProfesor = editarProfesor;
 window.editarEstudiante = editarEstudiante;
+window.editarAdministrador = editarAdministrador;
 window.togglePassword = togglePassword;
 window.cambiarContrasena = cambiarContrasena;
 window.cerrarModalCambiarContrasena = cerrarModalCambiarContrasena;
 window.handleCambiarContrasena = handleCambiarContrasena;
+window.abrirModalAdministrador = abrirModalAdministrador;
+window.cerrarModalAdministrador = cerrarModalAdministrador;
+window.guardarAdministrador = guardarAdministrador;
