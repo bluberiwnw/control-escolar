@@ -27,6 +27,11 @@ async function cargarProfesores() {
         const profesores = Array.isArray(lista) ? lista.filter((p) => p.rol === 'profesor') : [];
         console.log('✅ Profesores cargados:', profesores.length);
         
+        // También guardar todos los usuarios para uso compartido
+        if (Array.isArray(lista) && lista.length > 0) {
+            localStorage.setItem('todosLosUsuarios', JSON.stringify(lista));
+        }
+        
         // Cache de usuarios para togglePassword
         const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
         const usuariosActualizados = usuariosCache.filter(u => u.tipo !== 'profesor');
@@ -72,9 +77,21 @@ async function cargarProfesores() {
 async function cargarAdministradores() {
     try {
         console.log('Cargando administradores...');
-        const lista = await apiRequest('/admin/usuarios?rol=admin');
-        const administradores = Array.isArray(lista) ? lista.filter((a) => a.rol === 'admin' || a.rol === 'administrador') : [];
-        console.log('✅ Administradores cargados:', administradores.length);
+        
+        // Intentar cargar directamente primero
+        let administradores = [];
+        try {
+            const lista = await apiRequest('/admin/usuarios?rol=admin');
+            administradores = Array.isArray(lista) ? lista.filter((a) => a.rol === 'admin' || a.rol === 'administrador') : [];
+            console.log('✅ Administradores cargados directamente:', administradores.length);
+        } catch (error) {
+            console.log('❌ Error cargando administradores directamente:', error.message);
+            
+            // Si falla, usar los datos guardados de profesores
+            const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
+            administradores = todosLosUsuarios.filter((a) => a.rol === 'admin' || a.rol === 'administrador');
+            console.log('✅ Administradores extraidos de datos compartidos:', administradores.length);
+        }
         
         // Cache de usuarios para togglePassword
         const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
@@ -126,80 +143,43 @@ async function cargarAdministradores() {
 async function cargarEstudiantes() {
     try {
         console.log('Cargando estudiantes...');
-        console.log('API Base:', API_URL);
         
-        // Intentar diferentes endpoints posibles
+        // Estrategia principal: usar datos guardados de profesores
+        const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
         let estudiantes = [];
-        let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden (estrategia mejorada)
-        const endpoints = [
-            { url: '/admin/usuarios?rol=profesor', method: 'GET' },                   // Cargar como profesores (funciona)
-            { url: '/admin/usuarios?rol=alumno', method: 'GET' },                    // GET tradicional (da 500)
-            { url: '/admin/usuarios?todos=true', method: 'GET' },                     // Todos los usuarios (da 400)
-            { url: '/admin/usuarios', method: 'GET' },                                // General sin filtro (da 400)
-            { url: '/admin/usuarios?all=true', method: 'GET' },                      // Intentar con all
-            { url: '/admin/usuarios?sin_filtro=true', method: 'GET' },               // Sin filtro
-            { url: '/usuarios', method: 'GET' },
-            { url: '/alumnos', method: 'GET' },
-            { url: '/estudiantes', method: 'GET' }
-        ];
-        
-        for (let i = 0; i < endpoints.length; i++) {
-            const endpoint = endpoints[i];
+        if (todosLosUsuarios.length > 0) {
+            console.log('🔄 Usando datos guardados de todosLosUsuarios:', todosLosUsuarios.length);
+            estudiantes = todosLosUsuarios.filter(usuario => {
+                return usuario.rol === 'alumno' || 
+                       usuario.role === 'alumno' || 
+                       usuario.tipo === 'alumno' ||
+                       usuario.rol === 'estudiante' ||
+                       usuario.role === 'estudiante' ||
+                       usuario.tipo === 'estudiante' ||
+                       // También verificar si no es profesor ni administrador (asumir que es estudiante)
+                       (usuario.rol !== 'profesor' && 
+                        usuario.role !== 'profesor' && 
+                        usuario.tipo !== 'profesor' &&
+                        usuario.rol !== 'admin' && 
+                        usuario.role !== 'admin' && 
+                        usuario.tipo !== 'admin' &&
+                        usuario.rol !== 'administrador' && 
+                        usuario.role !== 'administrador' && 
+                        usuario.tipo !== 'administrador')
+            });
+            console.log('✅ Estudiantes extraidos de datos guardados:', estudiantes.length);
+        } else {
+            console.log('⚠️ No hay datos guardados, intentando endpoint directo...');
+            
+            // Como último recurso, intentar cargar con el método que funciona para profesores
             try {
-                const endpointUrl = typeof endpoint === 'object' ? endpoint.url : endpoint;
-                console.log(`Intentando endpoint ${i + 1}: ${endpointUrl} (${endpoint.method || 'GET'})`);
+                const lista = await apiRequest('/admin/usuarios?rol=profesor');
+                const todosUsuarios = Array.isArray(lista) ? lista : [];
                 
-                const requestOptions = {};
-                if (endpoint.method === 'POST' && endpoint.body) {
-                    requestOptions.method = 'POST';
-                    requestOptions.body = JSON.stringify(endpoint.body);
-                }
-                
-                const response = await apiRequest(endpointUrl, requestOptions);
-                let usuarios = Array.isArray(response) ? response : [];
-                let estudiantesEndpoint = [];
-                endpointsIntentados.push(endpointUrl);
-                
-                // Lógica mejorada de filtrado para estudiantes
-                if (endpointUrl.includes('rol=profesor')) {
-                    // Si cargamos profesores, extraer estudiantes de los mismos datos (si vienen todos)
-                    console.log(`Endpoint cargó profesores, verificando si contiene todos los usuarios...`);
-                    if (usuarios.length > 6) { // Si hay más de 6, probablemente vienen todos los usuarios
-                        console.log(`✅ Detectados ${usuarios.length} usuarios totales, extrayendo estudiantes...`);
-                        estudiantesEndpoint = usuarios.filter(usuario => {
-                            return usuario.rol === 'alumno' || 
-                                   usuario.role === 'alumno' || 
-                                   usuario.tipo === 'alumno' ||
-                                   usuario.rol === 'estudiante' ||
-                                   usuario.role === 'estudiante' ||
-                                   usuario.tipo === 'estudiante' ||
-                                   // También verificar si no es profesor ni administrador (asumir que es estudiante)
-                                   (usuario.rol !== 'profesor' && 
-                                    usuario.role !== 'profesor' && 
-                                    usuario.tipo !== 'profesor' &&
-                                    usuario.rol !== 'admin' && 
-                                    usuario.role !== 'admin' && 
-                                    usuario.tipo !== 'admin' &&
-                                    usuario.rol !== 'administrador' && 
-                                    usuario.role !== 'administrador' && 
-                                    usuario.tipo !== 'administrador')
-                        });
-                        console.log(`✅ Estudiantes extraidos de datos de profesores:`, estudiantesEndpoint.length);
-                    } else {
-                        console.log(`❌ Solo se cargaron profesores (${usuarios.length}), sin estudiantes...`);
-                        estudiantesEndpoint = [];
-                    }
-                } else if (endpointUrl.includes('rol=alumno') || endpointUrl.includes('role=alumno') || endpointUrl.includes('role=student')) {
-                    // Si el endpoint ya filtra por alumno, usar directamente
-                    estudiantesEndpoint = usuarios;
-                    console.log(`✅ Estudiantes cargados desde ${endpointUrl}:`, estudiantesEndpoint.length);
-                } else if ((endpointUrl === '/admin/usuarios' || endpointUrl === '/usuarios') && endpoint.method !== 'POST') {
-                    // Si es endpoint general con GET, filtrar estudiantes con múltiples criterios
-                    console.log(`Filtrando estudiantes de ${usuarios.length} usuarios totales`);
-                    estudiantesEndpoint = usuarios.filter(usuario => {
-                        // Verificar múltiples campos posibles para el rol de estudiante
+                if (todosUsuarios.length > 6) {
+                    console.log('✅ Usando endpoint de profesores para extraer estudiantes...');
+                    estudiantes = todosUsuarios.filter(usuario => {
                         return usuario.rol === 'alumno' || 
                                usuario.role === 'alumno' || 
                                usuario.tipo === 'alumno' ||
@@ -217,172 +197,12 @@ async function cargarEstudiantes() {
                                 usuario.role !== 'administrador' && 
                                 usuario.tipo !== 'administrador')
                     });
-                    console.log(`✅ Estudiantes filtrados desde ${endpointUrl}:`, estudiantesEndpoint.length);
-                    console.log('Muestra de estudiantes encontrados:', estudiantesEndpoint.slice(0, 2));
-                } else if (endpoint.method === 'POST' && endpoint.body && (endpoint.body.rol === 'alumno' || endpoint.body.rol === 'estudiante')) {
-                    // Si es POST con rol de estudiante, usar directamente
-                    estudiantesEndpoint = usuarios;
-                    console.log(`✅ Estudiantes cargados desde ${endpointUrl} (POST):`, estudiantesEndpoint.length);
+                    console.log('✅ Estudiantes extraidos de endpoint de profesores:', estudiantes.length);
                 } else {
-                    // Para otros endpoints específicos (alumnos, estudiantes)
-                    estudiantesEndpoint = usuarios;
-                    console.log(`✅ Estudiantes cargados desde ${endpointUrl}:`, estudiantesEndpoint.length);
-                }
-                
-                console.log('Datos de ejemplo:', estudiantesEndpoint.slice(0, 2));
-                
-                // Si encontramos estudiantes, salimos del bucle
-                if (estudiantesEndpoint && estudiantesEndpoint.length > 0) {
-                    estudiantes = estudiantesEndpoint;
-                    break;
+                    console.log('❌ Endpoint de profesores no contiene todos los usuarios');
                 }
             } catch (error) {
-                const endpointDisplay = typeof endpoint === 'object' ? endpoint.url : endpoint;
-                console.log(`❌ Error en endpoint ${endpointDisplay}:`, error.message);
-                console.log('Error completo:', error);
-                
-                // Verificar si es error 500 que podría contener datos de estudiantes
-                const esError500 = error.message && (
-                    error.message.includes('500') ||
-                    error.message.includes('No se pudieron cargar los usuarios')
-                );
-                
-                // Verificar si es el error específico de columna 'anio' o cualquier error de columna
-                const esErrorAnio = error.message && (
-                    error.message.includes('column "anio" does not exist') ||
-                    error.message.includes('columna "anio" no existe') ||
-                    error.message.includes('anio') && error.message.includes('does not exist')
-                );
-                
-                const esErrorColumna = error.message && (
-                    error.message.includes('column') && error.message.includes('does not exist') ||
-                    error.message.includes('columna') && error.message.includes('no existe') ||
-                    error.message.includes('42703') // PostgreSQL error code for undefined_column
-                );
-                
-                const esErrorBaseDatos = error.message && (
-                    error.message.includes('relation') && error.message.includes('does not exist') ||
-                    error.message.includes('42P01') // PostgreSQL error code for undefined_table
-                );
-                
-                const esErrorRol = error.message && (
-                    error.message.includes('Rol no válido') ||
-                    error.message.includes('rol no válido') ||
-                    error.message.includes('400') && error.message.includes('rol')
-                );
-                
-                const esErrorEndpoint = error.message && (
-                    error.message.includes('Cannot GET') ||
-                    error.message.includes('404') ||
-                    error.message.includes('<!DOCTYPE html>')
-                );
-                
-                // Si es error 500 por columna anio, intentar solución alternativa
-                if (esError500 && error.message.includes('column "anio" does not exist')) {
-                    console.log('🔄 Error 500 detectado por columna anio, intentando solución alternativa...');
-                    
-                    // Intentar usar el mismo método que funciona para profesores pero sin filtro
-                    try {
-                        console.log('🔄 Intentando cargar todos los usuarios como se hace para profesores...');
-                        
-                        // Intentar diferentes métodos para cargar todos los usuarios
-                        const metodosAlternativos = [
-                            '/admin/usuarios?todos=true',
-                            '/admin/usuarios?all=true',
-                            '/admin/usuarios?sin_filtro=true',
-                            '/admin/usuarios?completo=true'
-                        ];
-                        
-                        for (const metodo of metodosAlternativos) {
-                            try {
-                                console.log(`🔄 Intentando método alternativo: ${metodo}`);
-                                const todosResponse = await apiRequest(metodo);
-                                if (Array.isArray(todosResponse)) {
-                                    const estudiantesEncontrados = todosResponse.filter(usuario => 
-                                        usuario.rol === 'alumno' || 
-                                        usuario.role === 'alumno' || 
-                                        usuario.tipo === 'alumno' ||
-                                        usuario.rol === 'estudiante' ||
-                                        usuario.role === 'estudiante' ||
-                                        (usuario.rol !== 'profesor' && usuario.role !== 'profesor' && usuario.tipo !== 'profesor')
-                                    );
-                                    if (estudiantesEncontrados.length > 0) {
-                                        console.log(`✅ Estudiantes encontrados con método alternativo:`, estudiantesEncontrados.length);
-                                        estudiantes = estudiantesEncontrados;
-                                        endpointsIntentados.push(`${endpointDisplay} (éxito con ${metodo})`);
-                                        break;
-                                    }
-                                }
-                            } catch (errorMetodo) {
-                                console.log(`❌ Método ${metodo} falló:`, errorMetodo.message);
-                                continue;
-                            }
-                        }
-                        
-                        // Si encontramos estudiantes con algún método, salir del bucle principal
-                        if (estudiantes.length > 0) {
-                            break;
-                        }
-                        
-                    } catch (errorAlt) {
-                        console.log('❌ Todos los métodos alternativos fallaron:', errorAlt.message);
-                    }
-                }
-                
-                if (esErrorAnio || esErrorColumna || esErrorBaseDatos) {
-                    console.log('⚠️ Error de base de datos detectado, continuando con siguiente endpoint...');
-                    let tipoError = 'columna desconocida';
-                    if (esErrorAnio) tipoError = 'anio';
-                    else if (esErrorColumna) tipoError = 'columna';
-                    else if (esErrorBaseDatos) tipoError = 'tabla';
-                    
-                    endpointsIntentados.push(`${endpoint} (error: ${tipoError} no existe)`);
-                    
-                    // Si es error de columna anio, mostrar advertencia pero continuar con otros endpoints
-                    if (esErrorAnio) {
-                        console.log('⚠️ Error de columna anio detectado, intentando otros endpoints...');
-                        // No detener la búsqueda, continuar con siguiente endpoint
-                        continue;
-                    }
-                } else if (esErrorRol) {
-                    console.log('⚠️ Error de rol detectado, continuando con siguiente endpoint...');
-                    endpointsIntentados.push(`${endpoint} (error: rol no válido)`);
-                    // No romper el bucle, continuar con siguiente endpoint
-                    continue;
-                } else if (esErrorEndpoint) {
-                    console.log('⚠️ Endpoint no existe, continuando con siguiente endpoint...');
-                    endpointsIntentados.push(`${endpoint} (error: endpoint no existe)`);
-                    // No romper el bucle, continuar con siguiente endpoint
-                    continue;
-                } else {
-                    endpointsIntentados.push(`${endpoint} (error: ${error.message})`);
-                    // No romper el bucle, continuar con siguiente endpoint
-                    continue;
-                }
-                
-                // Si es el último endpoint y no se encontraron estudiantes, mostrar mensaje simple
-                if (i === endpoints.length - 1 && estudiantes.length === 0) {
-                    console.log('No se encontraron estudiantes en ningún endpoint');
-                    const container = document.getElementById('listaEstudiantes');
-                    if (container) {
-                        container.innerHTML = `
-                            <div class="alert alert-warning">
-                                <h3>⚠️ No se encontraron estudiantes</h3>
-                                <p>No hay estudiantes registrados en la base de datos o no se pudieron cargar.</p>
-                                <p><strong>Endpoints intentados:</strong></p>
-                                <ul>${endpointsIntentados.map(e => `<li>${e}</li>`).join('')}</ul>
-                                <div style="margin-top: 20px; text-align: center;">
-                                    <button type="button" class="btn btn-primary" onclick="location.reload()">
-                                        <i class="fas fa-sync"></i> Recargar página
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" onclick="cargarEstudiantes()">
-                                        <i class="fas fa-redo"></i> Reintentar
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
+                console.log('❌ Error en endpoint de respaldo:', error.message);
             }
         }
         
