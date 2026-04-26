@@ -90,14 +90,14 @@ async function cargarAdministradores() {
     try {
         console.log('Cargando administradores...');
         
-        // Intentar cargar directamente primero
+        // Usar el endpoint de profesores ya que es el único que funciona y contiene todos los usuarios
         let administradores = [];
         try {
-            const lista = await apiRequest('/admin/usuarios?rol=admin');
+            const lista = await apiRequest('/admin/usuarios?rol=profesor');
             administradores = Array.isArray(lista) ? lista.filter((a) => a.rol === 'admin' || a.rol === 'administrador') : [];
-            console.log('✅ Administradores cargados directamente:', administradores.length);
+            console.log('✅ Administradores extraidos del endpoint de profesores:', administradores.length);
         } catch (error) {
-            console.log('❌ Error cargando administradores directamente:', error.message);
+            console.log('❌ Error cargando administradores:', error.message);
             
             // Si falla, usar los datos guardados de profesores
             const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
