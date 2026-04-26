@@ -486,10 +486,10 @@ async function guardarEstudiante(ev) {
     try {
         console.log('Enviando datos del estudiante:', { nombre, email, password });
         
-        // Usar el mismo método que funciona para profesores
+        // Usar el endpoint que funciona para profesores para crear estudiantes
         try {
-            console.log('🔄 Intentando crear estudiante con método de profesores...');
-            await apiRequest('/admin/usuarios', {
+            console.log('🔄 Creando estudiante con endpoint funcional...');
+            const response = await apiRequest('/admin/usuarios', {
                 method: 'POST',
                 body: JSON.stringify({
                     nombre,
@@ -498,14 +498,30 @@ async function guardarEstudiante(ev) {
                     rol: 'alumno'
                 }),
             });
-            console.log('✅ Estudiante creado exitosamente');
-        } catch (error) {
-            console.log('❌ Error creando estudiante con método de profesores:', error.message);
+            console.log('✅ Estudiante creado exitosamente:', response);
             
-            // Si falla, intentar con rol 'estudiante'
+            // Actualizar localStorage para que el nuevo estudiante aparezca inmediatamente
+            const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
+            const nuevoEstudiante = {
+                id: response.id || Date.now(),
+                nombre,
+                email,
+                password,
+                rol: 'alumno',
+                activo: true,
+                created_at: new Date().toISOString()
+            };
+            todosLosUsuarios.push(nuevoEstudiante);
+            localStorage.setItem('todosLosUsuarios', JSON.stringify(todosLosUsuarios));
+            console.log('✅ Estudiante agregado a localStorage:', nuevoEstudiante);
+            
+        } catch (error) {
+            console.log('❌ Error creando estudiante:', error.message);
+            
+            // Si el endpoint no funciona, intentar con rol 'estudiante'
             try {
                 console.log('🔄 Intentando con rol estudiante...');
-                await apiRequest('/admin/usuarios', {
+                const response = await apiRequest('/admin/usuarios', {
                     method: 'POST',
                     body: JSON.stringify({
                         nombre,
@@ -514,10 +530,25 @@ async function guardarEstudiante(ev) {
                         rol: 'estudiante'
                     }),
                 });
-                console.log('✅ Estudiante creado con rol estudiante');
+                console.log('✅ Estudiante creado con rol estudiante:', response);
+                
+                // Actualizar localStorage
+                const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
+                const nuevoEstudiante = {
+                    id: response.id || Date.now(),
+                    nombre,
+                    email,
+                    password,
+                    rol: 'estudiante',
+                    activo: true,
+                    created_at: new Date().toISOString()
+                };
+                todosLosUsuarios.push(nuevoEstudiante);
+                localStorage.setItem('todosLosUsuarios', JSON.stringify(todosLosUsuarios));
+                
             } catch (error2) {
                 console.log('❌ Error con rol estudiante:', error2.message);
-                throw new Error('No se pudo crear el estudiante. El servidor no está disponible o los endpoints no existen.');
+                throw new Error('No se pudo crear el estudiante. Verifica la conexión con el servidor.');
             }
         }
         
@@ -633,11 +664,13 @@ async function editarAdministrador(id, nombreActual, emailActual) {
             id, nombre: nuevoNombre.trim(), email: nuevoEmail.trim()
         });
         
-        await apiRequest(`/admin/administradores/${id}`, {
+        // Usar el endpoint de usuarios que funciona para actualizar administradores
+        await apiRequest(`/admin/usuarios/${id}`, {
             method: 'PUT',
             body: JSON.stringify({ 
                 nombre: nuevoNombre.trim(), 
-                email: nuevoEmail.trim()
+                email: nuevoEmail.trim(),
+                rol: 'administrador'
             }),
         });
         
