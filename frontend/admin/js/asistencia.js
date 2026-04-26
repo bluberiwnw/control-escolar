@@ -1,18 +1,3 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    verificarSesion();
-    mostrarInfoUsuario();
-    mostrarFechaActual();
-    await cargarMaterias();
-    document.getElementById('fechaAsistencia').valueAsDate = new Date();
-    document.getElementById('todasLasFechas').addEventListener('change', toggleFiltroFechas);
-    await cargarAsistencias();
-});
-
-function toggleFiltroFechas() {
-    const verTodas = document.getElementById('todasLasFechas').checked;
-    document.getElementById('fechaAsistencia').disabled = verTodas;
-}
-
 async function cargarMaterias() {
     try {
         const materias = await apiRequest('/admin/materias');
@@ -24,9 +9,35 @@ async function cargarMaterias() {
         console.error('Error cargando materias:', error);
         const select = document.getElementById('materiaSelect');
         select.innerHTML = '<option value="">Error cargando materias</option>';
-        mostrarToast('Error al cargar materias. Intenta recargar la página.', 'warning');
+        
+        // Manejo específico para errores 502/503
+        if (error.message.includes('502') || error.message.includes('503') || error.message.includes('Bad Gateway') || error.message.includes('Service Unavailable')) {
+            mostrarToast('El servidor está temporalmente no disponible. Intenta recargar la página en unos momentos.', 'warning');
+            // Reintentar automáticamente después de 5 segundos
+            setTimeout(() => {
+                console.log('Reintentando cargar materias...');
+                cargarMaterias();
+            }, 5000);
+        } else {
+            mostrarToast('Error al cargar materias. Intenta recargar la página.', 'warning');
+        }
     }
 }
+
+function toggleFiltroFechas() {
+    const verTodas = document.getElementById('todasLasFechas').checked;
+    document.getElementById('fechaAsistencia').disabled = verTodas;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    verificarSesion();
+    mostrarInfoUsuario();
+    mostrarFechaActual();
+    await cargarMaterias();
+    document.getElementById('fechaAsistencia').valueAsDate = new Date();
+    document.getElementById('todasLasFechas').addEventListener('change', toggleFiltroFechas);
+    await cargarAsistencias();
+});
 
 function selectEstado(asistencia) {
     return `

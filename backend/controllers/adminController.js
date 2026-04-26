@@ -184,13 +184,19 @@ const adminController = {
             if (String(password || '').length < 6) {
                 return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres.' });
             }
+            
+            // Generar matrícula automáticamente
+            const year = new Date().getFullYear();
+            const randomNum = Math.floor(Math.random() * 9000) + 1000;
+            const matricula = `${year}-${randomNum}`;
+            
             const bcrypt = require('bcryptjs');
             const hashedPassword = bcrypt.hashSync(password, 10);
             const result = await pool.query(
-                'INSERT INTO estudiantes (nombre, email, password, activo) VALUES ($1, $2, $3, true) RETURNING id',
-                [nombre, email, hashedPassword]
+                'INSERT INTO estudiantes (matricula, nombre, email, password, activo) VALUES ($1, $2, $3, $4, true) RETURNING id',
+                [matricula, nombre, email, hashedPassword]
             );
-            res.status(201).json({ id: result.rows[0].id, message: 'Estudiante creado' });
+            res.status(201).json({ id: result.rows[0].id, matricula, message: 'Estudiante creado' });
         } catch (error) {
             res.status(500).json({ message: errorUsuario(error, 'No se pudo crear el estudiante.') });
         }
