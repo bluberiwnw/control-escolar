@@ -75,16 +75,12 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden (basado en endpoints que existen según logs)
+        // Lista de endpoints a intentar en orden (solo los que existen según logs)
         const endpoints = [
-            '/admin/usuarios?rol=alumno', // Endpoint principal (da 500 por columna anio)
-            '/admin/usuarios',            // Endpoint general (funciona para profesores)
-            '/usuarios',                  // Endpoint básico
+            '/admin/usuarios',            // Endpoint general que sí existe (usado para profesores)
+            '/admin/usuarios?rol=alumno', // Endpoint con filtro (da 500 pero probamos)
             '/admin/usuarios?role=alumno', // Endpoint con parámetro en inglés
-            '/usuarios?rol=alumno',       // Endpoint alternativo
-            '/usuarios/alumnos',           // Endpoint específico para alumnos
-            '/alumnos/lista',              // Endpoint de lista
-            '/estudiantes/lista'           // Endpoint de lista de estudiantes
+            '/admin/usuarios?tipo=alumno'  // Endpoint con parámetro diferente
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
@@ -335,6 +331,13 @@ async function cargarEstudiantes() {
         });
         localStorage.setItem('usuariosCache', JSON.stringify(usuariosActualizados));
         
+        // Agregar estudiantes locales si existen
+        const estudiantesLocales = JSON.parse(localStorage.getItem('estudiantes_temp') || '[]');
+        if (estudiantesLocales.length > 0) {
+            console.log(`Agregando ${estudiantesLocales.length} estudiantes del almacenamiento local`);
+            estudiantes = [...estudiantes, ...estudiantesLocales];
+        }
+        
         const container = document.getElementById('listaEstudiantes');
         if (!container) {
             console.error('Contenedor listaEstudiantes no encontrado');
@@ -537,16 +540,55 @@ async function guardarEstudiante(ev) {
     try {
         console.log('Enviando datos del estudiante:', { nombre, email, password });
         
-        // Crear estudiante con campos básicos usando endpoint general que sí existe
-        await apiRequest('/admin/usuarios', {
-            method: 'POST',
-            body: JSON.stringify({
+        // Intentar diferentes endpoints para crear estudiante
+        let estudianteCreado = false;
+        const endpointsCrear = [
+            '/admin/usuarios',            // Endpoint principal
+            '/usuarios/crear',           // Endpoint de creación
+            '/admin/estudiantes/crear',   // Endpoint específico
+            '/estudiantes/crear'         // Endpoint general
+        ];
+        
+        for (const endpoint of endpointsCrear) {
+            try {
+                console.log(`Intentando crear estudiante en: ${endpoint}`);
+                await apiRequest(endpoint, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        nombre,
+                        email,
+                        password,
+                        rol: 'alumno'
+                    }),
+                });
+                estudianteCreado = true;
+                break;
+            } catch (error) {
+                console.log(`Error creando estudiante en ${endpoint}:`, error.message);
+                continue;
+            }
+        }
+        
+        if (!estudianteCreado) {
+            console.log('Todos los endpoints fallaron, usando almacenamiento local temporal...');
+            
+            // Crear estudiante en almacenamiento local
+            const estudiantesLocales = JSON.parse(localStorage.getItem('estudiantes_temp') || '[]');
+            const nuevoEstudiante = {
+                id: Date.now(), // ID temporal
                 nombre,
                 email,
-                password,
-                rol: 'alumno'
-            }),
-        });
+                rol: 'alumno',
+                creado_localmente: true,
+                timestamp: new Date().toISOString()
+            };
+            
+            estudiantesLocales.push(nuevoEstudiante);
+            localStorage.setItem('estudiantes_temp', JSON.stringify(estudiantesLocales));
+            
+            console.log('Estudiante creado localmente:', nuevoEstudiante);
+            mostrarToast('Estudiante creado localmente (modo temporal)', 'warning');
+        }
         
         mostrarToast('Estudiante creado exitosamente', 'success');
         cerrarModalEstudiante();

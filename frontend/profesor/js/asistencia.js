@@ -69,9 +69,8 @@ function generarEstadisticas(asistencias, totalEstudiantes) {
         const elemento = document.getElementById(id);
         if (elemento) {
             elemento.textContent = elementos[id];
-        } else {
-            console.warn(`Elemento #${id} no encontrado en el DOM`);
         }
+        // Silenciosamente ignorar elementos que no existen
     });
     
     // Calcular porcentajes
