@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/asistencia-reportes.css">
 </head>
 <body>
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -45,6 +46,15 @@
             <div class="toolbar-actions">
                 <button class="btn btn-info" onclick="generarReportesAsistencia()">
                     <i class="fas fa-chart-bar"></i> Generar Reportes
+                </button>
+                <button class="btn btn-success" onclick="exportarAsistencias()">
+                    <i class="fas fa-download"></i> Exportar Asistencias
+                </button>
+                <button class="btn btn-warning" onclick="exportarAsistenciasExcel()">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+                <button class="btn btn-secondary" onclick="exportarAsistenciasPDF()">
+                    <i class="fas fa-file-pdf"></i> Exportar PDF
                 </button>
             </div>
         </div>

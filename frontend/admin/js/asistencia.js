@@ -126,24 +126,34 @@ async function generarReportesAsistencia() {
                 };
                 mostrarToast('El servidor no está disponible. Mostrando datos limitados.', 'warning');
             }
-        } else {
-            // Reporte específico de una materia
+        } else if (materiaId) {
+            // Reporte específico de una materia con opción de reporte por curso
             try {
-                datos = await apiRequest(`/asistencia/estadisticas/${materiaId}`);
+                // Intentar obtener reporte por curso específico
+                datos = await apiRequest(`/admin/asistencias/reporte/curso/${materiaId}`);
             } catch (error) {
-                console.error('Error en estadísticas de materia:', error);
-                // Datos de fallback si el servidor falla
-                datos = {
-                    totales: {
-                        total_presentes: 0,
-                        total_ausentes: 0,
-                        total_retardos: 0,
-                        total_clases: 0
-                    },
-                    por_fecha: []
-                };
-                mostrarToast('El servidor no está disponible. Mostrando datos limitados.', 'warning');
+                console.error('Error en reporte por curso:', error);
+                // Si falla, intentar con estadísticas generales
+                try {
+                    datos = await apiRequest(`/profesor/estadisticas?materia_id=${materiaId}`);
+                } catch (fallbackError) {
+                    console.error('Error en estadísticas de materia:', fallbackError);
+                    // Datos de fallback si el servidor falla
+                    datos = {
+                        totales: {
+                            total_presentes: 0,
+                            total_ausentes: 0,
+                            total_retardos: 0,
+                            total_clases: 0
+                        },
+                        por_fecha: []
+                    };
+                    mostrarToast('El servidor no está disponible. Mostrando datos limitados.', 'warning');
+                }
             }
+        } else {
+            mostrarToast('Por favor selecciona una materia para generar reportes.', 'warning');
+            return;
         }
         
         mostrarReportesAsistencia(datos, todasLasMaterias);
@@ -203,8 +213,120 @@ function mostrarReportesAsistencia(datos, esGeneral) {
             });
             html += '</tbody></table></div>';
         }
+    } else if (datos.materia && datos.estadisticas_generales) {
+        // Reporte por curso específico con porcentajes
+        const stats = datos.estadisticas_generales;
+        html += `
+            <div class="curso-header">
+                <h4>📚 Curso: ${datos.materia.nombre}</h4>
+                <p><strong>Clave:</strong> ${datos.materia.clave}</p>
+                <p><strong>Horario:</strong> ${datos.materia.horario}</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item total">
+                    <span class="stat-number">${stats.total_clases}</span>
+                    <span class="stat-label">Total Clases</span>
+                </div>
+                <div class="stat-item presente">
+                    <span class="stat-number">${stats.total_presentes}</span>
+                    <span class="stat-label">Presentes (${stats.porcentaje_asistencia_general}%)</span>
+                </div>
+                <div class="stat-item ausente">
+                    <span class="stat-number">${stats.total_ausentes}</span>
+                    <span class="stat-label">Ausentes</span>
+                </div>
+                <div class="stat-item retardo">
+                    <span class="stat-number">${stats.total_retardos}</span>
+                    <span class="stat-label">Retardos</span>
+                </div>
+                <div class="stat-item estudiantes">
+                    <span class="stat-number">${stats.total_estudiantes}</span>
+                    <span class="stat-label">Total Estudiantes</span>
+                </div>
+            </div>
+        `;
+        
+        // Resumen de categorías
+        if (datos.resumen) {
+            const resumen = datos.resumen;
+            html += `
+                <div class="resumen-section">
+                    <h4>📈 Resumen de Rendimiento</h4>
+                    <div class="resumen-grid">
+                        <div class="resumen-item excelente">
+                            <span class="resumen-number">${resumen.excelentes}</span>
+                            <span class="resumen-label">Excelentes (≥90%)</span>
+                        </div>
+                        <div class="resumen-item bueno">
+                            <span class="resumen-number">${resumen.buenos}</span>
+                            <span class="resumen-label">Buenos (80-89%)</span>
+                        </div>
+                        <div class="resumen-item regular">
+                            <span class="resumen-number">${resumen.regulares}</span>
+                            <span class="resumen-label">Regulares (70-79%)</span>
+                        </div>
+                        <div class="resumen-item deficiente">
+                            <span class="resumen-number">${resumen.deficientes}</span>
+                            <span class="resumen-label">Deficientes (<70%)</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Detalle por estudiante
+        if (datos.detalle_estudiantes && datos.detalle_estudiantes.length > 0) {
+            html += `
+                <h4>👥 Detalle por Estudiante</h4>
+                <div class="table-responsive-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Estudiante</th>
+                                <th>Email</th>
+                                <th>Total Asistencias</th>
+                                <th>Presentes</th>
+                                <th>Ausentes</th>
+                                <th>Retardos</th>
+                                <th>% Asistencia</th>
+                                <th>Rendimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            datos.detalle_estudiantes.forEach(estudiante => {
+                const rendimiento = estudiante.porcentaje_asistencia >= 90 ? 'Excelente' :
+                                  estudiante.porcentaje_asistencia >= 80 ? 'Bueno' :
+                                  estudiante.porcentaje_asistencia >= 70 ? 'Regular' : 'Deficiente';
+                
+                const rendimientoClass = estudiante.porcentaje_asistencia >= 90 ? 'excelente' :
+                                       estudiante.porcentaje_asistencia >= 80 ? 'bueno' :
+                                       estudiante.porcentaje_asistencia >= 70 ? 'regular' : 'deficiente';
+                
+                html += `
+                    <tr>
+                        <td data-label="Estudiante">${estudiante.estudiante_nombre}</td>
+                        <td data-label="Email">${estudiante.estudiante_email}</td>
+                        <td data-label="Total Asistencias">${estudiante.total_asistencias}</td>
+                        <td data-label="Presentes">${estudiante.presentes}</td>
+                        <td data-label="Ausentes">${estudiante.ausentes}</td>
+                        <td data-label="Retardos">${estudiante.retardos}</td>
+                        <td data-label="% Asistencia">${estudiante.porcentaje_asistencia}%</td>
+                        <td data-label="Rendimiento"><span class="rendimiento-${rendimientoClass}">${rendimiento}</span></td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
     } else {
-        // Reporte específico de materia
+        // Reporte específico de materia (formato anterior)
         const porcentajePresentes = datos.totales?.total > 0 ? ((datos.totales.total_presentes / datos.totales.total) * 100).toFixed(1) : 0;
         
         html += `
@@ -255,5 +377,128 @@ window.cargarAsistencias = cargarAsistencias;
 window.actualizarAsistencia = actualizarAsistencia;
 window.eliminarAsistencia = eliminarAsistencia;
 window.generarReportesAsistencia = generarReportesAsistencia;
+
+// Función principal de exportación de asistencias
+async function exportarAsistencias() {
+    try {
+        const materiaId = document.getElementById('materiaSelect').value;
+        const fecha = document.getElementById('fechaAsistencia').value;
+        const todasLasFechas = document.getElementById('todasLasFechas').checked;
+        
+        let url = '/admin/asistencias/exportar?';
+        if (materiaId) url += `materia_id=${materiaId}&`;
+        if (fecha && !todasLasFechas) url += `fecha=${fecha}&`;
+        
+        // Descargar el archivo
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al generar el archivo de exportación');
+        }
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `asistencias_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        mostrarToast('✅ Asistencias exportadas exitosamente', 'success');
+    } catch (error) {
+        console.error('Error exportando asistencias:', error);
+        mostrarToast('Error al exportar asistencias. Intenta de nuevo.', 'error');
+    }
+}
+
+// Exportar a Excel específico
+async function exportarAsistenciasExcel() {
+    try {
+        const materiaId = document.getElementById('materiaSelect').value;
+        const fecha = document.getElementById('fechaAsistencia').value;
+        const todasLasFechas = document.getElementById('todasLasFechas').checked;
+        
+        let url = '/admin/asistencias/exportar/excel?';
+        if (materiaId) url += `materia_id=${materiaId}&`;
+        if (fecha && !todasLasFechas) url += `fecha=${fecha}&`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al generar el archivo Excel');
+        }
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `asistencias_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        mostrarToast('✅ Asistencias exportadas a Excel exitosamente', 'success');
+    } catch (error) {
+        console.error('Error exportando a Excel:', error);
+        mostrarToast('Error al exportar a Excel. Intenta de nuevo.', 'error');
+    }
+}
+
+// Exportar a PDF específico
+async function exportarAsistenciasPDF() {
+    try {
+        const materiaId = document.getElementById('materiaSelect').value;
+        const fecha = document.getElementById('fechaAsistencia').value;
+        const todasLasFechas = document.getElementById('todasLasFechas').checked;
+        
+        let url = '/admin/asistencias/exportar/pdf?';
+        if (materiaId) url += `materia_id=${materiaId}&`;
+        if (fecha && !todasLasFechas) url += `fecha=${fecha}&`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al generar el archivo PDF');
+        }
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `asistencias_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        mostrarToast('✅ Asistencias exportadas a PDF exitosamente', 'success');
+    } catch (error) {
+        console.error('Error exportando a PDF:', error);
+        mostrarToast('Error al exportar a PDF. Intenta de nuevo.', 'error');
+    }
+}
+
+// Exponer funciones globalmente
+window.exportarAsistencias = exportarAsistencias;
+window.exportarAsistenciasExcel = exportarAsistenciasExcel;
+window.exportarAsistenciasPDF = exportarAsistenciasPDF;
 
 

@@ -1,0 +1,179 @@
+/* Estilos adicionales para reportes de asistencia por curso */
+
+.curso-header {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.curso-header h4 {
+    margin: 0 0 10px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.curso-header p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.resumen-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.resumen-section h4 {
+    margin: 0 0 15px 0;
+    color: #1a202c;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.resumen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.resumen-item {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.resumen-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.resumen-number {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.resumen-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.resumen-item.excelente {
+    border-left: 4px solid #10b981;
+}
+
+.resumen-item.excelente .resumen-number {
+    color: #10b981;
+}
+
+.resumen-item.bueno {
+    border-left: 4px solid #3b82f6;
+}
+
+.resumen-item.bueno .resumen-number {
+    color: #3b82f6;
+}
+
+.resumen-item.regular {
+    border-left: 4px solid #f59e0b;
+}
+
+.resumen-item.regular .resumen-number {
+    color: #f59e0b;
+}
+
+.resumen-item.deficiente {
+    border-left: 4px solid #ef4444;
+}
+
+.resumen-item.deficiente .resumen-number {
+    color: #ef4444;
+}
+
+/* Estilos para indicadores de rendimiento */
+.rendimiento-excelente {
+    background: #10b981;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.rendimiento-bueno {
+    background: #3b82f6;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.rendimiento-regular {
+    background: #f59e0b;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.rendimiento-deficiente {
+    background: #ef4444;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Responsive para reportes */
+@media (max-width: 768px) {
+    .resumen-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .curso-header {
+        padding: 15px;
+    }
+    
+    .resumen-section {
+        padding: 15px;
+        margin: 15px 0;
+    }
+    
+    .resumen-item {
+        padding: 12px;
+    }
+    
+    .resumen-number {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .resumen-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .curso-header h4 {
+        font-size: 1rem;
+    }
+    
+    .resumen-number {
+        font-size: 1.3rem;
+    }
+}

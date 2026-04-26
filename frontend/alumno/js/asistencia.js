@@ -2,6 +2,25 @@ let html5QrCode;
 let escaneoBloqueado = false;
 let materiaSeleccionadaId = null;
 
+// Inicialización cuando se carga la página
+document.addEventListener('DOMContentLoaded', async () => {
+    verificarSesion();
+    mostrarInfoUsuario();
+    mostrarFechaActual();
+    await cargarMaterias();
+    await cargarAsistencias();
+    
+    // Intentar sincronizar asistencias pendientes automáticamente
+    setTimeout(() => {
+        sincronizarAsistenciasPendientes();
+    }, 2000); // Esperar 2 segundos para que la página cargue completamente
+    
+    // Configurar sincronización periódica cada 30 segundos
+    setInterval(() => {
+        sincronizarAsistenciasPendientes();
+    }, 30000);
+});
+
 function extraerCodigoQR(decodedText) {
     const t = String(decodedText || '').trim();
     if (!t) return null;

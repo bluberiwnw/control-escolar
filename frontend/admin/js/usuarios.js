@@ -16,10 +16,6 @@ function esNombreValido(nombre) {
     return limpio.length >= 3 && limpio.length <= 120;
 }
 
-function esMatriculaValida(matricula) {
-    return /^[A-Za-z0-9-]{4,20}$/.test(String(matricula || '').trim());
-}
-
 async function cargarProfesores() {
     try {
         console.log('Cargando profesores...');
