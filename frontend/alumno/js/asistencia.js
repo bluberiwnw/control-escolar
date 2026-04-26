@@ -94,16 +94,73 @@ function getEstadoBadge(estado) {
 }
 
 async function cargarMateriasEnSelects() {
-    const materias = await apiRequest('/alumno/materias');
-    const opciones =
-        '<option value="">Selecciona una materia</option>' +
-        materias.map((m) => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    try {
+        console.log('🔄 Cargando materias del alumno...');
+        const materias = await apiRequest('/alumno/materias');
+        console.log('✅ Materias recibidas:', materias);
+        
+        if (!Array.isArray(materias)) {
+            console.error('❌ Las materias no son un array:', materias);
+            mostrarToast('Error al cargar materias: formato incorrecto', 'error');
+            return;
+        }
+        
+        if (materias.length === 0) {
+            console.log('⚠️ El alumno no está inscrito en ninguna materia');
+            mostrarToast('No estás inscrito en ninguna materia. Contacta al administrador.', 'warning');
+            
+            // Mostrar mensaje en los selects
+            const opciones = '<option value="">No hay materias disponibles</option>';
+            const qrSel = document.getElementById('materiaQRSelect');
+            const manSel = document.getElementById('materiaManualAsistencia');
+            if (qrSel) {
+                qrSel.innerHTML = opciones;
+                qrSel.disabled = true;
+            }
+            if (manSel) {
+                manSel.innerHTML = opciones;
+                manSel.disabled = true;
+            }
+            actualizarEstadoMateria();
+            return;
+        }
+        
+        const opciones =
+            '<option value="">Selecciona una materia</option>' +
+            materias.map((m) => `<option value="${m.id}">${m.nombre}</option>`).join('');
 
-    const qrSel = document.getElementById('materiaQRSelect');
-    const manSel = document.getElementById('materiaManualAsistencia');
-    if (qrSel) qrSel.innerHTML = opciones;
-    if (manSel) manSel.innerHTML = opciones;
-    actualizarEstadoMateria();
+        const qrSel = document.getElementById('materiaQRSelect');
+        const manSel = document.getElementById('materiaManualAsistencia');
+        if (qrSel) {
+            qrSel.innerHTML = opciones;
+            qrSel.disabled = false;
+        }
+        if (manSel) {
+            manSel.innerHTML = opciones;
+            manSel.disabled = false;
+        }
+        
+        console.log('✅ Materias cargadas exitosamente en los selects');
+        actualizarEstadoMateria();
+        
+    } catch (error) {
+        console.error('❌ Error al cargar materias:', error);
+        mostrarToast('Error al cargar materias: ' + (error.message || 'Intenta recargar la página'), 'error');
+        
+        // Deshabilitar selects en caso de error
+        const opciones = '<option value="">Error al cargar</option>';
+        const qrSel = document.getElementById('materiaQRSelect');
+        const manSel = document.getElementById('materiaManualAsistencia');
+        if (qrSel) {
+            qrSel.innerHTML = opciones;
+            qrSel.disabled = true;
+        }
+        if (manSel) {
+            manSel.innerHTML = opciones;
+            manSel.disabled = true;
+        }
+        actualizarEstadoMateria();
+    }
 }
 
 async function registrarAsistenciaManual() {
@@ -382,6 +439,11 @@ document.getElementById('btnIniciarCamara')?.addEventListener('click', () => {
 });
 document.getElementById('btnDetenerCamara')?.addEventListener('click', () => {
     detenerCamara();
+});
+
+// Event listener para cambio de materia
+document.getElementById('materiaQRSelect')?.addEventListener('change', () => {
+    actualizarEstadoMateria();
 });
 
 window.registrarAsistenciaManual = registrarAsistenciaManual;
