@@ -75,16 +75,16 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden (priorizando los que no usan columna anio)
+        // Lista de endpoints a intentar en orden (basado en endpoints que existen según logs)
         const endpoints = [
-            '/admin/usuarios?rol=alumno', // Endpoint general con filtro (sin anio)
-            '/usuarios?rol=alumno',        // Endpoint alternativo (sin anio)
-            '/admin/alumnos',     // Endpoint alternativo (sin anio)
-            '/alumnos',           // Endpoint general de alumnos (sin anio)
-            '/users?role=alumno', // Endpoint con parámetro diferente
-            '/user?role=alumno',  // Endpoint singular
-            '/estudiantes',       // Endpoint general de estudiantes  
-            '/admin/estudiantes'  // Endpoint específico para estudiantes (con anio)
+            '/admin/usuarios?rol=alumno', // Endpoint principal (da 500 por columna anio)
+            '/admin/usuarios',            // Endpoint general (funciona para profesores)
+            '/usuarios',                  // Endpoint básico
+            '/admin/usuarios?role=alumno', // Endpoint con parámetro en inglés
+            '/usuarios?rol=alumno',       // Endpoint alternativo
+            '/usuarios/alumnos',           // Endpoint específico para alumnos
+            '/alumnos/lista',              // Endpoint de lista
+            '/estudiantes/lista'           // Endpoint de lista de estudiantes
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
@@ -92,13 +92,31 @@ async function cargarEstudiantes() {
             try {
                 console.log(`Intentando endpoint ${i + 1}: ${endpoint}`);
                 const response = await apiRequest(endpoint);
-                estudiantes = Array.isArray(response) ? response : [];
+                let usuarios = Array.isArray(response) ? response : [];
+                let estudiantesEndpoint = [];
                 endpointsIntentados.push(endpoint);
-                console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantes.length);
-                console.log('Datos de ejemplo:', estudiantes.slice(0, 2));
+                
+                // Si el endpoint no tiene filtro de rol, filtramos estudiantes en el frontend
+                if (!endpoint.includes('rol=') && !endpoint.includes('role=') && !endpoint.includes('tipo=')) {
+                    console.log(`Filtrando estudiantes de ${usuarios.length} usuarios totales`);
+                    estudiantesEndpoint = usuarios.filter(usuario => 
+                        usuario.rol === 'alumno' || 
+                        usuario.role === 'alumno' || 
+                        usuario.tipo === 'alumno' ||
+                        usuario.rol === 'estudiante' ||
+                        usuario.role === 'estudiante'
+                    );
+                    console.log(`✅ Estudiantes filtrados desde ${endpoint}:`, estudiantesEndpoint.length);
+                } else {
+                    estudiantesEndpoint = usuarios;
+                    console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantesEndpoint.length);
+                }
+                
+                console.log('Datos de ejemplo:', estudiantesEndpoint.slice(0, 2));
                 
                 // Si encontramos estudiantes, salimos del bucle
-                if (estudiantes && estudiantes.length > 0) {
+                if (estudiantesEndpoint && estudiantesEndpoint.length > 0) {
+                    estudiantes = estudiantesEndpoint;
                     break;
                 }
             } catch (error) {

@@ -240,30 +240,41 @@ async function generarQR() {
         } catch (qrError) {
             console.error('Error en generación QR:', qrError);
             
-            // Detectar errores relacionados con tabla qr_logs
-            const esErrorQrLogs = qrError.message && (
-                qrError.message.includes('qr_logs') && 
-                (qrError.message.includes('does not exist') || qrError.message.includes('no existe'))
-            );
+            // Detectar errores relacionados con tabla qr_logs - detección mejorada
+            const errorMessage = qrError.message || '';
+            const esErrorQrLogs = errorMessage.includes('qr_logs') && 
+                (errorMessage.includes('does not exist') || errorMessage.includes('no existe'));
             
-            const esErrorTabla = qrError.message && (
-                qrError.message.includes('relation') && 
-                qrError.message.includes('does not exist')
-            );
+            const esErrorTabla = errorMessage.includes('relation') && 
+                errorMessage.includes('does not exist');
             
-            const esErrorBaseDatos = qrError.message && (
-                qrError.message.includes('42P01') || // PostgreSQL error code for undefined_table
-                qrError.message.includes('database') ||
-                qrError.message.includes('conexion')
-            );
+            const esErrorBaseDatos = errorMessage.includes('42P01') || // PostgreSQL error code
+                errorMessage.includes('database') ||
+                errorMessage.includes('conexion') ||
+                errorMessage.includes('relation') && errorMessage.includes('does not exist');
+            
+            // Detectar cualquier error de base de datos PostgreSQL
+            const esErrorPostgreSQL = errorMessage.includes('PostgreSQL') ||
+                errorMessage.includes('pg-pool') ||
+                errorMessage.includes('routine:') ||
+                errorMessage.includes('file:') && errorMessage.includes('.c:');
+            
+            console.log('🔍 Análisis de error QR:', {
+                message: errorMessage,
+                qr_logs: esErrorQrLogs,
+                tabla: esErrorTabla,
+                base_datos: esErrorBaseDatos,
+                postgresql: esErrorPostgreSQL
+            });
             
             // Si es cualquier error de base de datos o tabla faltante, usar modo local
-            if (esErrorQrLogs || esErrorTabla || esErrorBaseDatos) {
+            if (esErrorQrLogs || esErrorTabla || esErrorBaseDatos || esErrorPostgreSQL) {
                 console.log('🔄 Activando modo local QR debido a error de base de datos...');
                 console.log('Tipo de error detectado:', {
                     qr_logs: esErrorQrLogs,
                     tabla: esErrorTabla,
-                    base_datos: esErrorBaseDatos
+                    base_datos: esErrorBaseDatos,
+                    postgresql: esErrorPostgreSQL
                 });
                 data = generarQRLocal(materiaId, fecha, hora_inicio, hora_fin, materiaNombre);
             } else {
@@ -414,8 +425,12 @@ async function verAsistenciaEnTiempoReal() {
     }
     
     try {
+        console.log('Cargando estadísticas para materia:', materiaId, 'fecha:', fecha);
+        
         // Obtener asistencias del día
         const asistencias = await apiRequest(`/asistencia/${materiaId}/${fecha}`);
+        
+        console.log('Asistencias recibidas:', asistencias);
         
         // Mostrar estadísticas en tiempo real
         const presentes = asistencias.filter(a => a.estado === 'presente').length;
@@ -455,6 +470,37 @@ async function verAsistenciaEnTiempoReal() {
         setTimeout(verAsistenciaEnTiempoReal, 30000);
     } catch (error) {
         console.error('Error al obtener estadísticas:', error);
+        
+        // Mostrar estadísticas vacías con mensaje de error
+        const statsDiv = document.getElementById('statsAsistencia');
+        if (statsDiv) {
+            statsDiv.innerHTML = `
+                <div class="panel-card">
+                    <h4>Estadísticas en Tiempo Real</h4>
+                    <div class="alert alert-warning">
+                        <p><strong>No se pudieron cargar las estadísticas</strong></p>
+                        <p>Error: ${error.message || 'Error desconocido'}</p>
+                        <p>Intenta registrar asistencia primero para ver las estadísticas.</p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item presente">
+                            <span class="stat-number">0</span>
+                            <span class="stat-label">Presentes (0%)</span>
+                        </div>
+                        <div class="stat-item ausente">
+                            <span class="stat-number">0</span>
+                            <span class="stat-label">Ausentes</span>
+                        </div>
+                        <div class="stat-item retardo">
+                            <span class="stat-number">0</span>
+                            <span class="stat-label">Retardos</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        mostrarToast('Error al cargar estadísticas: ' + (error.message || 'Intenta de nuevo'), 'error');
     }
 }
 
