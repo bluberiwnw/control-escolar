@@ -75,12 +75,21 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden (solo los que existen según logs)
+        // Lista de endpoints a intentar en orden (estrategia mejorada)
         const endpoints = [
-            '/admin/usuarios',            // Endpoint general que sí existe (usado para profesores)
-            '/admin/usuarios?rol=alumno', // Endpoint con filtro (da 500 pero probamos)
-            '/admin/usuarios?role=alumno', // Endpoint con parámetro en inglés
-            '/admin/usuarios?tipo=alumno'  // Endpoint con parámetro diferente
+            '/usuarios',                     // Endpoint general sin filtros (prioridad 1)
+            '/users',                        // Endpoint users general (prioridad 2)
+            '/admin/usuarios?todos=true',    // Endpoint admin con parámetro todos
+            '/admin/usuarios?all=true',      // Endpoint admin con parámetro all
+            '/admin/usuarios?rol=alumno',   // Con filtro específico (da 500)
+            '/admin/alumnos',               // Endpoint específico para alumnos
+            '/alumnos',                     // Endpoint general de alumnos
+            '/estudiantes',                 // Endpoint general de estudiantes
+            '/users?role=alumno',           // Endpoint users con rol
+            '/admin/usuarios/alumno',       // Endpoint anidado
+            '/usuarios/alumno',             // Endpoint simple
+            '/admin/usuarios?role=student', // Rol en inglés
+            '/admin/usuarios?tipo=student'  // Tipo en inglés
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
@@ -92,8 +101,17 @@ async function cargarEstudiantes() {
                 let estudiantesEndpoint = [];
                 endpointsIntentados.push(endpoint);
                 
-                // Si el endpoint no tiene filtro de rol, filtramos estudiantes en el frontend
-                if (!endpoint.includes('rol=') && !endpoint.includes('role=') && !endpoint.includes('tipo=')) {
+                // Lógica inteligente de filtrado
+                if (endpoint.includes('rol=profesor')) {
+                    // Si cargamos profesores, no usar para estudiantes
+                    console.log(`Endpoint cargó profesores, ignorando para estudiantes...`);
+                    estudiantesEndpoint = [];
+                } else if (endpoint.includes('rol=alumno') || endpoint.includes('role=alumno') || endpoint.includes('role=student')) {
+                    // Si el endpoint ya filtra por alumno, usar directamente
+                    estudiantesEndpoint = usuarios;
+                    console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantesEndpoint.length);
+                } else if (!endpoint.includes('rol=') && !endpoint.includes('role=') && !endpoint.includes('tipo=')) {
+                    // Si es endpoint general, filtrar estudiantes
                     console.log(`Filtrando estudiantes de ${usuarios.length} usuarios totales`);
                     estudiantesEndpoint = usuarios.filter(usuario => 
                         usuario.rol === 'alumno' || 
@@ -104,6 +122,7 @@ async function cargarEstudiantes() {
                     );
                     console.log(`✅ Estudiantes filtrados desde ${endpoint}:`, estudiantesEndpoint.length);
                 } else {
+                    // Para otros endpoints específicos
                     estudiantesEndpoint = usuarios;
                     console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantesEndpoint.length);
                 }
@@ -160,11 +179,17 @@ async function cargarEstudiantes() {
                 } else if (esErrorRol) {
                     console.log('⚠️ Error de rol detectado, continuando con siguiente endpoint...');
                     endpointsIntentados.push(`${endpoint} (error: rol no válido)`);
+                    // No romper el bucle, continuar con siguiente endpoint
+                    continue;
                 } else if (esErrorEndpoint) {
                     console.log('⚠️ Endpoint no existe, continuando con siguiente endpoint...');
                     endpointsIntentados.push(`${endpoint} (error: endpoint no existe)`);
+                    // No romper el bucle, continuar con siguiente endpoint
+                    continue;
                 } else {
                     endpointsIntentados.push(`${endpoint} (error: ${error.message})`);
+                    // No romper el bucle, continuar con siguiente endpoint
+                    continue;
                 }
                 
                 // Si es el último endpoint, mostrar error y datos de prueba
