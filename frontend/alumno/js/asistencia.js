@@ -190,11 +190,17 @@ async function iniciarLectorQR() {
                     /* ignore */
                 }
                 const tiempoInicio = Date.now();
+                // Enviar datos adicionales para validación de sesión única
                 const data = await apiRequest(
                     '/qr/validar',
                     {
                         method: 'POST',
-                        body: JSON.stringify({ codigo, materia_id: mid }),
+                        body: JSON.stringify({ 
+                            codigo, 
+                            materia_id: mid,
+                            timestamp: Date.now(),  // Timestamp actual para validación
+                            alumno_id: obtenerAlumnoId()  // ID del alumno para registro
+                        }),
                     },
                     false
                 );
@@ -213,7 +219,23 @@ async function iniciarLectorQR() {
                 await cargarHistorial();
                 await detenerCamara();
             } catch (err) {
-                const msg = err.message || 'No se pudo registrar la asistencia';
+                // Manejo específico de errores para QR únicos
+                let msg = err.message || 'No se pudo registrar la asistencia';
+                
+                if (err.message.includes('sesión')) {
+                    msg = '❌ QR de sesión no válido o expirado';
+                } else if (err.message.includes('profesor')) {
+                    msg = '❌ Este QR no pertenece a tu materia o profesor';
+                } else if (err.message.includes('expirado')) {
+                    msg = '❌ El QR ha expirado. La clase ya finalizó';
+                } else if (err.message.includes('temprano')) {
+                    msg = '❌ Es demasiado temprano para usar este QR';
+                } else if (err.message.includes('utilizado')) {
+                    msg = '❌ Este QR ya ha sido utilizado';
+                } else if (err.message.includes('inválido')) {
+                    msg = '❌ QR inválido o corrupto';
+                }
+                
                 mostrarToast(msg, 'error');
                 setMensajeInfo(msg, true);
                 escaneoBloqueado = false;
@@ -289,6 +311,12 @@ async function iniciarLectorQR() {
             detenerCamara();
         }
     }
+}
+
+// Función para obtener ID del alumno actual
+function obtenerAlumnoId() {
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    return userData.id || userData.alumno_id || userData.usuario_id;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

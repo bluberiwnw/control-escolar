@@ -218,13 +218,17 @@ async function generarQR() {
     try {
         mostrarToast('Generando código QR...', 'info');
         
+        const sessionId = generarSessionId(materiaId, fecha, hora_inicio);
+        
         const data = await apiRequest('/qr/generar', {
             method: 'POST',
             body: JSON.stringify({ 
                 materia_id: parseInt(materiaId), 
                 fecha, 
                 hora_inicio, 
-                hora_fin 
+                hora_fin,
+                session_id: sessionId,  // Identificador único de sesión
+                profesor_id: obtenerProfesorId()  // ID del docente actual
             })
         });
 
@@ -267,8 +271,19 @@ async function generarQR() {
                     </div>
                     <div style="margin-top:10px; padding-top:10px; border-top:1px solid #e2e8f0;">
                         <p style="margin:0; color:#059669; font-size:0.8rem; text-align:center;">
-                            <i class="fas fa-shield-alt"></i> QR único y seguro con tolerancia de 5 minutos
+                            <i class="fas fa-shield-alt"></i> QR único y seguro con validación de sesión
                         </p>
+                    </div>
+                    <div style="margin-top:10px; padding:10px; background:#dcfce7; border-radius:8px; border:1px solid #22c55e;">
+                        <h5 style="margin:0 0 8px; color:#166534; font-size:0.85rem; text-align:center;">
+                            <i class="fas fa-lock"></i> Características de Seguridad
+                        </h5>
+                        <ul style="margin:0; padding-left:20px; font-size:0.75rem; color:#166534;">
+                            <li>Código único por sesión de clase</li>
+                            <li>Vinculado al docente actual</li>
+                            <li>Invalidación automática al finalizar</li>
+                            <li>Protección contra reutilización</li>
+                        </ul>
                     </div>
                 </div>
                 
@@ -497,6 +512,44 @@ async function cargarHistorialCompleto() {
     } catch (error) {
         console.error('Error al cargar historial:', error);
         mostrarToast('Error al cargar historial de asistencias', 'error');
+    }
+}
+
+// Función para generar ID único de sesión
+function generarSessionId(materiaId, fecha, horaInicio) {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${materiaId}_${fecha}_${horaInicio.replace(':', '')}_${timestamp}_${random}`;
+}
+
+// Función para obtener ID del profesor actual
+function obtenerProfesorId() {
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    return userData.id || userData.profesor_id || userData.usuario_id;
+}
+
+// Función para verificar validez del QR
+function verificarValidezQR(qrData) {
+    try {
+        const now = new Date();
+        const qrTimestamp = new Date(qrData.timestamp);
+        const qrHoraFin = new Date(`${qrData.fecha} ${qrData.hora_fin}`);
+        
+        // Verificar que el QR no haya expirado por tiempo
+        if (now > qrHoraFin) {
+            return { valido: false, motivo: 'El QR ha expirado. La clase ya finalizó.' };
+        }
+        
+        // Verificar que el QR no sea demasiado antiguo (máximo 30 minutos antes de inicio)
+        const qrHoraInicio = new Date(`${qrData.fecha} ${qrData.hora_inicio}`);
+        const treintaMinutosAntes = new Date(qrHoraInicio.getTime() - 30 * 60 * 1000);
+        if (now < treintaMinutosAntes) {
+            return { valido: false, motivo: 'El QR aún no es válido. Demasiado temprano para la clase.' };
+        }
+        
+        return { valido: true };
+    } catch (error) {
+        return { valido: false, motivo: 'QR inválido o corrupto.' };
     }
 }
 
