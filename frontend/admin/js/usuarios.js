@@ -150,23 +150,42 @@ async function cargarEstudiantes() {
         
         if (todosLosUsuarios.length > 0) {
             console.log('🔄 Usando datos guardados de todosLosUsuarios:', todosLosUsuarios.length);
+            console.log('📊 Análisis de usuarios totales:');
+            todosLosUsuarios.forEach((usuario, index) => {
+                console.log(`  Usuario ${index + 1}:`, {
+                    id: usuario.id,
+                    nombre: usuario.nombre,
+                    rol: usuario.rol,
+                    role: usuario.role,
+                    tipo: usuario.tipo
+                });
+            });
+            
             estudiantes = todosLosUsuarios.filter(usuario => {
-                return usuario.rol === 'alumno' || 
-                       usuario.role === 'alumno' || 
-                       usuario.tipo === 'alumno' ||
-                       usuario.rol === 'estudiante' ||
-                       usuario.role === 'estudiante' ||
-                       usuario.tipo === 'estudiante' ||
-                       // También verificar si no es profesor ni administrador (asumir que es estudiante)
-                       (usuario.rol !== 'profesor' && 
-                        usuario.role !== 'profesor' && 
-                        usuario.tipo !== 'profesor' &&
-                        usuario.rol !== 'admin' && 
-                        usuario.role !== 'admin' && 
-                        usuario.tipo !== 'admin' &&
-                        usuario.rol !== 'administrador' && 
-                        usuario.role !== 'administrador' && 
-                        usuario.tipo !== 'administrador')
+                const esEstudiante = usuario.rol === 'alumno' || 
+                                     usuario.role === 'alumno' || 
+                                     usuario.tipo === 'alumno' ||
+                                     usuario.rol === 'estudiante' ||
+                                     usuario.role === 'estudiante' ||
+                                     usuario.tipo === 'estudiante';
+                
+                const noEsProfesorNiAdmin = usuario.rol !== 'profesor' && 
+                                         usuario.role !== 'profesor' && 
+                                         usuario.tipo !== 'profesor' &&
+                                         usuario.rol !== 'admin' && 
+                                         usuario.role !== 'admin' && 
+                                         usuario.tipo !== 'admin' &&
+                                         usuario.rol !== 'administrador' && 
+                                         usuario.role !== 'administrador' && 
+                                         usuario.tipo !== 'administrador';
+                
+                console.log(`  🔍 Análisis usuario ${usuario.nombre}:`, {
+                    esEstudiante: esEstudiante,
+                    noEsProfesorNiAdmin: noEsProfesorNiAdmin,
+                    resultadoFinal: esEstudiante || noEsProfesorNiAdmin
+                });
+                
+                return esEstudiante || noEsProfesorNiAdmin;
             });
             console.log('✅ Estudiantes extraidos de datos guardados:', estudiantes.length);
         } else {
