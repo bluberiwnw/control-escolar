@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion();
     mostrarInfoUsuario();
     mostrarFechaActual();
-    await cargarMaterias();
+    await cargarMateriasEnSelects();
     await cargarAsistencias();
     
     // Intentar sincronizar asistencias pendientes automáticamente

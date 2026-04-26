@@ -152,103 +152,9 @@ async function cargarEstudiantes() {
     try {
         console.log('Cargando estudiantes...');
         
-        // Estrategia principal: usar datos guardados de profesores
-        const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
-        let estudiantes = [];
-        
-        console.log('🔍 Verificación inicial de localStorage:');
-        console.log('  todosLosUsuarios crudo:', localStorage.getItem('todosLosUsuarios'));
-        console.log('  todosLosUsuarios parseado:', todosLosUsuarios);
-        
-        if (todosLosUsuarios.length > 0) {
-            console.log('🔄 Usando datos guardados de todosLosUsuarios:', todosLosUsuarios.length);
-            console.log('📊 Análisis de usuarios totales:');
-            todosLosUsuarios.forEach((usuario, index) => {
-                console.log(`  Usuario ${index + 1}:`, {
-                    id: usuario.id,
-                    nombre: usuario.nombre,
-                    email: usuario.email,
-                    rol: usuario.rol,
-                    role: usuario.role,
-                    tipo: usuario.tipo,
-                    activo: usuario.activo
-                });
-            });
-            
-            // Análisis de roles únicos para identificar posibles estudiantes
-            const rolesUnicos = [...new Set(todosLosUsuarios.map(u => u.rol))];
-            console.log('🔍 Roles únicos encontrados:', rolesUnicos);
-            
-            estudiantes = todosLosUsuarios.filter(usuario => {
-                // Búsqueda exhaustiva de estudiantes
-                const esEstudianteDirecto = usuario.rol === 'alumno' || 
-                                         usuario.role === 'alumno' || 
-                                         usuario.tipo === 'alumno' ||
-                                         usuario.rol === 'estudiante' ||
-                                         usuario.role === 'estudiante' ||
-                                         usuario.tipo === 'estudiante' ||
-                                         usuario.rol === 'student' ||
-                                         usuario.role === 'student' ||
-                                         usuario.tipo === 'student';
-                
-                const noEsProfesorNiAdmin = usuario.rol !== 'profesor' && 
-                                         usuario.role !== 'profesor' && 
-                                         usuario.tipo !== 'profesor' &&
-                                         usuario.rol !== 'admin' && 
-                                         usuario.role !== 'admin' && 
-                                         usuario.tipo !== 'admin' &&
-                                         usuario.rol !== 'administrador' && 
-                                         usuario.role !== 'administrador' && 
-                                         usuario.tipo !== 'administrador';
-                
-                const resultadoFinal = esEstudianteDirecto || noEsProfesorNiAdmin;
-                
-                console.log(`  🔍 Análisis usuario ${usuario.nombre}:`, {
-                    rol: usuario.rol,
-                    esEstudianteDirecto: esEstudianteDirecto,
-                    noEsProfesorNiAdmin: noEsProfesorNiAdmin,
-                    resultadoFinal: resultadoFinal
-                });
-                
-                return resultadoFinal;
-            });
-            console.log('✅ Estudiantes extraidos de datos guardados:', estudiantes.length);
-        } else {
-            console.log('⚠️ No hay datos guardados, intentando endpoint directo...');
-            
-            // Como último recurso, intentar cargar con el método que funciona para profesores
-            try {
-                const lista = await apiRequest('/admin/usuarios?rol=profesor');
-                const todosUsuarios = Array.isArray(lista) ? lista : [];
-                
-                if (todosUsuarios.length > 6) {
-                    console.log('✅ Usando endpoint de profesores para extraer estudiantes...');
-                    estudiantes = todosUsuarios.filter(usuario => {
-                        return usuario.rol === 'alumno' || 
-                               usuario.role === 'alumno' || 
-                               usuario.tipo === 'alumno' ||
-                               usuario.rol === 'estudiante' ||
-                               usuario.role === 'estudiante' ||
-                               usuario.tipo === 'estudiante' ||
-                               // También verificar si no es profesor ni administrador (asumir que es estudiante)
-                               (usuario.rol !== 'profesor' && 
-                                usuario.role !== 'profesor' && 
-                                usuario.tipo !== 'profesor' &&
-                                usuario.rol !== 'admin' && 
-                                usuario.role !== 'admin' && 
-                                usuario.tipo !== 'admin' &&
-                                usuario.rol !== 'administrador' && 
-                                usuario.role !== 'administrador' && 
-                                usuario.tipo !== 'administrador')
-                    });
-                    console.log('✅ Estudiantes extraidos de endpoint de profesores:', estudiantes.length);
-                } else {
-                    console.log('❌ Endpoint de profesores no contiene todos los usuarios');
-                }
-            } catch (error) {
-                console.log('❌ Error en endpoint de respaldo:', error.message);
-            }
-        }
+        // Usar el endpoint correcto como los profesores
+        const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
+        console.log('✅ Estudiantes cargados desde API:', estudiantes.length);
         
         // Cache de usuarios para togglePassword
         const usuariosCache = JSON.parse(localStorage.getItem('usuariosCache') || '[]');
@@ -265,30 +171,15 @@ async function cargarEstudiantes() {
         }
         
         if (estudiantes.length === 0) {
-            console.log('📊 Resumen de usuarios:', {
-                total: todosLosUsuarios.length,
-                profesores: todosLosUsuarios.filter(u => u.rol === 'profesor').length,
-                administradores: todosLosUsuarios.filter(u => u.rol === 'admin' || u.rol === 'administrador').length,
-                estudiantes: estudiantes.length
-            });
-            
             container.innerHTML = `
                 <div class="empty-state">
                     <h3>🎓 No hay estudiantes registrados</h3>
-                    <p>Actualmente solo hay profesores y administradores en el sistema.</p>
-                    <p><strong>Total de usuarios:</strong> ${todosLosUsuarios.length}</p>
-                    <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
-                        <li>Profesores: ${todosLosUsuarios.filter(u => u.rol === 'profesor').length}</li>
-                        <li>Administradores: ${todosLosUsuarios.filter(u => u.rol === 'admin' || u.rol === 'administrador').length}</li>
-                        <li>Estudiantes: 0</li>
-                    </ul>
-                    <p style="margin-top: 20px;">
-                        <strong>Para agregar estudiantes:</strong> Usa el botón "Nuevo estudiante" arriba.
-                    </p>
+                    <p>Usa el botón "Nuevo estudiante" para agregar estudiantes al sistema.</p>
                 </div>
             `;
             return;
         }
+        
         container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${estudiantes
                 .map(
