@@ -29,7 +29,19 @@ async function cargarProfesores() {
         
         // También guardar todos los usuarios para uso compartido
         if (Array.isArray(lista) && lista.length > 0) {
+            console.log('📦 Guardando todosLosUsuarios en localStorage:', lista.length, 'usuarios');
+            lista.forEach((usuario, index) => {
+                console.log(`  📝 Usuario ${index + 1} guardado:`, {
+                    id: usuario.id,
+                    nombre: usuario.nombre,
+                    email: usuario.email,
+                    rol: usuario.rol,
+                    role: usuario.role,
+                    tipo: usuario.tipo
+                });
+            });
             localStorage.setItem('todosLosUsuarios', JSON.stringify(lista));
+            console.log('✅ Datos guardados exitosamente');
         }
         
         // Cache de usuarios para togglePassword
@@ -147,6 +159,10 @@ async function cargarEstudiantes() {
         // Estrategia principal: usar datos guardados de profesores
         const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
         let estudiantes = [];
+        
+        console.log('🔍 Verificación inicial de localStorage:');
+        console.log('  todosLosUsuarios crudo:', localStorage.getItem('todosLosUsuarios'));
+        console.log('  todosLosUsuarios parseado:', todosLosUsuarios);
         
         if (todosLosUsuarios.length > 0) {
             console.log('🔄 Usando datos guardados de todosLosUsuarios:', todosLosUsuarios.length);
