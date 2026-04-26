@@ -666,28 +666,20 @@ async function editarAdministrador(id, nombreActual, emailActual) {
             id, nombre: nuevoNombre.trim(), email: nuevoEmail.trim()
         });
         
-        // No hay endpoint PUT para administradores, solo para profesores y estudiantes
-        // Solo se puede cambiar la contraseña de administradores
-        mostrarToast('Para administradores solo se puede cambiar la contraseña. Los datos de nombre y email no se pueden modificar.', 'warning');
-        return;
+        // Usar el endpoint de actualización de profesores que también funciona para administradores
+        await apiRequest(`/admin/profesores/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                nombre: nuevoNombre.trim(), 
+                email: nuevoEmail.trim()
+            }),
+        });
         
         mostrarToast('Administrador actualizado exitosamente', 'success');
         cargarAdministradores();
-        
     } catch (error) {
         console.error('Error al actualizar administrador:', error);
-        
-        if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
-            if (error.message.includes('email')) {
-                mostrarToast('El correo electrónico ya está registrado', 'error');
-            } else {
-                mostrarToast('El administrador ya existe en el sistema', 'error');
-            }
-        } else if (error.message.includes('500')) {
-            mostrarToast('Error del servidor al actualizar administrador. Intenta de nuevo.', 'error');
-        } else {
-            mostrarToast('Error al actualizar administrador: ' + (error.message || 'Intenta de nuevo'), 'error');
-        }
+        mostrarToast('Error al actualizar administrador: ' + (error.message || 'Intenta de nuevo'), 'error');
     }
 }
 

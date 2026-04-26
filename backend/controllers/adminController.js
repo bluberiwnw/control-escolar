@@ -125,7 +125,7 @@ const adminController = {
                 console.log(`Profesores encontrados: ${result.rows.length}`);
                 res.json(result.rows);
             } else if (rol === 'alumno') {
-                const query = 'SELECT id, matricula, nombre, COALESCE(anio, 0) as anio, email, activo, created_at FROM estudiantes ORDER BY nombre';
+                const query = 'SELECT id, matricula, nombre, email, activo, created_at FROM estudiantes ORDER BY nombre';
                 const result = await pool.query(query);
                 console.log(`Estudiantes encontrados: ${result.rows.length}`);
                 res.json(result.rows);
@@ -173,7 +173,7 @@ const adminController = {
     // Crear estudiante
     async crearEstudiante(req, res) {
         try {
-            const { matricula, nombre, anio, email, password } = req.body;
+            const { matricula, nombre, email, password } = req.body;
             
             // Generar matrícula automáticamente si no se proporciona
             let matriculaFinal = matricula;
@@ -189,9 +189,6 @@ const adminController = {
             if (!validarNombre(nombre)) {
                 return res.status(400).json({ message: 'El nombre debe tener entre 3 y 120 caracteres.' });
             }
-            if (!anio || anio < 1 || anio > 6) {
-                return res.status(400).json({ message: 'El año debe estar entre 1 y 6.' });
-            }
             if (!validarCorreo(email)) {
                 return res.status(400).json({ message: 'Ingresa un correo electrónico válido.' });
             }
@@ -201,8 +198,8 @@ const adminController = {
             const bcrypt = require('bcryptjs');
             const hashedPassword = bcrypt.hashSync(password, 10);
             const result = await pool.query(
-                'INSERT INTO estudiantes (matricula, nombre, anio, email, password, activo) VALUES ($1, $2, $3, $4, $5, true) RETURNING id',
-                [matriculaFinal, nombre, anio, email, hashedPassword]
+                'INSERT INTO estudiantes (matricula, nombre, email, password, activo) VALUES ($1, $2, $3, $4, true) RETURNING id',
+                [matriculaFinal, nombre, email, hashedPassword]
             );
             res.status(201).json({ id: result.rows[0].id, message: 'Estudiante creado' });
         } catch (error) {
@@ -210,11 +207,11 @@ const adminController = {
         }
     },
 
-    // Eliminar usuario (profesor o estudiante)
+    // Eliminar usuario (profesor, administrador o estudiante)
     async eliminarUsuario(req, res) {
         try {
             const { id, tipo } = req.params;
-            if (tipo === 'profesor') {
+            if (tipo === 'profesor' || tipo === 'administrador') {
                 await pool.query('DELETE FROM usuarios WHERE id = $1', [id]);
             } else if (tipo === 'alumno') {
                 await pool.query('DELETE FROM estudiantes WHERE id = $1', [id]);
