@@ -308,7 +308,7 @@ async function editarEstudiante(id, nombreActual, emailActual) {
         });
         
         mostrarToast('Estudiante actualizado exitosamente', 'success');
-        cargarEstudiantes();
+        await cargarEstudiantes();
         
     } catch (error) {
         console.error('Error al actualizar estudiante:', error);
@@ -434,7 +434,7 @@ async function guardarEstudiante(ev) {
         
         mostrarToast('Estudiante creado exitosamente', 'success');
         cerrarModalEstudiante();
-        cargarEstudiantes();
+        await cargarEstudiantes();
         
     } catch (error) {
         console.error('Error al crear estudiante:', error);

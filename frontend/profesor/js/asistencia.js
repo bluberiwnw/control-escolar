@@ -800,3 +800,233 @@ function formatearFecha(fechaStr) {
         day: 'numeric' 
     });
 }
+
+// Funciones de exportación y reportes para profesor
+async function generarReportesAsistencia() {
+    const materiaId = document.getElementById('materiaSelect').value;
+    const todasLasMaterias = !materiaId;
+    
+    try {
+        let datos;
+        if (todasLasMaterias) {
+            // Reporte general de todas las materias del profesor
+            datos = await apiRequest('/profesor/asistencias/reporte-general');
+            mostrarReportesAsistencia(datos, true);
+        } else {
+            // Reporte específico de la materia seleccionada
+            datos = await apiRequest(`/profesor/asistencias/reporte/curso/${materiaId}`);
+            mostrarReportesAsistencia(datos, false);
+        }
+        mostrarToast('Reporte generado exitosamente', 'success');
+    } catch (error) {
+        console.error('Error al generar reportes:', error);
+        mostrarToast('Error al generar reportes. Intenta de nuevo.', 'error');
+    }
+}
+
+// Función principal de exportación de asistencias
+async function exportarAsistencias() {
+    try {
+        const materiaId = document.getElementById('materiaSelect').value;
+        const fecha = document.getElementById('fechaAsistencia').value;
+        
+        let url = '/profesor/asistencias/exportar?';
+        if (materiaId) url += `materia_id=${materiaId}&`;
+        if (fecha) url += `fecha=${fecha}&`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Error en la exportación');
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `asistencias_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        mostrarToast('Asistencias exportadas exitosamente', 'success');
+    } catch (error) {
+        console.error('Error al exportar asistencias:', error);
+        mostrarToast('Error al exportar asistencias. Intenta de nuevo.', 'error');
+    }
+}
+
+// Exportar a Excel específico
+async function exportarAsistenciasExcel() {
+    try {
+        const materiaId = document.getElementById('materiaSelect').value;
+        const fecha = document.getElementById('fechaAsistencia').value;
+        
+        let url = '/profesor/asistencias/exportar/excel?';
+        if (materiaId) url += `materia_id=${materiaId}&`;
+        if (fecha) url += `fecha=${fecha}&`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Error en la exportación');
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `asistencias_${new Date().toISOString().split('T')[0]}.xls`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        mostrarToast('Asistencias exportadas a Excel exitosamente', 'success');
+    } catch (error) {
+        console.error('Error al exportar a Excel:', error);
+        mostrarToast('Error al exportar a Excel. Intenta de nuevo.', 'error');
+    }
+}
+
+// Exportar a PDF específico
+async function exportarAsistenciasPDF() {
+    try {
+        const materiaId = document.getElementById('materiaSelect').value;
+        const fecha = document.getElementById('fechaAsistencia').value;
+        
+        let url = '/profesor/asistencias/exportar/pdf?';
+        if (materiaId) url += `materia_id=${materiaId}&`;
+        if (fecha) url += `fecha=${fecha}&`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Error en la exportación');
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `asistencias_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        mostrarToast('Asistencias exportadas a PDF exitosamente', 'success');
+    } catch (error) {
+        console.error('Error al exportar a PDF:', error);
+        mostrarToast('Error al exportar a PDF. Intenta de nuevo.', 'error');
+    }
+}
+
+function mostrarReportesAsistencia(datos, esGeneral) {
+    const container = document.getElementById('statsAsistencia');
+    if (!container) return;
+    
+    let html = '<div class="panel-card"><h3>📊 Reportes de Asistencia</h3>';
+    
+    if (esGeneral) {
+        // Reporte general
+        html += `
+            <div class="stats-grid">
+                <div class="stat-item total">
+                    <span class="stat-number">${datos.total_clases || 0}</span>
+                    <span class="stat-label">Total Clases</span>
+                </div>
+                <div class="stat-item presente">
+                    <span class="stat-number">${datos.total_presentes || 0}</span>
+                    <span class="stat-label">Total Presentes</span>
+                </div>
+                <div class="stat-item ausente">
+                    <span class="stat-number">${datos.total_ausentes || 0}</span>
+                    <span class="stat-label">Total Ausentes</span>
+                </div>
+                <div class="stat-item retardo">
+                    <span class="stat-number">${datos.total_retardos || 0}</span>
+                    <span class="stat-label">Total Retardos</span>
+                </div>
+            </div>
+        `;
+        
+        if (datos.por_materia && datos.por_materia.length > 0) {
+            html += '<h4>Por Materia:</h4><div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Presentes</th><th>Ausentes</th><th>Retardos</th><th>Total</th><th>% Asistencia</th></tr></thead><tbody>';
+            datos.por_materia.forEach(materia => {
+                const porcentaje = materia.total > 0 ? ((materia.presentes / materia.total) * 100).toFixed(1) : 0;
+                html += `
+                    <tr>
+                        <td data-label="Materia">${materia.materia_nombre}</td>
+                        <td data-label="Presentes">${materia.presentes}</td>
+                        <td data-label="Ausentes">${materia.ausentes}</td>
+                        <td data-label="Retardos">${materia.retardos}</td>
+                        <td data-label="Total">${materia.total}</td>
+                        <td data-label="% Asistencia">${porcentaje}%</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table></div>';
+        }
+    } else {
+        // Reporte específico de materia
+        const porcentajePresentes = datos.totales?.total > 0 ? ((datos.totales.total_presentes / datos.totales.total) * 100).toFixed(1) : 0;
+        
+        html += `
+            <div class="stats-grid">
+                <div class="stat-item presente">
+                    <span class="stat-number">${datos.totales?.total_presentes || 0}</span>
+                    <span class="stat-label">Presentes (${porcentajePresentes}%)</span>
+                </div>
+                <div class="stat-item ausente">
+                    <span class="stat-number">${datos.totales?.total_ausentes || 0}</span>
+                    <span class="stat-label">Ausentes</span>
+                </div>
+                <div class="stat-item retardo">
+                    <span class="stat-number">${datos.totales?.total_retardos || 0}</span>
+                    <span class="stat-label">Retardos</span>
+                </div>
+                <div class="stat-item total">
+                    <span class="stat-number">${datos.totales?.total_clases || 0}</span>
+                    <span class="stat-label">Total Clases</span>
+                </div>
+            </div>
+        `;
+        
+        if (datos.por_fecha && datos.por_fecha.length > 0) {
+            html += '<h4>Historial por Fecha:</h4><div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Presentes</th><th>Ausentes</th><th>Retardos</th><th>Total</th><th>% Asistencia</th></tr></thead><tbody>';
+            datos.por_fecha.forEach(dia => {
+                const porcentaje = dia.total > 0 ? ((dia.presentes / dia.total) * 100).toFixed(1) : 0;
+                html += `
+                    <tr>
+                        <td data-label="Fecha">${formatearFecha(dia.fecha)}</td>
+                        <td data-label="Presentes">${dia.presentes}</td>
+                        <td data-label="Ausentes">${dia.ausentes}</td>
+                        <td data-label="Retardos">${dia.retardos}</td>
+                        <td data-label="Total">${dia.total}</td>
+                        <td data-label="% Asistencia">${porcentaje}%</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table></div>';
+        }
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function formatearFecha(fecha) {
+    return new Date(fecha).toLocaleDateString('es-MX', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}

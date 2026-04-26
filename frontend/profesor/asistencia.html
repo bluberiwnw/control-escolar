@@ -32,6 +32,18 @@
             <input type="date" id="fechaAsistencia">
             <button type="button" class="btn btn-primary" onclick="generarQR()">Generar QR</button>
             <button type="button" class="btn btn-success" onclick="verAsistenciaEnTiempoReal()">Ver Estadísticas</button>
+            <button type="button" class="btn btn-info" onclick="generarReportesAsistencia()">
+                <i class="fas fa-chart-bar"></i> Generar Reportes
+            </button>
+            <button type="button" class="btn btn-success" onclick="exportarAsistencias()">
+                <i class="fas fa-download"></i> Exportar Asistencias
+            </button>
+            <button type="button" class="btn btn-warning" onclick="exportarAsistenciasExcel()">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="exportarAsistenciasPDF()">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
+            </button>
         </div>
         <div class="panel-card">
             <h3>Acciones Rápidas</h3>
