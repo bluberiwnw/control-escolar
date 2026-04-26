@@ -486,71 +486,32 @@ async function guardarEstudiante(ev) {
     try {
         console.log('Enviando datos del estudiante:', { nombre, email, password });
         
-        // Usar el endpoint que funciona para profesores para crear estudiantes
-        try {
-            console.log('🔄 Creando estudiante con endpoint funcional...');
-            const response = await apiRequest('/admin/usuarios', {
-                method: 'POST',
-                body: JSON.stringify({
-                    nombre,
-                    email,
-                    password,
-                    rol: 'alumno'
-                }),
-            });
-            console.log('✅ Estudiante creado exitosamente:', response);
-            
-            // Actualizar localStorage para que el nuevo estudiante aparezca inmediatamente
-            const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
-            const nuevoEstudiante = {
-                id: response.id || Date.now(),
+        // Usar el endpoint correcto para crear estudiantes
+        console.log(' Creando estudiante con endpoint correcto...');
+        const response = await apiRequest('/admin/estudiantes', {
+            method: 'POST',
+            body: JSON.stringify({
                 nombre,
                 email,
-                password,
-                rol: 'alumno',
-                activo: true,
-                created_at: new Date().toISOString()
-            };
-            todosLosUsuarios.push(nuevoEstudiante);
-            localStorage.setItem('todosLosUsuarios', JSON.stringify(todosLosUsuarios));
-            console.log('✅ Estudiante agregado a localStorage:', nuevoEstudiante);
-            
-        } catch (error) {
-            console.log('❌ Error creando estudiante:', error.message);
-            
-            // Si el endpoint no funciona, intentar con rol 'estudiante'
-            try {
-                console.log('🔄 Intentando con rol estudiante...');
-                const response = await apiRequest('/admin/usuarios', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        nombre,
-                        email,
-                        password,
-                        rol: 'estudiante'
-                    }),
-                });
-                console.log('✅ Estudiante creado con rol estudiante:', response);
-                
-                // Actualizar localStorage
-                const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
-                const nuevoEstudiante = {
-                    id: response.id || Date.now(),
-                    nombre,
-                    email,
-                    password,
-                    rol: 'estudiante',
-                    activo: true,
-                    created_at: new Date().toISOString()
-                };
-                todosLosUsuarios.push(nuevoEstudiante);
-                localStorage.setItem('todosLosUsuarios', JSON.stringify(todosLosUsuarios));
-                
-            } catch (error2) {
-                console.log('❌ Error con rol estudiante:', error2.message);
-                throw new Error('No se pudo crear el estudiante. Verifica la conexión con el servidor.');
-            }
-        }
+                password
+            }),
+        });
+        console.log(' Estudiante creado exitosamente:', response);
+        
+        // Actualizar localStorage para que el nuevo estudiante aparezca inmediatamente
+        const todosLosUsuarios = JSON.parse(localStorage.getItem('todosLosUsuarios') || '[]');
+        const nuevoEstudiante = {
+            id: response.id || Date.now(),
+            nombre,
+            email,
+            password,
+            rol: 'alumno',
+            activo: true,
+            created_at: new Date().toISOString()
+        };
+        todosLosUsuarios.push(nuevoEstudiante);
+        localStorage.setItem('todosLosUsuarios', JSON.stringify(todosLosUsuarios));
+        console.log(' Estudiante agregado a localStorage:', nuevoEstudiante);
         
         mostrarToast('Estudiante creado exitosamente', 'success');
         cerrarModalEstudiante();
@@ -664,15 +625,10 @@ async function editarAdministrador(id, nombreActual, emailActual) {
             id, nombre: nuevoNombre.trim(), email: nuevoEmail.trim()
         });
         
-        // Usar el endpoint de usuarios que funciona para actualizar administradores
-        await apiRequest(`/admin/usuarios/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ 
-                nombre: nuevoNombre.trim(), 
-                email: nuevoEmail.trim(),
-                rol: 'administrador'
-            }),
-        });
+        // No hay endpoint PUT para administradores, solo para profesores y estudiantes
+        // Solo se puede cambiar la contraseña de administradores
+        mostrarToast('Para administradores solo se puede cambiar la contraseña. Los datos de nombre y email no se pueden modificar.', 'warning');
+        return;
         
         mostrarToast('Administrador actualizado exitosamente', 'success');
         cargarAdministradores();
