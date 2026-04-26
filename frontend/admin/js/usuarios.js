@@ -22,10 +22,7 @@ function esMatriculaValida(matricula) {
 async function cargarProfesores() {
     try {
         console.log('Cargando profesores...');
-        const lista = await apiRequest('/admin/usuarios', {
-            method: 'POST',
-            body: JSON.stringify({ rol: 'profesor' })
-        });
+        const lista = await apiRequest('/admin/usuarios?rol=profesor');
         const profesores = Array.isArray(lista) ? lista.filter((p) => p.rol === 'profesor') : [];
         console.log('✅ Profesores cargados:', profesores.length);
         
@@ -80,21 +77,13 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden (estrategia mejorada)
+        // Lista de endpoints a intentar en orden (simplificado y efectivo)
         const endpoints = [
-            '/usuarios',                     // Endpoint general sin filtros (prioridad 1)
-            '/users',                        // Endpoint users general (prioridad 2)
-            '/admin/usuarios?todos=true',    // Endpoint admin con parámetro todos
-            '/admin/usuarios?all=true',      // Endpoint admin con parámetro all
-            '/admin/usuarios?rol=alumno',   // Con filtro específico (da 500)
-            '/admin/alumnos',               // Endpoint específico para alumnos
-            '/alumnos',                     // Endpoint general de alumnos
-            '/estudiantes',                 // Endpoint general de estudiantes
-            '/users?role=alumno',           // Endpoint users con rol
-            '/admin/usuarios/alumno',       // Endpoint anidado
-            '/usuarios/alumno',             // Endpoint simple
-            '/admin/usuarios?role=student', // Rol en inglés
-            '/admin/usuarios?tipo=student'  // Tipo en inglés
+            '/admin/usuarios?rol=alumno',   // Endpoint específico para alumnos
+            '/admin/usuarios',              // Endpoint general (luego filtramos)
+            '/usuarios',                    // Endpoint simple
+            '/alumnos',                     // Endpoint de alumnos
+            '/estudiantes'                  // Endpoint de estudiantes
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
@@ -106,7 +95,7 @@ async function cargarEstudiantes() {
                 let estudiantesEndpoint = [];
                 endpointsIntentados.push(endpoint);
                 
-                // Lógica inteligente de filtrado
+                // Lógica mejorada de filtrado para estudiantes
                 if (endpoint.includes('rol=profesor')) {
                     // Si cargamos profesores, no usar para estudiantes
                     console.log(`Endpoint cargó profesores, ignorando para estudiantes...`);
@@ -115,19 +104,24 @@ async function cargarEstudiantes() {
                     // Si el endpoint ya filtra por alumno, usar directamente
                     estudiantesEndpoint = usuarios;
                     console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantesEndpoint.length);
-                } else if (!endpoint.includes('rol=') && !endpoint.includes('role=') && !endpoint.includes('tipo=')) {
-                    // Si es endpoint general, filtrar estudiantes
+                } else if (endpoint === '/admin/usuarios' || endpoint === '/usuarios') {
+                    // Si es endpoint general, filtrar estudiantes con múltiples criterios
                     console.log(`Filtrando estudiantes de ${usuarios.length} usuarios totales`);
-                    estudiantesEndpoint = usuarios.filter(usuario => 
-                        usuario.rol === 'alumno' || 
-                        usuario.role === 'alumno' || 
-                        usuario.tipo === 'alumno' ||
-                        usuario.rol === 'estudiante' ||
-                        usuario.role === 'estudiante'
-                    );
+                    estudiantesEndpoint = usuarios.filter(usuario => {
+                        // Verificar múltiples campos posibles para el rol de estudiante
+                        return usuario.rol === 'alumno' || 
+                               usuario.role === 'alumno' || 
+                               usuario.tipo === 'alumno' ||
+                               usuario.rol === 'estudiante' ||
+                               usuario.role === 'estudiante' ||
+                               usuario.tipo === 'estudiante' ||
+                               // También verificar si no es profesor (asumir que es estudiante)
+                               (usuario.rol !== 'profesor' && usuario.role !== 'profesor' && usuario.tipo !== 'profesor')
+                    });
                     console.log(`✅ Estudiantes filtrados desde ${endpoint}:`, estudiantesEndpoint.length);
+                    console.log('Muestra de estudiantes encontrados:', estudiantesEndpoint.slice(0, 2));
                 } else {
-                    // Para otros endpoints específicos
+                    // Para otros endpoints específicos (alumnos, estudiantes)
                     estudiantesEndpoint = usuarios;
                     console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantesEndpoint.length);
                 }
@@ -182,35 +176,11 @@ async function cargarEstudiantes() {
                     
                     endpointsIntentados.push(`${endpoint} (error: ${tipoError} no existe)`);
                     
-                    // Si es error de columna anio, mostrar solución específica y detener
+                    // Si es error de columna anio, mostrar advertencia pero continuar con otros endpoints
                     if (esErrorAnio) {
-                        console.log('🚨 Error crítico: La columna "anio" no existe en la base de datos');
-                        console.log('🔧 Solución: El administrador debe ejecutar:');
-                        console.log('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;');
-                        
-                        // Mostrar mensaje de error específico para columna anio
-                        const container = document.getElementById('listaEstudiantes');
-                        if (container) {
-                            container.innerHTML = `
-                                <div class="alert alert-error">
-                                    <h3>🚨 Error Crítico de Base de Datos</h3>
-                                    <p><strong>La columna "anio" no existe en la tabla usuarios</strong></p>
-                                    <p>Este error impide cargar los estudiantes de la base de datos.</p>
-                                    <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
-                                        <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
-                                        <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                                            El administrador de la base de datos debe ejecutar el siguiente comando SQL:
-                                        </p>
-                                        <pre style="background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 0.85rem; overflow-x: auto;">
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</pre>
-                                        <p style="margin: 10px 0 0 0; color: #7f1d1d; font-size: 0.8rem;">
-                                            Después de ejecutar este comando, recarga esta página para ver los estudiantes.
-                                        </p>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        return; // Detener la búsqueda
+                        console.log('⚠️ Error de columna anio detectado, intentando otros endpoints...');
+                        // No detener la búsqueda, continuar con siguiente endpoint
+                        continue;
                     }
                 } else if (esErrorRol) {
                     console.log('⚠️ Error de rol detectado, continuando con siguiente endpoint...');
@@ -228,64 +198,17 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</pre>
                     continue;
                 }
                 
-                // Si es el último endpoint, mostrar error real sin datos de prueba
-                if (i === endpoints.length - 1) {
-                    // Mostrar información detallada del error
+                // Si es el último endpoint y no se encontraron estudiantes, mostrar mensaje simple
+                if (i === endpoints.length - 1 && estudiantes.length === 0) {
+                    console.log('No se encontraron estudiantes en ningún endpoint');
                     const container = document.getElementById('listaEstudiantes');
                     if (container) {
-                        // Verificar si el error principal es de columna anio
-                        const hayErrorAnio = endpointsIntentados.some(ep => 
-                            ep.includes('anio no existe') || 
-                            ep.includes('columna anio') ||
-                            ep.includes('error: anio')
-                        );
-                        
-                        // Mensaje específico según el error
-                        let mensajeError = 'No se pudieron cargar los estudiantes desde el servidor.';
-                        let tipoAlerta = 'error';
-                        let tituloAlerta = '🚨 Error de Conexión a la Base de Datos';
-                        let solucionEspecifica = '';
-                        
-                        if (hayErrorAnio) {
-                            mensajeError = 'Error: La columna "anio" no existe en la tabla usuarios.';
-                            tituloAlerta = '🚨 Error de Base de Datos - Columna faltante';
-                            solucionEspecifica = `
-                                <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
-                                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Solución Requerida:</h4>
-                                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                                        El administrador de la base de datos debe ejecutar el siguiente comando SQL:
-                                    </p>
-                                    <pre style="background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 0.85rem; overflow-x: auto;">
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</pre>
-                                    <p style="margin: 10px 0 0 0; color: #7f1d1d; font-size: 0.8rem;">
-                                        Después de ejecutar este comando, recarga esta página para ver los estudiantes.
-                                    </p>
-                                </div>
-                            `;
-                        } else {
-                            solucionEspecifica = `
-                                <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #fecaca;">
-                                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🔧 Soluciones Posibles:</h4>
-                                    <ul style="margin: 0; color: #7f1d1d; font-size: 0.9rem; padding-left: 20px;">
-                                        <li>Verifica que el servidor backend esté en ejecución</li>
-                                        <li>Revisa la configuración de la base de datos</li>
-                                        <li>Verifica que los endpoints del servidor existan</li>
-                                        <li>Revisa los logs del servidor para más detalles</li>
-                                    </ul>
-                                </div>
-                            `;
-                        }
-                        
                         container.innerHTML = `
-                            <div class="alert alert-${tipoAlerta}">
-                                <h3>${tituloAlerta}</h3>
-                                <p><strong>${mensajeError}</strong></p>
+                            <div class="alert alert-warning">
+                                <h3>⚠️ No se encontraron estudiantes</h3>
+                                <p>No hay estudiantes registrados en la base de datos o no se pudieron cargar.</p>
                                 <p><strong>Endpoints intentados:</strong></p>
                                 <ul>${endpointsIntentados.map(e => `<li>${e}</li>`).join('')}</ul>
-                                <p><strong>API Base:</strong> ${API_URL}</p>
-                                <p><strong>Último error:</strong> ${error.message}</p>
-                                ${solucionEspecifica}
-                                <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--border);">
                                 <div style="margin-top: 20px; text-align: center;">
                                     <button type="button" class="btn btn-primary" onclick="location.reload()">
                                         <i class="fas fa-sync"></i> Recargar página
@@ -297,7 +220,6 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anio INTEGER DEFAULT 1;</pre>
                             </div>
                         `;
                     }
-                    console.error('No se pudieron cargar los estudiantes - todos los endpoints fallaron');
                 }
             }
         }
