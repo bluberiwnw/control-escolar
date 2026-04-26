@@ -77,35 +77,46 @@ async function cargarEstudiantes() {
         let estudiantes = [];
         let endpointsIntentados = [];
         
-        // Lista de endpoints a intentar en orden (simplificado y efectivo)
+        // Lista de endpoints a intentar en orden (estrategia directa como profesores)
         const endpoints = [
-            '/admin/usuarios?rol=alumno',   // Endpoint específico para alumnos
-            '/admin/usuarios',              // Endpoint general (luego filtramos)
-            '/usuarios',                    // Endpoint simple
-            '/alumnos',                     // Endpoint de alumnos
-            '/estudiantes'                  // Endpoint de estudiantes
+            { url: '/admin/usuarios', method: 'POST', body: { rol: 'alumno' } },     // Como profesores
+            { url: '/admin/usuarios', method: 'POST', body: { rol: 'estudiante' } }, // Intentar con estudiante
+            { url: '/admin/usuarios?rol=alumno', method: 'GET' },                    // GET tradicional
+            { url: '/admin/usuarios?todos=true', method: 'GET' },                     // Todos los usuarios
+            { url: '/admin/usuarios', method: 'GET' },                                // General sin filtro
+            { url: '/usuarios', method: 'GET' },
+            { url: '/alumnos', method: 'GET' },
+            { url: '/estudiantes', method: 'GET' }
         ];
         
         for (let i = 0; i < endpoints.length; i++) {
             const endpoint = endpoints[i];
             try {
-                console.log(`Intentando endpoint ${i + 1}: ${endpoint}`);
-                const response = await apiRequest(endpoint);
+                const endpointUrl = typeof endpoint === 'object' ? endpoint.url : endpoint;
+                console.log(`Intentando endpoint ${i + 1}: ${endpointUrl} (${endpoint.method || 'GET'})`);
+                
+                const requestOptions = {};
+                if (endpoint.method === 'POST' && endpoint.body) {
+                    requestOptions.method = 'POST';
+                    requestOptions.body = JSON.stringify(endpoint.body);
+                }
+                
+                const response = await apiRequest(endpointUrl, requestOptions);
                 let usuarios = Array.isArray(response) ? response : [];
                 let estudiantesEndpoint = [];
-                endpointsIntentados.push(endpoint);
+                endpointsIntentados.push(endpointUrl);
                 
                 // Lógica mejorada de filtrado para estudiantes
-                if (endpoint.includes('rol=profesor')) {
+                if (endpointUrl.includes('rol=profesor')) {
                     // Si cargamos profesores, no usar para estudiantes
                     console.log(`Endpoint cargó profesores, ignorando para estudiantes...`);
                     estudiantesEndpoint = [];
-                } else if (endpoint.includes('rol=alumno') || endpoint.includes('role=alumno') || endpoint.includes('role=student')) {
+                } else if (endpointUrl.includes('rol=alumno') || endpointUrl.includes('role=alumno') || endpointUrl.includes('role=student')) {
                     // Si el endpoint ya filtra por alumno, usar directamente
                     estudiantesEndpoint = usuarios;
-                    console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantesEndpoint.length);
-                } else if (endpoint === '/admin/usuarios' || endpoint === '/usuarios') {
-                    // Si es endpoint general, filtrar estudiantes con múltiples criterios
+                    console.log(`✅ Estudiantes cargados desde ${endpointUrl}:`, estudiantesEndpoint.length);
+                } else if ((endpointUrl === '/admin/usuarios' || endpointUrl === '/usuarios') && endpoint.method !== 'POST') {
+                    // Si es endpoint general con GET, filtrar estudiantes con múltiples criterios
                     console.log(`Filtrando estudiantes de ${usuarios.length} usuarios totales`);
                     estudiantesEndpoint = usuarios.filter(usuario => {
                         // Verificar múltiples campos posibles para el rol de estudiante
@@ -118,12 +129,16 @@ async function cargarEstudiantes() {
                                // También verificar si no es profesor (asumir que es estudiante)
                                (usuario.rol !== 'profesor' && usuario.role !== 'profesor' && usuario.tipo !== 'profesor')
                     });
-                    console.log(`✅ Estudiantes filtrados desde ${endpoint}:`, estudiantesEndpoint.length);
+                    console.log(`✅ Estudiantes filtrados desde ${endpointUrl}:`, estudiantesEndpoint.length);
                     console.log('Muestra de estudiantes encontrados:', estudiantesEndpoint.slice(0, 2));
+                } else if (endpoint.method === 'POST' && endpoint.body && (endpoint.body.rol === 'alumno' || endpoint.body.rol === 'estudiante')) {
+                    // Si es POST con rol de estudiante, usar directamente
+                    estudiantesEndpoint = usuarios;
+                    console.log(`✅ Estudiantes cargados desde ${endpointUrl} (POST):`, estudiantesEndpoint.length);
                 } else {
                     // Para otros endpoints específicos (alumnos, estudiantes)
                     estudiantesEndpoint = usuarios;
-                    console.log(`✅ Estudiantes cargados desde ${endpoint}:`, estudiantesEndpoint.length);
+                    console.log(`✅ Estudiantes cargados desde ${endpointUrl}:`, estudiantesEndpoint.length);
                 }
                 
                 console.log('Datos de ejemplo:', estudiantesEndpoint.slice(0, 2));
@@ -136,6 +151,12 @@ async function cargarEstudiantes() {
             } catch (error) {
                 console.log(`❌ Error en endpoint ${endpoint}:`, error.message);
                 console.log('Error completo:', error);
+                
+                // Verificar si es error 500 que podría contener datos de estudiantes
+                const esError500 = error.message && (
+                    error.message.includes('500') ||
+                    error.message.includes('No se pudieron cargar los usuarios')
+                );
                 
                 // Verificar si es el error específico de columna 'anio' o cualquier error de columna
                 const esErrorAnio = error.message && (
@@ -166,6 +187,34 @@ async function cargarEstudiantes() {
                     error.message.includes('404') ||
                     error.message.includes('<!DOCTYPE html>')
                 );
+                
+                // Si es error 500, intentar extraer información útil
+                if (esError500 && error.message.includes('column "anio" does not exist')) {
+                    console.log('🔄 Error 500 detectado por columna anio, intentando solución alternativa...');
+                    // Intentar cargar todos los usuarios sin filtro
+                    try {
+                        console.log('🔄 Intentando cargar todos los usuarios sin filtro...');
+                        const todosResponse = await apiRequest('/admin/usuarios?todos=1');
+                        if (Array.isArray(todosResponse)) {
+                            const estudiantesEncontrados = todosResponse.filter(usuario => 
+                                usuario.rol === 'alumno' || 
+                                usuario.role === 'alumno' || 
+                                usuario.tipo === 'alumno' ||
+                                usuario.rol === 'estudiante' ||
+                                usuario.role === 'estudiante' ||
+                                (usuario.rol !== 'profesor' && usuario.role !== 'profesor' && usuario.tipo !== 'profesor')
+                            );
+                            if (estudiantesEncontrados.length > 0) {
+                                console.log(`✅ Estudiantes encontrados con método alternativo:`, estudiantesEncontrados.length);
+                                estudiantes = estudiantesEncontrados;
+                                endpointsIntentados.push(`${endpoint} (éxito con método alternativo)`);
+                                break;
+                            }
+                        }
+                    } catch (errorAlt) {
+                        console.log('❌ Método alternativo también falló:', errorAlt.message);
+                    }
+                }
                 
                 if (esErrorAnio || esErrorColumna || esErrorBaseDatos) {
                     console.log('⚠️ Error de base de datos detectado, continuando con siguiente endpoint...');
