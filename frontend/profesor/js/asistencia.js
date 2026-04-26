@@ -54,27 +54,52 @@ function generarEstadisticas(asistencias, totalEstudiantes) {
     const registrados = asistencias.length;
     const sinRegistrar = totalEstudiantes - registrados;
     
-    // Actualizar estadísticas en el DOM
-    document.getElementById('estPresentes').textContent = presentes;
-    document.getElementById('estAusentes').textContent = ausentes;
-    document.getElementById('estRetardos').textContent = retardos;
-    document.getElementById('estRegistrados').textContent = registrados;
-    document.getElementById('estSinRegistrar').textContent = sinRegistrar;
-    document.getElementById('estTotal').textContent = totalEstudiantes;
+    // Actualizar estadísticas en el DOM con verificación de existencia
+    const elementos = {
+        estPresentes: presentes,
+        estAusentes: ausentes,
+        estRetardos: retardos,
+        estRegistrados: registrados,
+        estSinRegistrar: sinRegistrar,
+        estTotal: totalEstudiantes
+    };
+    
+    // Actualizar solo si los elementos existen
+    Object.keys(elementos).forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.textContent = elementos[id];
+        } else {
+            console.warn(`Elemento #${id} no encontrado en el DOM`);
+        }
+    });
     
     // Calcular porcentajes
     const porcentajeAsistencia = totalEstudiantes > 0 ? ((presentes / totalEstudiantes) * 100).toFixed(1) : 0;
-    document.getElementById('estPorcentaje').textContent = `${porcentajeAsistencia}%`;
+    const estPorcentaje = document.getElementById('estPorcentaje');
+    if (estPorcentaje) {
+        estPorcentaje.textContent = `${porcentajeAsistencia}%`;
+    }
 }
 
 function limpiarEstadisticas() {
-    document.getElementById('estPresentes').textContent = '0';
-    document.getElementById('estAusentes').textContent = '0';
-    document.getElementById('estRetardos').textContent = '0';
-    document.getElementById('estRegistrados').textContent = '0';
-    document.getElementById('estSinRegistrar').textContent = '0';
-    document.getElementById('estTotal').textContent = '0';
-    document.getElementById('estPorcentaje').textContent = '0%';
+    const elementosLimpiar = {
+        estPresentes: '0',
+        estAusentes: '0',
+        estRetardos: '0',
+        estRegistrados: '0',
+        estSinRegistrar: '0',
+        estTotal: '0',
+        estPorcentaje: '0%'
+    };
+    
+    // Limpiar solo si los elementos existen
+    Object.keys(elementosLimpiar).forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.textContent = elementosLimpiar[id];
+        }
+    });
 }
 
 window.cambiarEstado = async (estudianteId, estado) => {
@@ -259,22 +284,33 @@ async function generarQR() {
                 errorMessage.includes('routine:') ||
                 errorMessage.includes('file:') && errorMessage.includes('.c:');
             
+            // Detectar errores de servidor (502, 503) que indican problemas del backend
+            const esErrorServidor = errorMessage.includes('502') || 
+                errorMessage.includes('503') || 
+                errorMessage.includes('Bad Gateway') ||
+                errorMessage.includes('Service Unavailable') ||
+                errorMessage.includes('Error en la petición') ||
+                errorMessage.includes('servidor') ||
+                errorMessage.includes('gateway');
+            
             console.log('🔍 Análisis de error QR:', {
                 message: errorMessage,
                 qr_logs: esErrorQrLogs,
                 tabla: esErrorTabla,
                 base_datos: esErrorBaseDatos,
-                postgresql: esErrorPostgreSQL
+                postgresql: esErrorPostgreSQL,
+                servidor: esErrorServidor
             });
             
-            // Si es cualquier error de base de datos o tabla faltante, usar modo local
-            if (esErrorQrLogs || esErrorTabla || esErrorBaseDatos || esErrorPostgreSQL) {
-                console.log('🔄 Activando modo local QR debido a error de base de datos...');
+            // Si es cualquier error de base de datos, tabla faltante o error de servidor, usar modo local
+            if (esErrorQrLogs || esErrorTabla || esErrorBaseDatos || esErrorPostgreSQL || esErrorServidor) {
+                console.log('🔄 Activando modo local QR debido a error de base de datos o servidor...');
                 console.log('Tipo de error detectado:', {
                     qr_logs: esErrorQrLogs,
                     tabla: esErrorTabla,
                     base_datos: esErrorBaseDatos,
-                    postgresql: esErrorPostgreSQL
+                    postgresql: esErrorPostgreSQL,
+                    servidor: esErrorServidor
                 });
                 data = generarQRLocal(materiaId, fecha, hora_inicio, hora_fin, materiaNombre);
             } else {

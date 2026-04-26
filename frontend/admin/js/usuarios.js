@@ -141,6 +141,18 @@ async function cargarEstudiantes() {
                     error.message.includes('42P01') // PostgreSQL error code for undefined_table
                 );
                 
+                const esErrorRol = error.message && (
+                    error.message.includes('Rol no válido') ||
+                    error.message.includes('rol no válido') ||
+                    error.message.includes('400') && error.message.includes('rol')
+                );
+                
+                const esErrorEndpoint = error.message && (
+                    error.message.includes('Cannot GET') ||
+                    error.message.includes('404') ||
+                    error.message.includes('<!DOCTYPE html>')
+                );
+                
                 if (esErrorAnio || esErrorColumna || esErrorBaseDatos) {
                     console.log('⚠️ Error de base de datos detectado, continuando con siguiente endpoint...');
                     let tipoError = 'columna desconocida';
@@ -149,6 +161,12 @@ async function cargarEstudiantes() {
                     else if (esErrorBaseDatos) tipoError = 'tabla';
                     
                     endpointsIntentados.push(`${endpoint} (error: ${tipoError} no existe)`);
+                } else if (esErrorRol) {
+                    console.log('⚠️ Error de rol detectado, continuando con siguiente endpoint...');
+                    endpointsIntentados.push(`${endpoint} (error: rol no válido)`);
+                } else if (esErrorEndpoint) {
+                    console.log('⚠️ Endpoint no existe, continuando con siguiente endpoint...');
+                    endpointsIntentados.push(`${endpoint} (error: endpoint no existe)`);
                 } else {
                     endpointsIntentados.push(`${endpoint} (error: ${error.message})`);
                 }
@@ -519,8 +537,8 @@ async function guardarEstudiante(ev) {
     try {
         console.log('Enviando datos del estudiante:', { nombre, email, password });
         
-        // Crear estudiante con campos básicos (sin anio para evitar error de columna)
-        await apiRequest('/admin/estudiantes', {
+        // Crear estudiante con campos básicos usando endpoint general que sí existe
+        await apiRequest('/admin/usuarios', {
             method: 'POST',
             body: JSON.stringify({
                 nombre,
