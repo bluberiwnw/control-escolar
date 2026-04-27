@@ -53,6 +53,13 @@ const authMiddleware = async (req, res, next) => {
             tipo: tipo,
             avatar: usuario.avatar || null
         };
+        
+        console.log(' AuthMiddleware - Usuario autenticado:', {
+            id: req.usuario.id,
+            email: req.usuario.email,
+            rol: req.usuario.rol,
+            tipo: req.usuario.tipo
+        });
         next();
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {

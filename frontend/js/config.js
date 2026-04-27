@@ -1,13 +1,6 @@
 (function initApiBaseUrl() {
     if (typeof window === 'undefined') return;
     if (String(window.API_URL || '').trim()) return;
-    
-    // FORZAR USO DE SERVIDOR LOCAL SIN IMPORTAR EL DOMINIO
-    // Esto resuelve los problemas 502/503 del servidor Render
-    window.API_URL = 'http://localhost:8000';
-    console.log('🔧 API URL forzada a servidor local:', window.API_URL);
-    
-    // Mantener lógica original como fallback
     const meta = document.querySelector?.('meta[name="api-base"]');
     if (meta?.content?.trim()) {
         window.API_URL = meta.content.trim().replace(/\/$/, '');
@@ -21,6 +14,15 @@
         }
     } catch (_) {
         /* ignore */
+    }
+    const loc = window.location;
+    const port = loc.port;
+    const host = loc.hostname;
+    if (
+        (host === 'localhost' || host === '127.0.0.1') &&
+        ['5500', '5501', '8080', '4173', '3000', '8000'].includes(String(port))
+    ) {
+        window.API_URL = `${loc.protocol}//${host}:8000`;
     }
 })();
 

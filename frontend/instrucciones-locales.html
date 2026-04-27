@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceder al Sistema Local</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .step {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid #4CAF50;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        .url {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 1.2em;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .credentials {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .error-info {
+            background: rgba(244, 67, 54, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid #f44336;
+        }
+        .btn {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Acceder al Sistema Local</h1>
+        
+        <div class="error-info">
+            <h3>⚠️ Problema Detectado</h3>
+            <p>Estás intentando acceder desde el servidor en la nube que actualmente está caído (errores 502/503).</p>
+        </div>
+
+        <div class="step">
+            <h3>📋 Paso 1: Acceder al Servidor Local</h3>
+            <p>Haz clic en el siguiente enlace o cópialo en tu navegador:</p>
+            <div class="url">
+                <a href="http://localhost:8000" style="color: #4CAF50; text-decoration: none;">http://localhost:8000</a>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>🔑 Paso 2: Iniciar Sesión</h3>
+            <div class="credentials">
+                <p><strong>Email:</strong> profesor@universidad.edu</p>
+                <p><strong>Contraseña:</strong> profesor123</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>✅ Paso 3: Verificar Funcionamiento</h3>
+            <ul>
+                <li>Genera un código QR como profesor</li>
+                <li>Escanea el QR como alumno</li>
+                <li>Verifica que la asistencia se registre en tiempo real</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="http://localhost:8000" class="btn">Ir al Sistema Local</a>
+        </div>
+
+        <div class="error-info">
+            <h3>🔧 Si el Problema Persiste</h3>
+            <p>1. Asegúrate de que el servidor local esté corriendo:<br>
+            <code>cd backend && npm start</code></p>
+            <p>2. Deberías ver el mensaje: <br>
+            <code>🚀 Servidor corriendo en http://0.0.0.0:8000</code></p>
+            <p>3. Limpia el caché del navegador (Ctrl+Shift+R)</p>
+        </div>
+    </div>
+
+    <script>
+        // Redireccionar automáticamente después de 10 segundos
+        setTimeout(() => {
+            window.location.href = 'http://localhost:8000';
+        }, 10000);
+    </script>
+</body>
+</html>
