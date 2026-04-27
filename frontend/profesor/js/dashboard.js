@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .join('');
         }
 
-        lastEvolucion = await apiRequest('/profesores/calificaciones-evolucion');
+        lastEvolucion = await apiRequest('/profesor/calificaciones-evolucion');
         renderProfesorChart();
     } catch (err) {
         const kpi = document.getElementById('kpiProfesor');

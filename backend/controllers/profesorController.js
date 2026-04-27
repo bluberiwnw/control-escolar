@@ -159,6 +159,7 @@ const profesorController = {
                 por_fecha: porFechaResult.rows
             });
         } catch (error) {
+            console.error('Error al obtener reporte de asistencias por curso:', error);
             res.status(500).json({ error: error.message });
         }
     },
@@ -166,8 +167,10 @@ const profesorController = {
     // Exportar asistencias (CSV)
     async exportarAsistencias(req, res) {
         try {
+            console.log('Iniciando exportación CSV para profesor:', req.usuario.id);
             const profesorId = req.usuario.id;
             const { materia_id, fecha } = req.query;
+            console.log('Parámetros:', { materia_id, fecha });
             
             let query = `
                 SELECT 
@@ -196,19 +199,27 @@ const profesorController = {
             
             query += ' ORDER BY m.nombre, a.fecha DESC, e.nombre';
             
+            console.log('📊 Ejecutando consulta:', query);
+            console.log('📊 Parámetros:', params);
+            
             const result = await pool.query(query, params);
+            console.log('📊 Resultados obtenidos:', result.rows.length, 'filas');
             
             // Generar CSV
             let csv = 'Materia,Matrícula,Estudiante,Fecha,Estado,Hora Registro\n';
             result.rows.forEach(row => {
-                csv += `"${row.materia}","${row.matricula}","${row.estudiante}","${row.fecha}","${row.estado}","${row.hora_registro}"\n`;
+                csv += `"${row.materia || 'N/A'}","${row.matricula || 'N/A'}","${row.estudiante || 'N/A'}","${row.fecha || 'N/A'}","${row.estado || 'N/A'}","${row.hora_registro || 'N/A'}"\n`;
             });
+            
+            console.log('📊 CSV generado, longitud:', csv.length);
             
             res.setHeader('Content-Type', 'text/csv');
             res.setHeader('Content-Disposition', `attachment; filename=asistencias_${new Date().toISOString().split('T')[0]}.csv`);
             res.send(csv);
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            console.error('❌ Error en exportación CSV:', error);
+            console.error('❌ Stack trace:', error.stack);
+            res.status(500).json({ error: error.message, details: error.stack });
         }
     },
 
