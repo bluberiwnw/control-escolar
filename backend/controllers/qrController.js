@@ -199,34 +199,9 @@ const registrarAsistenciaQR = async (req, res) => {
     });
   }
 
-  // Validación de hora con tolerancia de 5 minutos antes y después
-  const horaActual = ahora.toTimeString().slice(0, 5); // HH:MM
-  const [horaInicio, horaFin] = [qr.hora_inicio, qr.hora_fin];
-  
-  // Validar que la hora actual esté entre 7am y 9pm
-  const minutosActuales = parseInt(horaActual.split(':')[0]) * 60 + parseInt(horaActual.split(':')[1]);
-  const minutosMinimoDia = 7 * 60; // 7:00 AM = 420 minutos
-  const minutosMaximoDia = 21 * 60; // 9:00 PM = 1260 minutos
-  
-  if (minutosActuales < minutosMinimoDia || minutosActuales > minutosMaximoDia) {
-    return res.status(400).json({
-      error: 'Fuera de horario escolar',
-      message: `El sistema de asistencia funciona solo de 7:00 AM a 9:00 PM. Hora actual: ${horaActual}`,
-    });
-  }
-  
-  // Convertir a minutos para comparación
-  const minutosInicio = parseInt(horaInicio.split(':')[0]) * 60 + parseInt(horaInicio.split(':')[1]) - 5; // 5 min antes
-  const minutosFin = parseInt(horaFin.split(':')[0]) * 60 + parseInt(horaFin.split(':')[1]) + 5; // 5 min después
-  
-  if (minutosActuales < minutosInicio || minutosActuales > minutosFin) {
-    const hi = String(qr.hora_inicio).slice(0, 5);
-    const hf = String(qr.hora_fin).slice(0, 5);
-    return res.status(400).json({
-      error: 'Horario incorrecto',
-      message: `Fuera del horario permitido para este código (válido entre ${hi} y ${hf}, con 5 min de tolerancia). Hora actual: ${horaActual}`,
-    });
-  }
+  // Validación de horario eliminada - permite asistencia en cualquier momento del día
+  // Solo se valida la fecha para asegurar que el QR sea del día actual
+  console.log('✅ Validación de horario omitida - asistencia permitida en cualquier momento');
 
   const fechaClase = qr.fecha;
   
