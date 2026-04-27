@@ -10,15 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await cargarMateriasEnSelects();
     await cargarHistorial();
     
-    // Intentar sincronizar asistencias pendientes automáticamente
-    setTimeout(() => {
-        sincronizarAsistenciasPendientes();
-    }, 2000); // Esperar 2 segundos para que la página cargue completamente
-    
-    // Configurar sincronización periódica cada 30 segundos
-    setInterval(() => {
-        sincronizarAsistenciasPendientes();
-    }, 30000);
+    // Sistema online - no hay sincronización offline
 });
 
 function extraerCodigoQR(decodedText) {
@@ -283,36 +275,12 @@ async function iniciarLectorQR() {
                         false
                     );
                 } catch (error) {
-                    console.log('❌ Error en endpoint /qr/validar, activando modo offline:', error.message);
+                    console.log('❌ Error en endpoint /qr/validar:', error.message);
                     
-                    // Modo offline cuando el backend no está disponible
-                    const materiaSelect = document.getElementById('materiaQRSelect');
-                    const materiaNombre = materiaSelect?.options[materiaSelect?.selectedIndex]?.textContent || 'Materia';
-                    
-                    // Simular registro exitoso en modo offline
-                    data = {
-                        message: 'Asistencia registrada (modo offline)',
-                        estado: 'presente',
-                        materia: materiaNombre,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    // Guardar en localStorage para sincronización posterior
-                    const asistenciaOffline = {
-                        codigo,
-                        materia_id: mid,
-                        materia_nombre: materiaNombre,
-                        timestamp: Date.now(),
-                        alumno_id: obtenerAlumnoId(),
-                        fecha: new Date().toISOString().split('T')[0],
-                        sincronizado: false
-                    };
-                    
-                    const asistenciasPendientes = JSON.parse(localStorage.getItem('asistenciasPendientes') || '[]');
-                    asistenciasPendientes.push(asistenciaOffline);
-                    localStorage.setItem('asistenciasPendientes', JSON.stringify(asistenciasPendientes));
-                    
-                    console.log('✅ Asistencia guardada localmente para sincronización:', asistenciaOffline);
+                    // Mostrar error al usuario - no hay modo offline
+                    mostrarError(`Error al registrar asistencia: ${error.message}`);
+                    await detenerCamara();
+                    return;
                 }
                 
                 const tiempoFin = Date.now();
@@ -327,9 +295,6 @@ async function iniciarLectorQR() {
                 
                 // Agregar al historial con timestamp
                 await cargarHistorial();
-                
-                // Intentar sincronizar asistencias pendientes
-                await sincronizarAsistenciasPendientes();
                 
                 await detenerCamara();
             } catch (err) {
@@ -448,88 +413,10 @@ document.getElementById('materiaQRSelect')?.addEventListener('change', () => {
 
 window.registrarAsistenciaManual = registrarAsistenciaManual;
 
-// Función para sincronizar asistencias pendientes
-async function sincronizarAsistenciasPendientes() {
-    try {
-        const asistenciasPendientes = JSON.parse(localStorage.getItem('asistenciasPendientes') || '[]');
-        
-        if (asistenciasPendientes.length === 0) {
-            console.log('✅ No hay asistencias pendientes de sincronización');
-            return;
-        }
-        
-        console.log(`🔄 Sincronizando ${asistenciasPendientes.length} asistencias pendientes...`);
-        
-        const asistenciasSincronizadas = [];
-        const asistenciasError = [];
-        
-        // Intentar sincronizar cada asistencia pendiente hasta 3 veces
-        for (const asistencia of asistenciasPendientes) {
-            let intentos = 0;
-            const maxIntentos = 3;
-            let sincronizado = false;
-            
-            while (intentos < maxIntentos && !sincronizado) {
-                try {
-                    intentos++;
-                    console.log(`🔄 Intento ${intentos}/${maxIntentos} para sincronizar: ${asistencia.materia_nombre}`);
-                    
-                    const response = await apiRequest(
-                        '/qr/validar',
-                        {
-                            method: 'POST',
-                            body: JSON.stringify({ 
-                                codigo: asistencia.codigo, 
-                                materia_id: asistencia.materia_id,
-                                timestamp: Date.now(), // Timestamp actual para evitar duplicados
-                                alumno_id: asistencia.alumno_id
-                            }),
-                        },
-                        false
-                    );
-                    
-                    asistenciasSincronizadas.push(asistencia);
-                    sincronizado = true;
-                    console.log(`✅ Asistencia sincronizada exitosamente: ${asistencia.materia_nombre}`);
-                    
-                } catch (error) {
-                    console.log(`❌ Intento ${intentos} fallido: ${error.message}`);
-                    
-                    if (intentos >= maxIntentos) {
-                        asistenciasError.push(asistencia);
-                        console.log(`❌ Asistencia no sincronizada después de ${maxIntentos} intentos: ${asistencia.materia_nombre}`);
-                    } else {
-                        // Esperar un poco antes de reintentar
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    }
-                }
-            }
-        }
-        
-        // Actualizar localStorage con las asistencias que no se pudieron sincronizar
-        localStorage.setItem('asistenciasPendientes', JSON.stringify(asistenciasError));
-        
-        // Mostrar resultados
-        if (asistenciasSincronizadas.length > 0) {
-            mostrarToast(`✅ ${asistenciasSincronizadas.length} asistencias sincronizadas correctamente`, 'success');
-            
-            // Limpiar el mensaje de pendientes si todo se sincronizó
-            if (asistenciasError.length === 0) {
-                const pendientesMsg = document.getElementById('asistenciasPendientesMsg');
-                if (pendientesMsg) {
-                    pendientesMsg.style.display = 'none';
-                }
-            }
-        }
-        
-        if (asistenciasError.length > 0) {
-            mostrarToast(`⚠️ ${asistenciasError.length} asistencias pendientes de sincronización. Se reintentará automáticamente.`, 'warning');
-        }
-        
-    } catch (error) {
-        console.log('Error en sincronización de asistencias:', error.message);
-        mostrarToast('Error en el proceso de sincronización. Se reintentará más tarde.', 'error');
-    }
+// Sistema online - no hay sincronización offline
+function sincronizarAsistenciasPendientes() {
+    // Función vacía - sistema funciona solo online
+    console.log('📡 Sistema online - no hay asistencias pendientes');
 }
 
 // Exponer función global
