@@ -114,12 +114,17 @@ const generarQR = async (req, res) => {
   
   const url = `${req.protocol}://${req.get('host')}/qr/validar?code=${codigo}`;
   
-  // Registrar log de generación para auditoría
-  await pool.query(
-    `INSERT INTO qr_logs (qr_id, materia_id, accion, timestamp)
-     VALUES ($1, $2, 'generar', CURRENT_TIMESTAMP)`,
-    [codigo, materia_id]
-  );
+  // Registrar log de generación para auditoría (si la tabla existe)
+  try {
+    await pool.query(
+      `INSERT INTO qr_logs (qr_id, materia_id, accion, timestamp)
+       VALUES ($1, $2, 'generar', CURRENT_TIMESTAMP)`,
+      [codigo, materia_id]
+    );
+  } catch (logError) {
+    // Ignorar error si la tabla qr_logs no existe
+    console.warn('No se pudo registrar log de QR:', logError.message);
+  }
   
   res.json({ 
     qrDataUrl, 
@@ -210,12 +215,17 @@ const registrarAsistenciaQR = async (req, res) => {
 
   const fechaClase = qr.fecha;
   
-  // Registrar log de escaneo para auditoría
-  await pool.query(
-    `INSERT INTO qr_logs (qr_id, estudiante_id, materia_id, accion, timestamp)
-     VALUES ($1, $2, $3, 'escaneado', CURRENT_TIMESTAMP)`,
-    [qr.id, alumnoId, qr.materia_id]
-  );
+  // Registrar log de escaneo para auditoría (si la tabla existe)
+  try {
+    await pool.query(
+      `INSERT INTO qr_logs (qr_id, estudiante_id, materia_id, accion, timestamp)
+       VALUES ($1, $2, $3, 'escaneado', CURRENT_TIMESTAMP)`,
+      [qr.id, alumnoId, qr.materia_id]
+    );
+  } catch (logError) {
+    // Ignorar error si la tabla qr_logs no existe
+    console.warn('No se pudo registrar log de escaneo QR:', logError.message);
+  }
   
   // Verificar si ya existe asistencia para este QR
   const asistenciaExistente = await pool.query(

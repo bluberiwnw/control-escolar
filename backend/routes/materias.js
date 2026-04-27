@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const materiaController = require('../controllers/materiaController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { verificarRol } = require('../middleware/roleMiddleware');
 
 router.use(authMiddleware);
+router.use(verificarRol(['profesor', 'administrador']));
 router.get('/', materiaController.getAll);
 router.get('/:id', materiaController.getById);
 router.get('/:id/estudiantes', materiaController.getEstudiantes);
