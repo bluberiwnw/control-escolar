@@ -30,6 +30,9 @@ function extractTokenFromPayload(body) {
 const generarQR = async (req, res) => {
   const { materia_id, fecha, hora_inicio, hora_fin } = req.body;
   
+  // Convertir fecha a UTC para consistencia
+  const fechaUTC = new Date(fecha).toISOString().split('T')[0];
+  
   // Validar datos básicos
   if (!materia_id || !fecha || !hora_inicio || !hora_fin) {
     return res.status(400).json({
@@ -93,12 +96,12 @@ const generarQR = async (req, res) => {
   await pool.query(
     `INSERT INTO qr_asistencia (materia_id, codigo, fecha, hora_inicio, hora_fin, activo)
      VALUES ($1, $2, $3, $4, $5, TRUE)`,
-    [materia_id, codigo, fecha, hora_inicio, hora_fin]
+    [materia_id, codigo, fechaUTC, hora_inicio, hora_fin]
   );
   
   const payload = {
     materia_id: Number(materia_id),
-    fecha,
+    fecha: fechaUTC,
     profesor_id: req.usuario.id,
     token_unico: codigo,
     timestamp,
@@ -173,14 +176,14 @@ const registrarAsistenciaQR = async (req, res) => {
     });
   }
 
-  // Validación de fecha con zona horaria local
+  // Validación de fecha usando UTC para consistencia
   const ahora = new Date();
-  const fechaLocal = ahora.toISOString().split('T')[0]; // YYYY-MM-DD en zona local
+  const fechaUTC = ahora.toISOString().split('T')[0]; // YYYY-MM-DD en UTC
   
-  if (qr.fecha !== fechaLocal) {
+  if (qr.fecha !== fechaUTC) {
     return res.status(400).json({
       error: 'Fecha incorrecta',
-      message: `La fecha de este código (${qr.fecha}) no coincide con el día de hoy (${fechaLocal}). El docente debe generar el QR con la fecha de hoy.`,
+      message: `La fecha de este código (${qr.fecha}) no coincide con el día de hoy (${fechaUTC}). El docente debe generar el QR con la fecha de hoy.`,
     });
   }
 
