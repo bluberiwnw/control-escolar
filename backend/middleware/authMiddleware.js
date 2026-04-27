@@ -4,12 +4,16 @@ const pool = require('../database/connection');
 const authMiddleware = async (req, res, next) => {
     try {
         const token = req.header('Authorization')?.replace('Bearer ', '');
+        console.log(' AuthMiddleware - Token recibido:', token ? 'Sí' : 'No');
+        
         if (!token) {
             return res.status(401).json({ message: 'Acceso denegado. Token no proporcionado' });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const { id, email, rol, tipo } = decoded;
+        
+        console.log(' AuthMiddleware - Token decodificado:', { id, email, rol, tipo });
 
         let usuario = null;
 
