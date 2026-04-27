@@ -125,7 +125,7 @@ const adminController = {
                 console.log(`Profesores encontrados: ${result.rows.length}`);
                 res.json(result.rows);
             } else if (rol === 'alumno') {
-                const query = 'SELECT id, nombre, email, password, activo, created_at FROM estudiantes ORDER BY nombre';
+                const query = 'SELECT id, nombre, email, activo, created_at FROM estudiantes ORDER BY nombre';
                 const result = await pool.query(query);
                 console.log(`Estudiantes encontrados: ${result.rows.length}`);
                 res.json(result.rows);
