@@ -33,6 +33,11 @@ const generarQR = async (req, res) => {
   // Convertir fecha a UTC para consistencia
   const fechaUTC = new Date(fecha).toISOString().split('T')[0];
   
+  console.log('🔍 DEBUG - Generación QR:');
+  console.log('🔍 fecha original:', fecha);
+  console.log('🔍 fechaUTC:', fechaUTC);
+  console.log('🔍 fechaUTC tipo:', typeof fechaUTC);
+  
   // Validar datos básicos
   if (!materia_id || !fecha || !hora_inicio || !hora_fin) {
     return res.status(400).json({
@@ -155,7 +160,7 @@ const registrarAsistenciaQR = async (req, res) => {
   const alumnoId = req.usuario.id;
 
   const qrRes = await pool.query(
-    `SELECT q.id, q.materia_id, q.fecha, q.hora_inicio, q.hora_fin, m.nombre AS materia_nombre
+    `SELECT q.id, q.materia_id, TO_CHAR(q.fecha, 'YYYY-MM-DD') as fecha, q.hora_inicio, q.hora_fin, m.nombre AS materia_nombre
      FROM qr_asistencia q
      JOIN materias m ON m.id = q.materia_id
      WHERE q.codigo = $1 AND q.activo = true`,
@@ -179,6 +184,13 @@ const registrarAsistenciaQR = async (req, res) => {
   // Validación de fecha usando UTC para consistencia
   const ahora = new Date();
   const fechaUTC = ahora.toISOString().split('T')[0]; // YYYY-MM-DD en UTC
+  
+  console.log('🔍 DEBUG - Validación de fecha:');
+  console.log('🔍 QR.fecha:', qr.fecha);
+  console.log('🔍 QR.fecha tipo:', typeof qr.fecha);
+  console.log('🔍 fechaUTC:', fechaUTC);
+  console.log('🔍 fechaUTC tipo:', typeof fechaUTC);
+  console.log('🔍 Son iguales?:', qr.fecha === fechaUTC);
   
   if (qr.fecha !== fechaUTC) {
     return res.status(400).json({
