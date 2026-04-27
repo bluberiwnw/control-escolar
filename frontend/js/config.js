@@ -20,7 +20,7 @@
     const host = loc.hostname;
     if (
         (host === 'localhost' || host === '127.0.0.1') &&
-        ['5500', '5501', '8080', '4173', '3000'].includes(String(port))
+        ['5500', '5501', '8080', '4173', '3000', '8000'].includes(String(port))
     ) {
         window.API_URL = `${loc.protocol}//${host}:8000`;
     }
