@@ -109,7 +109,22 @@ CREATE TABLE qr_asistencia (
     FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE
 );
 
--- 9. NUEVA TABLA: Asistencias registradas mediante QR (alumno escanea)
+-- 9. TABLA: Logs de QR para auditoría
+CREATE TABLE qr_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    qr_id INT NOT NULL,
+    estudiante_id INT,
+    materia_id INT NOT NULL,
+    accion VARCHAR(20) NOT NULL, -- 'generado', 'escaneado', 'expirado'
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    FOREIGN KEY (qr_id) REFERENCES qr_asistencia(id) ON DELETE CASCADE,
+    FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id) ON DELETE SET NULL,
+    FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE
+);
+
+-- 10. NUEVA TABLA: Asistencias registradas mediante QR (alumno escanea)
 CREATE TABLE asistencias_qr (
     id INT PRIMARY KEY AUTO_INCREMENT,
     estudiante_id INT NOT NULL,
