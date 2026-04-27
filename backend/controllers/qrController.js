@@ -174,12 +174,8 @@ const registrarAsistenciaQR = async (req, res) => {
   }
   const qr = qrRes.rows[0];
 
-  if (Number.isInteger(materiaEsperada) && materiaEsperada > 0 && qr.materia_id !== materiaEsperada) {
-    return res.status(400).json({
-      error: 'Materia no coincide',
-      message: `❌ Este QR es de otra materia (${qr.materia_nombre}). Elige la materia correcta antes de escanear.`,
-    });
-  }
+  // Validación de materia eliminada - permite cualquier QR sin restricciones
+  console.log('✅ Validación de materia omitida - cualquier QR es válido');
 
   // Validación de fecha usando UTC para consistencia
   const ahora = new Date();

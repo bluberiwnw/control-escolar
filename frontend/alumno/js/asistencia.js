@@ -278,7 +278,7 @@ async function iniciarLectorQR() {
                     console.log('❌ Error en endpoint /qr/validar:', error.message);
                     
                     // Mostrar error al usuario - no hay modo offline
-                    mostrarError(`Error al registrar asistencia: ${error.message}`);
+                    mostrarToast(`Error al registrar asistencia: ${error.message}`, 'error');
                     await detenerCamara();
                     return;
                 }
