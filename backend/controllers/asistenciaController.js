@@ -181,8 +181,9 @@ const asistenciaController = {
             }
             
             const historial = await pool.query(
-                `SELECT a.*, e.nombre, e.matricula, 
-                        TO_CHAR(a.created_at, 'HH24:MI:SS') as hora_registro
+                `SELECT a.id, a.fecha, a.estado, a.hora_registro,
+                        e.nombre as estudiante_nombre, e.matricula, e.email,
+                        TO_CHAR(a.fecha, 'DD/MM/YYYY') as fecha_formateada
                  FROM asistencias a
                  JOIN estudiantes e ON a.estudiante_id = e.id
                  WHERE a.materia_id = $1

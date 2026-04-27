@@ -116,9 +116,9 @@ const generarQR = async (req, res) => {
   
   // Registrar log de generación para auditoría
   await pool.query(
-    `INSERT INTO qr_logs (qr_id, profesor_id, accion, detalles)
-     VALUES ($1, $2, 'generar', $3)`,
-    [codigo, req.usuario.id, JSON.stringify({ materia_id, fecha, hora_inicio, hora_fin })]
+    `INSERT INTO qr_logs (qr_id, materia_id, accion, timestamp)
+     VALUES ($1, $2, 'generar', CURRENT_TIMESTAMP)`,
+    [codigo, materia_id]
   );
   
   res.json({ 
@@ -209,22 +209,61 @@ const registrarAsistenciaQR = async (req, res) => {
   }
 
   const fechaClase = qr.fecha;
+  
+  // Registrar log de escaneo para auditoría
   await pool.query(
-    `INSERT INTO asistencias_qr (estudiante_id, qr_id) VALUES ($1, $2)
-     ON CONFLICT (estudiante_id, qr_id) DO NOTHING`,
+    `INSERT INTO qr_logs (qr_id, estudiante_id, materia_id, accion, timestamp)
+     VALUES ($1, $2, $3, 'escaneado', CURRENT_TIMESTAMP)`,
+    [qr.id, alumnoId, qr.materia_id]
+  );
+  
+  // Verificar si ya existe asistencia para este QR
+  const asistenciaExistente = await pool.query(
+    `SELECT id FROM asistencias_qr 
+     WHERE estudiante_id = $1 AND qr_id = $2`,
     [alumnoId, qr.id]
   );
+  
+  if (asistenciaExistente.rows.length > 0) {
+    return res.json({ 
+      message: '✅ Tu asistencia ya estaba registrada para esta clase',
+      estado: 'presente',
+      materia: qr.materia_nombre,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  // Registrar asistencia QR
+  await pool.query(
+    `INSERT INTO asistencias_qr (estudiante_id, qr_id) VALUES ($1, $2)`,
+    [alumnoId, qr.id]
+  );
+  
+  // Registrar asistencia en tabla principal
   const ins = await pool.query(
-    `INSERT INTO asistencias (materia_id, estudiante_id, fecha, estado)
-     VALUES ($1, $2, $3, 'presente')
-     ON CONFLICT (materia_id, estudiante_id, fecha) DO NOTHING
+    `INSERT INTO asistencias (materia_id, estudiante_id, fecha, estado, hora_registro)
+     VALUES ($1, $2, $3, 'presente', CURRENT_TIME)
+     ON CONFLICT (materia_id, estudiante_id, fecha) DO UPDATE
+     SET estado = 'presente', hora_registro = CURRENT_TIME
      RETURNING id`,
     [qr.materia_id, alumnoId, fechaClase]
   );
+  
   if (ins.rowCount === 0) {
-    return res.json({ message: '✅ Tu asistencia ya estaba registrada para esta clase' });
+    return res.json({ 
+      message: '✅ Tu asistencia ya estaba registrada para esta clase',
+      estado: 'presente',
+      materia: qr.materia_nombre,
+      timestamp: new Date().toISOString()
+    });
   }
-  res.json({ message: '✅ Asistencia registrada' });
+  
+  res.json({ 
+    message: '✅ Asistencia registrada exitosamente',
+    estado: 'presente',
+    materia: qr.materia_nombre,
+    timestamp: new Date().toISOString()
+  });
 };
 
 module.exports = { generarQR, registrarAsistenciaQR, extractTokenFromPayload };
