@@ -82,8 +82,7 @@ const profesorController = {
                         SUM(CASE WHEN estado = 'ausente' THEN 1 ELSE 0 END) as ausentes,
                         SUM(CASE WHEN estado = 'retardo' THEN 1 ELSE 0 END) as retardos
                     FROM asistencias a
-                    JOIN inscripciones i ON a.estudiante_id = i.estudiante_id
-                    WHERE i.materia_id = $1
+                    WHERE a.materia_id = $1
                 `, [materia.id]);
                 
                 const stats = asistenciasResult.rows[0];
@@ -137,8 +136,7 @@ const profesorController = {
                     SUM(CASE WHEN estado = 'ausente' THEN 1 ELSE 0 END) as total_ausentes,
                     SUM(CASE WHEN estado = 'retardo' THEN 1 ELSE 0 END) as total_retardos
                 FROM asistencias a
-                JOIN inscripciones i ON a.estudiante_id = i.estudiante_id
-                WHERE i.materia_id = $1
+                WHERE a.materia_id = $1
             `, [materia_id]);
             
             // Historial por fecha
@@ -150,8 +148,7 @@ const profesorController = {
                     SUM(CASE WHEN estado = 'ausente' THEN 1 ELSE 0 END) as ausentes,
                     SUM(CASE WHEN estado = 'retardo' THEN 1 ELSE 0 END) as retardos
                 FROM asistencias a
-                JOIN inscripciones i ON a.estudiante_id = i.estudiante_id
-                WHERE i.materia_id = $1
+                WHERE a.materia_id = $1
                 GROUP BY a.fecha
                 ORDER BY a.fecha DESC
             `, [materia_id]);
@@ -182,14 +179,13 @@ const profesorController = {
                     a.hora_registro
                 FROM asistencias a
                 JOIN estudiantes e ON a.estudiante_id = e.id
-                JOIN inscripciones i ON a.estudiante_id = i.estudiante_id
-                JOIN materias m ON i.materia_id = m.id
+                JOIN materias m ON a.materia_id = m.id
                 WHERE m.profesor_id = $1
             `;
             const params = [profesorId];
             
             if (materia_id) {
-                query += ' AND i.materia_id = $' + (params.length + 1);
+                query += ' AND m.id = $' + (params.length + 1);
                 params.push(materia_id);
             }
             
@@ -233,14 +229,13 @@ const profesorController = {
                     a.hora_registro
                 FROM asistencias a
                 JOIN estudiantes e ON a.estudiante_id = e.id
-                JOIN inscripciones i ON a.estudiante_id = i.estudiante_id
-                JOIN materias m ON i.materia_id = m.id
+                JOIN materias m ON a.materia_id = m.id
                 WHERE m.profesor_id = $1
             `;
             const params = [profesorId];
             
             if (materia_id) {
-                query += ' AND i.materia_id = $' + (params.length + 1);
+                query += ' AND m.id = $' + (params.length + 1);
                 params.push(materia_id);
             }
             
@@ -306,14 +301,13 @@ const profesorController = {
                     a.hora_registro
                 FROM asistencias a
                 JOIN estudiantes e ON a.estudiante_id = e.id
-                JOIN inscripciones i ON a.estudiante_id = i.estudiante_id
-                JOIN materias m ON i.materia_id = m.id
+                JOIN materias m ON a.materia_id = m.id
                 WHERE m.profesor_id = $1
             `;
             const params = [profesorId];
             
             if (materia_id) {
-                query += ' AND i.materia_id = $' + (params.length + 1);
+                query += ' AND m.id = $' + (params.length + 1);
                 params.push(materia_id);
             }
             

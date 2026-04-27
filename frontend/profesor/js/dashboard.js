@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarFechaActual();
 
     try {
-        const stats = await apiRequest('/profesores/estadisticas');
+        const stats = await apiRequest('/profesor/estadisticas');
         const kpi = document.getElementById('kpiProfesor');
         if (kpi) {
             kpi.innerHTML =
