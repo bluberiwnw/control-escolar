@@ -293,7 +293,7 @@ function mostrarModalQR(materiaId, fecha) {
                         <i class="fas fa-times"></i>
                         Cancelar
                     </button>
-                    <button class="qr-btn qr-btn-primary" onclick="validarYMostrarConfirmacionQR()">
+                    <button class="qr-btn qr-btn-primary" onclick="procesarGeneracionQR('${materiaId}', '${fecha}')">
                         <i class="fas fa-qrcode"></i>
                         Generar QR
                     </button>
@@ -414,51 +414,6 @@ function cerrarModalConfirmacion() {
         modal.remove();
         document.body.style.overflow = '';
     }
-}
-
-function validarYMostrarConfirmacionQR() {
-    // Obtener valores del formulario
-    const horaInicio = document.getElementById('horaInicio').value;
-    const horaFin = document.getElementById('horaFin').value;
-    const materiaSelect = document.getElementById('materiaSelect');
-    const materiaId = materiaSelect.value;
-    const materiaNombre = materiaSelect.options[materiaSelect.selectedIndex].text;
-    const fecha = document.getElementById('fechaAsistencia').value;
-    
-    // Validar que se hayan ingresado las horas
-    if (!horaInicio || !horaFin) {
-        mostrarToast('Por favor ingresa la hora de inicio y fin', 'error');
-        return;
-    }
-    
-    // Validar formato de horas
-    const horaRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!horaRegex.test(horaInicio) || !horaRegex.test(horaFin)) {
-        mostrarToast('Formato de hora inválido. Usa formato HH:MM', 'error');
-        return;
-    }
-    
-    // Validar que hora fin sea posterior a hora inicio
-    const [inicioHoras, inicioMinutos] = horaInicio.split(':').map(Number);
-    const [finHoras, finMinutos] = horaFin.split(':').map(Number);
-    const inicioMinutosTotales = inicioHoras * 60 + inicioMinutos;
-    const finMinutosTotales = finHoras * 60 + finMinutos;
-    
-    if (finMinutosTotales <= inicioMinutosTotales) {
-        mostrarToast('La hora de fin debe ser posterior a la hora de inicio', 'error');
-        return;
-    }
-    
-    // Validar duración máxima (4 horas)
-    const duracionMinutos = finMinutosTotales - inicioMinutosTotales;
-    if (duracionMinutos > 240) {
-        mostrarToast('La duración máxima es de 4 horas', 'error');
-        return;
-    }
-    
-    // Cerrar modal inicial y mostrar confirmación
-    cerrarModalQR();
-    mostrarModalConfirmacionQR(materiaId, materiaNombre, fecha, horaInicio, horaFin);
 }
 
 function formatearFecha(fechaStr) {
@@ -588,13 +543,6 @@ async function confirmarGeneracionQR(materiaId, fecha, hora_inicio, hora_fin) {
             }
         }
 
-        // Calcular minutos para duración
-        const [inicioHoras, inicioMinutos] = hora_inicio.split(':').map(Number);
-        const [finHoras, finMinutos] = hora_fin.split(':').map(Number);
-        const minutosInicio = inicioHoras * 60 + inicioMinutos;
-        const minutosFin = finHoras * 60 + finMinutos;
-        const duracionMinutos = minutosFin - minutosInicio;
-
         // Mostrar QR con información detallada y profesional
         const container = document.getElementById('qrContainer');
         container.innerHTML = `
@@ -625,7 +573,7 @@ async function confirmarGeneracionQR(materiaId, fecha, hora_inicio, hora_fin) {
                         </div>
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:#64748b;">Duración:</span>
-                            <span style="font-weight:600; color:#334155;">${Math.floor(duracionMinutos / 60)}h ${duracionMinutos % 60}min</span>
+                            <span style="font-weight:600; color:#334155;">${Math.floor((minutosFin - minutosInicio) / 60)}h ${((minutosFin - minutosInicio) % 60)}min</span>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:#64748b;">Código:</span>
