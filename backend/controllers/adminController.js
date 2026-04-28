@@ -1147,23 +1147,125 @@ const adminController = {
                     total_clases: parseInt(stats.total_clases),
                     total_presentes: parseInt(stats.total_presentes),
                     total_ausentes: parseInt(stats.total_ausentes),
-                    total_retardos: parseInt(stats.total_retardos),
-                    total_estudiantes: parseInt(stats.total_estudiantes),
-                    porcentaje_asistencia_general: parseFloat(porcentajeAsistencia)
-                },
-                detalle_estudiantes: detalleResult.rows,
-                resumen: {
-                    excelentes: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 90).length,
-                    buenos: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 80 && e.porcentaje_asistencia < 90).length,
-                    regulares: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 70 && e.porcentaje_asistencia < 80).length,
-                    deficientes: detalleResult.rows.filter(e => e.porcentaje_asistencia < 70).length
-                }
-            });
-        } catch (error) {
-            console.error('Error generando reporte por curso:', error);
-            res.status(500).json({ error: 'Error al generar reporte de asistencia por curso' });
-        }
-    }
-};
+            }
+        },
 
-module.exports = adminController;
+        // Reporte de asistencia por curso con porcentajes
+        async reporteAsistenciaPorCurso(req, res) {
+            try {
+                const { materia_id } = req.params;
+                
+                // Estadísticas generales del curso
+                const statsQuery = `
+                    SELECT 
+                        COUNT(*) as total_clases,
+                        COUNT(CASE WHEN estado = 'presente' THEN 1 END) as total_presentes,
+                        COUNT(CASE WHEN estado = 'ausente' THEN 1 END) as total_ausentes,
+                        COUNT(CASE WHEN estado = 'retardo' THEN 1 END) as total_retardos,
+                        COUNT(DISTINCT estudiante_id) as total_estudiantes
+                    FROM asistencias a
+                    WHERE a.materia_id = $1
+                `;
+                
+                const statsResult = await pool.query(statsQuery, [materia_id]);
+                const stats = statsResult.rows[0];
+                
+                // Porcentaje de asistencia
+                const porcentajeAsistencia = stats.total_clases > 0 
+                    ? ((stats.total_presentes / stats.total_clases) * 100).toFixed(1) 
+                    : 0;
+                
+                // Detalle por estudiante
+                const detalleQuery = `
+                    SELECT 
+                        e.nombre as estudiante_nombre,
+                        e.email as estudiante_email,
+                        COUNT(*) as total_asistencias,
+                        COUNT(CASE WHEN a.estado = 'presente' THEN 1 END) as presentes,
+                        COUNT(CASE WHEN a.estado = 'ausente' THEN 1 END) as ausentes,
+                        COUNT(CASE WHEN a.estado = 'retardo' THEN 1 END) as retardos,
+                        ROUND((COUNT(CASE WHEN a.estado = 'presente' THEN 1 END) * 100.0 / COUNT(*)), 1) as porcentaje_asistencia
+                    FROM estudiantes e
+                    LEFT JOIN asistencias a ON e.id = a.estudiante_id AND a.materia_id = $1
+                    GROUP BY e.id, e.nombre, e.email
+                    ORDER BY e.nombre
+                `;
+                
+                const detalleResult = await pool.query(detalleQuery, [materia_id]);
+                
+                // Información de la materia
+                const materiaQuery = 'SELECT * FROM materias WHERE id = $1';
+                const materiaResult = await pool.query(materiaQuery, [materia_id]);
+                const materia = materiaResult.rows[0];
+                
+                res.json({
+                    materia: materia,
+                    estadisticas_generales: {
+                        total_clases: parseInt(stats.total_clases),
+                        total_presentes: parseInt(stats.total_presentes),
+                        total_ausentes: parseInt(stats.total_ausentes),
+                        total_retardos: parseInt(stats.total_retardos),
+                        total_estudiantes: parseInt(stats.total_estudiantes),
+                        porcentaje_asistencia_general: parseFloat(porcentajeAsistencia)
+                    },
+                    detalle_estudiantes: detalleResult.rows,
+                    resumen: {
+                        excelentes: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 90).length,
+                        buenos: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 80 && e.porcentaje_asistencia < 90).length,
+                        regulares: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 70 && e.porcentaje_asistencia < 80).length,
+                        deficientes: detalleResult.rows.filter(e => e.porcentaje_asistencia < 70).length
+                    }
+                });
+            } catch (error) {
+                console.error('Error generando reporte por curso:', error);
+                res.status(500).json({ error: 'Error al generar reporte de asistencia por curso' });
+            }
+        },
+
+        async getAlumnosDeMateria(req, res) {
+            try {
+                const { id } = req.params;
+                
+                // Verificar que la materia existe
+                const materiaCheck = await pool.query(
+                    'SELECT id, nombre FROM materias WHERE id = $1',
+                    [id]
+                );
+                
+                if (materiaCheck.rows.length === 0) {
+                    return res.status(404).json({ message: 'Materia no encontrada' });
+                }
+                
+                // Obtener alumnos inscritos en la materia
+                const alumnosQuery = `
+                    SELECT 
+                        e.id,
+                        e.matricula,
+                        e.nombre,
+                        e.email,
+                        e.anio,
+                        e.created_at
+                    FROM estudiantes e
+                    WHERE e.materia_id = $1
+                    ORDER BY e.nombre
+                `;
+                
+                const alumnosResult = await pool.query(alumnosQuery, [id]);
+                
+                res.json({
+                    materia: materiaCheck.rows[0],
+                    alumnos: alumnosResult.rows,
+                    total: alumnosResult.rows.length
+                });
+                
+            } catch (error) {
+                console.error('Error al obtener alumnos de la materia:', error);
+                res.status(500).json({ 
+                    message: 'Error al obtener alumnos de la materia',
+                    error: error.message 
+                });
+            }
+        }
+    };
+
+    module.exports = adminController;

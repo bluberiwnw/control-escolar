@@ -31,14 +31,19 @@ async function cargarMaterias() {
                     materiaCard.className = 'course-card course-card--elevated';
                     
                     materiaCard.innerHTML = `
-                        <div class="course-header"><h3>${m.nombre}</h3><p>${m.clave}</p></div>
+                        <div class="course-header">
+                            <h3>${m.nombre}</h3>
+                            <p>${m.clave}</p>
+                        </div>
                         <div class="course-body">
                             <div class="course-detail"><i class="fas fa-chalkboard-user"></i> ${m.profesor_nombre || 'Sin asignar'}</div>
                             <div class="course-detail"><i class="fas fa-clock"></i> ${m.horario || '—'}</div>
                             <div class="course-detail"><i class="fas fa-users"></i> ${m.estudiantes ?? 0} estudiantes</div>
+                            <div class="course-detail"><i class="fas fa-chart-line"></i> Promedio: ${m.promedio || 0}</div>
+                            <div class="course-detail"><i class="fas fa-user-minus"></i> Bajas: ${m.bajas || 0}</div>
                         </div>
                         <div class="course-footer course-footer--split">
-                            <button type="button" class="btn btn-info btn-sm" onclick="gestionarAlumnos(${m.id}, '${m.nombre}')"><i class="fas fa-users"></i> Alumnos</button>
+                            <button type="button" class="btn btn-info btn-sm" onclick="gestionarAlumnos(${m.id}, '${m.nombre.replace(/'/g, "\\'")}')"><i class="fas fa-users"></i> Alumnos</button>
                             <button type="button" class="btn btn-secondary btn-sm" onclick="editarMateria(${m.id})"><i class="fas fa-pen"></i> Editar</button>
                             <button type="button" class="btn btn-danger btn-sm" onclick="eliminarMateria(${m.id})"><i class="fas fa-trash"></i> Eliminar</button>
                         </div>
@@ -169,27 +174,9 @@ async function cargarAlumnosMateria() {
     try {
         mostrarToast('Cargando alumnos...', 'info');
         
-        // Intentar usar el endpoint original primero
-        let alumnos = [];
-        try {
-            const response = await apiRequest(`/materias/${materiaActualId}/estudiantes-inscritos`);
-            alumnos = Array.isArray(response) ? response : [];
-        } catch (error) {
-            console.log('Endpoint original no disponible, usando alternativa...');
-            // Si el endpoint original falla, usar una alternativa
-            // Obtener todos los estudiantes y filtrar por inscripciones
-            const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
-            const todasLasMaterias = await apiRequest('/admin/materias');
-            const materiaActual = todasLasMaterias.find(m => m.id == materiaActualId);
-            
-            if (materiaActual && materiaActual.profesor_id) {
-                // Si la materia tiene profesor asignado, mostrar mensaje informativo
-                alumnos = estudiantes.filter(e => e.materia_id == materiaActualId);
-            } else {
-                // Mostrar todos los alumnos como opción
-                alumnos = estudiantes.slice(0, 10); // Limitar a 10 para no sobrecargar
-            }
-        }
+        // Usar el nuevo endpoint del admin que funciona correctamente
+        const response = await apiRequest(`/admin/materias/${materiaActualId}/alumnos`);
+        const alumnos = response.alumnos || [];
         
         const tbody = document.getElementById('alumnosTableBody');
         
@@ -238,7 +225,7 @@ async function cargarAlumnosMateria() {
                         <button type="button" class="btn btn-sm btn-secondary" onclick="editarAlumno(${alumno.id})">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-danger" onclick="eliminarAlumnoMateria(${alumno.id}, '${alumno.nombre}')">
+                        <button type="button" class="btn btn-sm btn-danger" onclick="eliminarAlumnoMateria(${alumno.id}, '${alumno.nombre.replace(/'/g, "\\'")}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
