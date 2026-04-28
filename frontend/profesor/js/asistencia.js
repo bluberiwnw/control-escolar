@@ -600,12 +600,13 @@ async function cargarHistorialCompleto() {
     }
     
     try {
-        console.log('Cargando historial de asistencia para materia:', materiaId);
+        console.log('Cargando historial completo de asistencia para materia:', materiaId);
+        mostrarToast('Cargando historial completo...', 'info');
         
         // Obtener todo el historial de asistencias de la materia
         const historial = await apiRequest(`/asistencia/historial/${materiaId}`);
         
-        console.log('Historial recibido:', historial);
+        console.log('Historial completo recibido:', historial);
         
         const container = document.getElementById('historialCompletoContainer');
         if (!container) {
@@ -616,29 +617,105 @@ async function cargarHistorialCompleto() {
         if (!historial || historial.length === 0) {
             container.innerHTML = `
                 <div class="panel-card">
-                    <h3>Historial Completo de Asistencias</h3>
-                    <div class="empty-state">
-                        <i class="fas fa-calendar-times" style="font-size:3rem; color:#94a3b8; margin-bottom:1rem;"></i>
-                        <p>No hay registros de asistencia para esta materia.</p>
-                        <p style="font-size: 0.85rem; color: #666;">Intenta registrar asistencia primero para ver el historial.</p>
+                    <div class="panel-section__head">
+                        <h3><i class="fas fa-history"></i> Historial Completo de Asistencias</h3>
+                        <div class="resumen-historial">
+                            <span class="badge badge-secondary">0 Registros</span>
+                            <span class="badge badge-info">0% Asistencia</span>
+                        </div>
+                    </div>
+                    <div class="panel-section__body">
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-times" style="font-size:3rem; color:#94a3b8; margin-bottom:1rem;"></i>
+                            <h4>No hay registros de asistencia</h4>
+                            <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0;">No se encontraron registros de asistencia para esta materia.</p>
+                            <p style="font-size: 0.85rem; color: #888; margin: 0;">Intenta registrar asistencia manualmente o generar códigos QR para comenzar.</p>
+                        </div>
                     </div>
                 </div>
             `;
             return;
         }
         
-        // Agrupar por fecha
+        // Agrupar por fecha y calcular estadísticas generales
         const porFecha = {};
+        let totalesGenerales = { presentes: 0, ausentes: 0, retardos: 0, qr: 0, manual: 0 };
+        
         historial.forEach(registro => {
             if (!porFecha[registro.fecha]) {
                 porFecha[registro.fecha] = [];
             }
             porFecha[registro.fecha].push(registro);
+            
+            // Contar totales generales
+            if (registro.estado === 'presente') totalesGenerales.presentes++;
+            else if (registro.estado === 'ausente') totalesGenerales.ausentes++;
+            else if (registro.estado === 'retardo') totalesGenerales.retardos++;
+            
+            // Contar QR vs Manual (por hora_registro)
+            if (registro.hora_registro && registro.hora_registro.includes(':')) {
+                totalesGenerales.qr++;
+            } else {
+                totalesGenerales.manual++;
+            }
         });
         
-        // Generar HTML del historial
-        let html = '<div class="panel-card"><h3>Historial Completo de Asistencias</h3>';
+        const totalGeneral = totalesGenerales.presentes + totalesGenerales.ausentes + totalesGenerales.retardos;
+        const porcentajeGeneral = totalGeneral > 0 ? ((totalesGenerales.presentes / totalGeneral) * 100).toFixed(1) : 0;
         
+        // Generar HTML del historial mejorado
+        let html = `
+            <div class="panel-card">
+                <div class="panel-section__head">
+                    <h3><i class="fas fa-history"></i> Historial Completo de Asistencias</h3>
+                    <div class="resumen-historial">
+                        <span class="badge badge-primary">${totalGeneral} Registros</span>
+                        <span class="badge badge-success">${porcentajeGeneral}% Asistencia</span>
+                        <span class="badge badge-info">${totalesGenerales.qr} QR</span>
+                        <span class="badge badge-warning">${totalesGenerales.manual} Manual</span>
+                    </div>
+                </div>
+                <div class="panel-section__body">
+                    <div class="historial-estadisticas">
+                        <div class="stat-card presente">
+                            <i class="fas fa-check-circle"></i>
+                            <div class="stat-info">
+                                <span class="stat-number">${totalesGenerales.presentes}</span>
+                                <span class="stat-label">Presentes</span>
+                            </div>
+                        </div>
+                        <div class="stat-card ausente">
+                            <i class="fas fa-times-circle"></i>
+                            <div class="stat-info">
+                                <span class="stat-number">${totalesGenerales.ausentes}</span>
+                                <span class="stat-label">Ausentes</span>
+                            </div>
+                        </div>
+                        <div class="stat-card retardo">
+                            <i class="fas fa-clock"></i>
+                            <div class="stat-info">
+                                <span class="stat-number">${totalesGenerales.retardos}</span>
+                                <span class="stat-label">Retardos</span>
+                            </div>
+                        </div>
+                        <div class="stat-card qr">
+                            <i class="fas fa-qrcode"></i>
+                            <div class="stat-info">
+                                <span class="stat-number">${totalesGenerales.qr}</span>
+                                <span class="stat-label">Por QR</span>
+                            </div>
+                        </div>
+                        <div class="stat-card manual">
+                            <i class="fas fa-edit"></i>
+                            <div class="stat-info">
+                                <span class="stat-number">${totalesGenerales.manual}</span>
+                                <span class="stat-label">Manuales</span>
+                            </div>
+                        </div>
+                    </div>
+        `;
+        
+        // Agregar registros por fecha
         Object.keys(porFecha).sort().reverse().forEach(fecha => {
             const registros = porFecha[fecha];
             const presentes = registros.filter(r => r.estado === 'presente').length;
@@ -650,60 +727,92 @@ async function cargarHistorialCompleto() {
             html += `
                 <div class="historial-dia">
                     <div class="historial-header">
-                        <h4>${formatearFecha(fecha)}</h4>
+                        <h4><i class="fas fa-calendar-day"></i> ${formatearFecha(fecha)}</h4>
                         <div class="resumen-dia">
                             <span class="badge badge-success">${presentes} P</span>
                             <span class="badge badge-danger">${ausentes} A</span>
                             <span class="badge badge-warning">${retardos} R</span>
                             <span class="badge badge-info">${porcentaje}%</span>
+                            <span class="badge badge-secondary">${total} Total</span>
                         </div>
                     </div>
                     <div class="tabla-historial">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Estudiante</th>
-                                    <th>Matrícula</th>
-                                    <th>Estado</th>
-                                    <th>Hora</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${registros.map(r => `
+                        <div class="table-responsive-wrap">
+                            <table class="data-table">
+                                <thead>
                                     <tr>
-                                        <td>${r.nombre_estudiante}</td>
-                                        <td>${r.matricula}</td>
-                                        <td>
-                                            <span class="badge badge-${r.estado === 'presente' ? 'success' : r.estado === 'ausente' ? 'danger' : 'warning'}">
-                                                ${r.estado.toUpperCase()}
-                                            </span>
-                                        </td>
-                                        <td>${r.hora_registro || '-'}</td>
+                                        <th><i class="fas fa-user"></i> Estudiante</th>
+                                        <th><i class="fas fa-id-card"></i> Matrícula</th>
+                                        <th><i class="fas fa-info-circle"></i> Estado</th>
+                                        <th><i class="fas fa-clock"></i> Hora</th>
+                                        <th><i class="fas fa-tag"></i> Tipo</th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    ${registros.map(r => `
+                                        <tr class="registro-${r.estado}">
+                                            <td data-label="Estudiante">
+                                                <div class="estudiante-info">
+                                                    <i class="fas fa-user-graduate"></i>
+                                                    ${r.nombre_estudiante}
+                                                </div>
+                                            </td>
+                                            <td data-label="Matrícula">
+                                                <span class="matricula">${r.matricula}</span>
+                                            </td>
+                                            <td data-label="Estado">
+                                                <span class="badge badge-${r.estado === 'presente' ? 'success' : r.estado === 'ausente' ? 'danger' : 'warning'}">
+                                                    <i class="fas fa-${r.estado === 'presente' ? 'check' : r.estado === 'ausente' ? 'times' : 'clock'}"></i>
+                                                    ${r.estado.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td data-label="Hora">
+                                                <span class="hora-registro">
+                                                    <i class="fas fa-clock"></i>
+                                                    ${r.hora_registro || 'Sin hora'}
+                                                </span>
+                                            </td>
+                                            <td data-label="Tipo">
+                                                <span class="badge badge-${r.hora_registro && r.hora_registro.includes(':') ? 'info' : 'secondary'}">
+                                                    <i class="fas fa-${r.hora_registro && r.hora_registro.includes(':') ? 'qrcode' : 'edit'}"></i>
+                                                    ${r.hora_registro && r.hora_registro.includes(':') ? 'QR' : 'Manual'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             `;
         });
         
-        html += '</div>';
+        html += `
+                </div>
+            </div>
+        `;
+        
         container.innerHTML = html;
+        mostrarToast(`Historial cargado: ${totalGeneral} registros encontrados`, 'success');
         
     } catch (error) {
-        console.error('Error al cargar historial:', error);
+        console.error('Error al cargar historial completo:', error);
         
         const container = document.getElementById('historialCompletoContainer');
         if (container) {
             container.innerHTML = `
                 <div class="panel-card">
-                    <h3>Historial Completo de Asistencias</h3>
-                    <div class="alert alert-error">
-                        <h4>❌ Error al cargar historial</h4>
-                        <p>No se pudieron cargar los registros de asistencia.</p>
-                        <p><strong>Detalles:</strong> ${error.message || 'Error desconocido'}</p>
-                        <p>Verifica la conexión con el servidor o intenta más tarde.</p>
+                    <div class="panel-section__head">
+                        <h3><i class="fas fa-history"></i> Historial Completo de Asistencias</h3>
+                    </div>
+                    <div class="panel-section__body">
+                        <div class="alert alert-error">
+                            <h4><i class="fas fa-exclamation-triangle"></i> Error al cargar historial</h4>
+                            <p><strong>No se pudieron cargar los registros de asistencia.</strong></p>
+                            <p><strong>Detalles:</strong> ${error.message || 'Error desconocido'}</p>
+                            <p>Verifica la conexión con el servidor o intenta más tarde.</p>
+                        </div>
                     </div>
                 </div>
             `;
