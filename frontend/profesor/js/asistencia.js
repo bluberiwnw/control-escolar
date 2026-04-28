@@ -322,59 +322,109 @@ function aplicarSugerencia(inicio, fin) {
     document.getElementById('horaFin').value = fin;
 }
 
-async function procesarGeneracionQR(materiaId, fecha) {
-    const hora_inicio = document.getElementById('horaInicio').value;
-    const hora_fin = document.getElementById('horaFin').value;
+function mostrarModalConfirmacionQR(materiaId, fecha, hora_inicio, hora_fin, materiaNombre, duracionHoras, duracionMinutos) {
+    // Cerrar modal anterior si existe
+    cerrarModalQR();
     
-    if (!hora_inicio || !hora_fin) {
-        mostrarToast('Por favor completa ambos campos de hora', 'error');
-        return;
-    }
-    
-    // Validar formato de hora
-    if (!/^\d{2}:\d{2}$/.test(hora_inicio) || !/^\d{2}:\d{2}$/.test(hora_fin)) {
-        mostrarToast('Formato inválido. Usa HH:MM (ej: 08:00, 14:30)', 'error');
-        return;
-    }
-    
-    const [hi, mi] = hora_inicio.split(':').map(Number);
-    const [hf, mf] = hora_fin.split(':').map(Number);
-    
-    if (hi < 7 || hi > 21 || hf < 7 || hf > 21 || mi < 0 || mi > 59 || mf < 0 || mf > 59) {
-        mostrarToast('Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
-        return;
-    }
-    
-    // Validar rango de horas
-    const minutosInicio = hi * 60 + mi;
-    const minutosFin = hf * 60 + mf;
-    
-    if (minutosInicio >= minutosFin) {
-        mostrarToast('La hora final debe ser posterior a la hora inicial', 'error');
-        return;
-    }
-    
-    if (minutosFin - minutosInicio > 240) { // Máximo 4 horas
-        mostrarToast('El rango no debe exceder 4 horas. Máximo permitido: 240 minutos', 'error');
-        return;
-    }
+    // Crear modal de confirmación HTML
+    const modalHTML = `
+        <div class="qr-modal" id="qrConfirmModal">
+            <div class="qr-modal-content">
+                <div class="qr-modal-header">
+                    <h2 class="qr-modal-title">
+                        <i class="fas fa-check-circle"></i>
+                        Confirmar Generación QR
+                    </h2>
+                    <button class="qr-modal-close" onclick="cerrarModalConfirmacion()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="qr-modal-body">
+                    <div class="qr-confirmation-details">
+                        <div class="qr-detail-item">
+                            <div class="qr-detail-label">
+                                <i class="fas fa-book"></i>
+                                Materia
+                            </div>
+                            <div class="qr-detail-value">${materiaNombre}</div>
+                        </div>
+                        
+                        <div class="qr-detail-item">
+                            <div class="qr-detail-label">
+                                <i class="fas fa-calendar"></i>
+                                Fecha
+                            </div>
+                            <div class="qr-detail-value">${formatearFecha(fecha)}</div>
+                        </div>
+                        
+                        <div class="qr-detail-item">
+                            <div class="qr-detail-label">
+                                <i class="fas fa-clock"></i>
+                                Horario
+                            </div>
+                            <div class="qr-detail-value">${hora_inicio} - ${hora_fin}</div>
+                        </div>
+                        
+                        <div class="qr-detail-item">
+                            <div class="qr-detail-label">
+                                <i class="fas fa-hourglass-half"></i>
+                                Duración
+                            </div>
+                            <div class="qr-detail-value">${duracionHoras}h ${duracionMinutos}min</div>
+                        </div>
+                    </div>
+                    
+                    <div class="qr-confirmation-info">
+                        <div class="qr-info-header">
+                            <i class="fas fa-info-circle"></i>
+                            Información importante
+                        </div>
+                        <ul class="qr-info-list">
+                            <li><i class="fas fa-check"></i> Los alumnos podrán escanear desde las ${hora_inicio}</li>
+                            <li><i class="fas fa-check"></i> El QR dejará de funcionar a las ${hora_fin}</li>
+                            <li><i class="fas fa-check"></i> Cada alumno solo podrá registrar una asistencia</li>
+                            <li><i class="fas fa-check"></i> Se requiere conexión a internet para validar</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="qr-modal-footer">
+                    <button class="qr-btn qr-btn-secondary" onclick="cerrarModalConfirmacion()">
+                        <i class="fas fa-arrow-left"></i>
+                        Cancelar
+                    </button>
+                    <button class="qr-btn qr-btn-primary" onclick="confirmarGeneracionQR('${materiaId}', '${fecha}', '${hora_inicio}', '${hora_fin}')">
+                        <i class="fas fa-qrcode"></i>
+                        Generar Código QR
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
 
-    // Confirmación con detalles
-    const materiaNombre = document.getElementById('materiaSelect').options[document.getElementById('materiaSelect').selectedIndex].text;
-    const confirmacion = confirm(
-        `CONFIRMA LOS DATOS\n\n` +
-        `Materia: ${materiaNombre}\n` +
-        `Fecha: ${fecha}\n` +
-        `Horario: ${hora_inicio} - ${hora_fin}\n` +
-        `Duración: ${Math.floor((minutosFin - minutosInicio) / 60)}h ${((minutosFin - minutosInicio) % 60)}min\n\n` +
-        `Los alumnos podrán escanear:\n` +
-        `• Desde las ${hora_inicio}\n` +
-        `• Hasta las ${hora_fin}\n` +
-        `¿Generar código QR con estos datos?`
-    );
+    // Agregar modal al body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    if (!confirmacion) return;
+    // Prevenir scroll del body
+    document.body.style.overflow = 'hidden';
+}
 
+function cerrarModalConfirmacion() {
+    const modal = document.getElementById('qrConfirmModal');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = '';
+    }
+}
+
+function formatearFecha(fechaStr) {
+    const fecha = new Date(fechaStr + 'T00:00:00');
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return fecha.toLocaleDateString('es-ES', options);
+}
+
+async function confirmarGeneracionQR(materiaId, fecha, hora_inicio, hora_fin) {
+    cerrarModalConfirmacion();
+    
     try {
         mostrarToast('Generando código QR...', 'info');
         
@@ -396,7 +446,42 @@ async function procesarGeneracionQR(materiaId, fecha) {
                     hora_fin 
                 })
             });
-            console.log('Respuesta QR recibida:', data);
+            console.log('Respuesta QR recibida:', data); 
+            
+            // Mostrar QR generado
+            const qrContainer = document.getElementById('qrContainer');
+            qrContainer.innerHTML = `
+                <div class="panel-card">
+                    <div class="panel-section__head">
+                        <h3><i class="fas fa-qrcode"></i> Código QR Generado</h3>
+                    </div>
+                    <div class="panel-section__body" style="text-align: center;">
+                        <div style="background: white; padding: 20px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            <img src="${data.qr_code}" alt="Código QR" style="width: 200px; height: 200px;">
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <p style="margin: 8px 0; color: var(--text-secondary);">
+                                <strong>Materia:</strong> ${materiaNombre}
+                            </p>
+                            <p style="margin: 8px 0; color: var(--text-secondary);">
+                                <strong>Horario:</strong> ${hora_inicio} - ${hora_fin}
+                            </p>
+                            <p style="margin: 8px 0; color: var(--text-secondary);">
+                                <strong>Válido hasta:</strong> ${hora_fin}
+                            </p>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <button class="btn btn-primary" onclick="window.print()">
+                                <i class="fas fa-print"></i> Imprimir QR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            mostrarToast('Código QR generado exitosamente', 'success');
+            cargarLista(); // Recargar lista para mostrar cambios
+            
         } catch (qrError) {
             console.error('Error en generación QR:', qrError);
             

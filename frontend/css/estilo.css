@@ -2421,27 +2421,6 @@ body.dark-mode .materia-resumen {
     align-items: center;
     gap: 12px;
     padding: 16px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
-    margin-bottom: 16px;
-}
-
-.teacher-avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 1.2rem;
-    flex-shrink: 0;
-}
-
-.teacher-details h3 {
-    font-size: 0.95rem;
-    font-weight: 600;
     margin: 0 0 4px 0;
     color: #fff;
 }
@@ -2791,5 +2770,133 @@ body.dark-mode .materia-resumen {
     .qr-form-input {
         padding: 10px 12px;
         font-size: 0.9rem;
+    }
+}
+
+/* Estilos para modal de confirmación QR */
+.qr-confirmation-details {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.qr-detail-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.qr-detail-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.qr-detail-label i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.qr-detail-value {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.qr-confirmation-info {
+    background: var(--primary-light);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
+    padding: 20px;
+}
+
+.qr-info-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--primary);
+    margin: 0 0 12px 0;
+    font-size: 0.95rem;
+}
+
+.qr-info-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.qr-info-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.qr-info-list li i {
+    color: var(--success);
+    font-size: 0.8rem;
+}
+
+.qr-info-list li:last-child {
+    margin-bottom: 0;
+}
+
+/* Responsive para modal de confirmación */
+@media (max-width: 768px) {
+    .qr-confirmation-details {
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    
+    .qr-detail-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 12px;
+    }
+    
+    .qr-detail-label {
+        font-size: 0.85rem;
+    }
+    
+    .qr-detail-value {
+        font-size: 0.9rem;
+    }
+    
+    .qr-confirmation-info {
+        padding: 16px;
+    }
+    
+    .qr-info-header {
+        font-size: 0.9rem;
+    }
+    
+    .qr-info-list li {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .qr-confirmation-details {
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    
+    .qr-detail-item {
+        padding: 10px;
+    }
+    
+    .qr-confirmation-info {
+        padding: 12px;
     }
 }
