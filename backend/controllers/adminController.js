@@ -50,7 +50,7 @@ const adminController = {
     async getStats(req, res) {
         try {
             const [profesoresResult, estudiantesResult, materiasResult] = await Promise.all([
-                pool.query('SELECT COUNT(*) as total FROM profesores'),
+                pool.query('SELECT COUNT(*) as total FROM usuarios WHERE rol IN (\'profesor\', \'administrador\')'),
                 pool.query('SELECT COUNT(*) as total FROM estudiantes'),
                 pool.query('SELECT COUNT(*) as total FROM materias')
             ]);
@@ -249,7 +249,7 @@ const adminController = {
             const result = await pool.query(`
                 SELECT m.*, p.nombre as profesor_nombre 
                 FROM materias m 
-                LEFT JOIN profesores p ON m.profesor_id = p.id 
+                LEFT JOIN usuarios p ON m.profesor_id = p.id 
                 ORDER BY m.nombre
             `);
             res.json(result.rows);
