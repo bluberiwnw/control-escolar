@@ -588,6 +588,13 @@ async function confirmarGeneracionQR(materiaId, fecha, hora_inicio, hora_fin) {
             }
         }
 
+        // Calcular minutos para duración
+        const [inicioHoras, inicioMinutos] = hora_inicio.split(':').map(Number);
+        const [finHoras, finMinutos] = hora_fin.split(':').map(Number);
+        const minutosInicio = inicioHoras * 60 + inicioMinutos;
+        const minutosFin = finHoras * 60 + finMinutos;
+        const duracionMinutos = minutosFin - minutosInicio;
+
         // Mostrar QR con información detallada y profesional
         const container = document.getElementById('qrContainer');
         container.innerHTML = `
@@ -618,7 +625,7 @@ async function confirmarGeneracionQR(materiaId, fecha, hora_inicio, hora_fin) {
                         </div>
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:#64748b;">Duración:</span>
-                            <span style="font-weight:600; color:#334155;">${Math.floor((minutosFin - minutosInicio) / 60)}h ${((minutosFin - minutosInicio) % 60)}min</span>
+                            <span style="font-weight:600; color:#334155;">${Math.floor(duracionMinutos / 60)}h ${duracionMinutos % 60}min</span>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:#64748b;">Código:</span>
