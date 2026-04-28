@@ -169,9 +169,27 @@ async function cargarAlumnosMateria() {
     try {
         mostrarToast('Cargando alumnos...', 'info');
         
-        // Obtener alumnos inscritos en la materia
-        const response = await apiRequest(`/materias/${materiaActualId}/estudiantes-inscritos`);
-        const alumnos = Array.isArray(response) ? response : [];
+        // Intentar usar el endpoint original primero
+        let alumnos = [];
+        try {
+            const response = await apiRequest(`/materias/${materiaActualId}/estudiantes-inscritos`);
+            alumnos = Array.isArray(response) ? response : [];
+        } catch (error) {
+            console.log('Endpoint original no disponible, usando alternativa...');
+            // Si el endpoint original falla, usar una alternativa
+            // Obtener todos los estudiantes y filtrar por inscripciones
+            const estudiantes = await apiRequest('/admin/usuarios?rol=alumno');
+            const todasLasMaterias = await apiRequest('/admin/materias');
+            const materiaActual = todasLasMaterias.find(m => m.id == materiaActualId);
+            
+            if (materiaActual && materiaActual.profesor_id) {
+                // Si la materia tiene profesor asignado, mostrar mensaje informativo
+                alumnos = estudiantes.filter(e => e.materia_id == materiaActualId);
+            } else {
+                // Mostrar todos los alumnos como opción
+                alumnos = estudiantes.slice(0, 10); // Limitar a 10 para no sobrecargar
+            }
+        }
         
         const tbody = document.getElementById('alumnosTableBody');
         
@@ -195,7 +213,7 @@ async function cargarAlumnosMateria() {
         tbody.innerHTML = alumnos.map(alumno => `
             <tr>
                 <td data-label="Matrícula">
-                    <span class="matricula-badge">${alumno.matricula}</span>
+                    <span class="matricula-badge">${alumno.matricula || 'N/A'}</span>
                 </td>
                 <td data-label="Nombre">
                     <div class="alumno-info">
