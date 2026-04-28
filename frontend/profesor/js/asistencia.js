@@ -359,22 +359,99 @@ async function procesarGeneracionQR(materiaId, fecha) {
         return;
     }
 
-    // Confirmación con detalles
+    // Confirmación con detalles usando modal del sistema
     const materiaNombre = document.getElementById('materiaSelect').options[document.getElementById('materiaSelect').selectedIndex].text;
-    const confirmacion = confirm(
-        `CONFIRMA LOS DATOS\n\n` +
-        `Materia: ${materiaNombre}\n` +
-        `Fecha: ${fecha}\n` +
-        `Horario: ${hora_inicio} - ${hora_fin}\n` +
-        `Duración: ${Math.floor((minutosFin - minutosInicio) / 60)}h ${((minutosFin - minutosInicio) % 60)}min\n\n` +
-        `Los alumnos podrán escanear:\n` +
-        `• Desde las ${hora_inicio}\n` +
-        `• Hasta las ${hora_fin}\n` +
-        `¿Generar código QR con estos datos?`
-    );
     
-    if (!confirmacion) return;
+    // Mostrar modal de confirmación con estilo del sistema
+    mostrarModalConfirmacionQR(materiaId, materiaNombre, fecha, hora_inicio, hora_fin);
+}
 
+function mostrarModalConfirmacionQR(materiaId, materiaNombre, fecha, hora_inicio, hora_fin) {
+    // Calcular minutos para duración
+    const [inicioHoras, inicioMinutos] = hora_inicio.split(':').map(Number);
+    const [finHoras, finMinutos] = hora_fin.split(':').map(Number);
+    const minutosInicio = inicioHoras * 60 + inicioMinutos;
+    const minutosFin = finHoras * 60 + finMinutos;
+    const duracionMinutos = minutosFin - minutosInicio;
+
+    // Crear modal de confirmación con estilo del sistema
+    const modalHTML = `
+        <div class="qr-modal" id="qrConfirmModal">
+            <div class="qr-modal-content">
+                <div class="qr-modal-header">
+                    <h2 class="qr-modal-title">
+                        <i class="fas fa-check-circle"></i>
+                        Confirmar Generación QR
+                    </h2>
+                    <button class="qr-modal-close" onclick="cerrarModalConfirmacion()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="qr-modal-body">
+                    <div class="qr-confirmation-details">
+                        <div class="qr-detail-item">
+                            <label class="qr-detail-label">Materia:</label>
+                            <span class="qr-detail-value">${materiaNombre}</span>
+                        </div>
+                        <div class="qr-detail-item">
+                            <label class="qr-detail-label">Fecha:</label>
+                            <span class="qr-detail-value">${fecha}</span>
+                        </div>
+                        <div class="qr-detail-item">
+                            <label class="qr-detail-label">Horario:</label>
+                            <span class="qr-detail-value">${hora_inicio} - ${hora_fin}</span>
+                        </div>
+                        <div class="qr-detail-item">
+                            <label class="qr-detail-label">Duración:</label>
+                            <span class="qr-detail-value">${Math.floor(duracionMinutos / 60)}h ${duracionMinutos % 60}min</span>
+                        </div>
+                    </div>
+                    
+                    <div class="qr-confirmation-info">
+                        <div class="qr-info-box">
+                            <h4><i class="fas fa-info-circle"></i> Información Importante</h4>
+                            <p>Los alumnos podrán escanear el código QR durante el horario especificado:</p>
+                            <ul>
+                                <li><strong>Válido desde:</strong> ${hora_inicio}</li>
+                                <li><strong>Válido hasta:</strong> ${hora_fin}</li>
+                                <li><strong>Código único:</strong> Solo para esta sesión</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="qr-modal-footer">
+                    <button class="qr-btn qr-btn-secondary" onclick="cerrarModalConfirmacion()">
+                        <i class="fas fa-times"></i>
+                        Cancelar
+                    </button>
+                    <button class="qr-btn qr-btn-primary" onclick="confirmarGeneracionQR('${materiaId}', '${materiaNombre}', '${fecha}', '${hora_inicio}', '${hora_fin}')">
+                        <i class="fas fa-qrcode"></i>
+                        Generar QR
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Agregar modal al body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Prevenir scroll del body
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalConfirmacion() {
+    const modal = document.getElementById('qrConfirmModal');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = '';
+    }
+}
+
+async function confirmarGeneracionQR(materiaId, materiaNombre, fecha, hora_inicio, hora_fin) {
+    // Cerrar modal de confirmación
+    cerrarModalConfirmacion();
+    
     try {
         mostrarToast('Generando código QR...', 'info');
         
