@@ -238,9 +238,9 @@ const registrarAsistenciaQR = async (req, res) => {
   // Registrar asistencia en tabla principal
   const ins = await pool.query(
     `INSERT INTO asistencias (materia_id, estudiante_id, fecha, estado, hora_registro)
-     VALUES ($1, $2, $3, 'presente', CURRENT_TIME)
+     VALUES ($1, $2, $3, 'presente', CURRENT_TIMESTAMP)
      ON CONFLICT (materia_id, estudiante_id, fecha) DO UPDATE
-     SET estado = 'presente', hora_registro = CURRENT_TIME
+     SET estado = 'presente', hora_registro = CURRENT_TIMESTAMP
      RETURNING id`,
     [qr.materia_id, alumnoId, fechaClase]
   );
