@@ -78,13 +78,91 @@
                         <input type="number" id="promedioMateria" step="0.1" min="0" max="10" value="0">
                     </div>
                 </div>
+                <div class="course-footer course-footer--split">
+                    <button type="button" class="btn btn-info btn-sm" onclick="gestionarAlumnos(this)" data-materia-id="${m.id}" data-materia-nombre="${m.nombre}"><i class="fas fa-users"></i> Alumnos</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarMateria(${m.id})"><i class="fas fa-pen"></i> Editar</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarMateria(${m.id})"><i class="fas fa-trash"></i> Eliminar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para gestión de alumnos -->
+    <div id="modalAlumnos" class="modal" style="display:none;">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h2 id="modalAlumnosTitulo">Gestión de Alumnos</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalAlumnos()" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="toolbar-actions">
+                    <button type="button" class="btn btn-primary" onclick="abrirModalAlumnoNuevo()"><i class="fas fa-plus"></i> Nuevo Alumno</button>
+                    <button type="button" class="btn btn-secondary" onclick="cargarAlumnosMateria()"><i class="fas fa-sync"></i> Actualizar Lista</button>
+                </div>
+                <div id="alumnosContainer" class="table-responsive-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-id-card"></i> Matrícula</th>
+                                <th><i class="fas fa-user"></i> Nombre</th>
+                                <th><i class="fas fa-envelope"></i> Email</th>
+                                <th><i class="fas fa-info-circle"></i> Estado</th>
+                                <th><i class="fas fa-cogs"></i> Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alumnosTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 2rem;">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando alumnos...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para crear/editar alumno -->
+    <div id="modalAlumnoForm" class="modal" style="display:none;">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h2 id="modalAlumnoFormTitulo">Nuevo Alumno</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalAlumnoForm()" aria-label="Cerrar">&times;</button>
+            </div>
+            <form id="formAlumno" onsubmit="guardarAlumno(event)">
+                <input type="hidden" id="alumnoIdEdit">
+                <input type="hidden" id="alumnoMateriaId">
+                <div class="form-grid">
+                    <div class="form-group-modern">
+                        <label for="alumnoMatricula">Matrícula</label>
+                        <input type="text" id="alumnoMatricula" required placeholder="Ej. 202400001">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="alumnoNombre">Nombre completo</label>
+                        <input type="text" id="alumnoNombre" required placeholder="Ej. Juan Pérez López">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="alumnoEmail">Email</label>
+                        <input type="email" id="alumnoEmail" required placeholder="Ej. juan.perez@buap.edu.mx">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="alumnoPassword">Contraseña</label>
+                        <input type="password" id="alumnoPassword" placeholder="Dejar en blanco para no cambiar">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="alumnoAnio">Año</label>
+                        <input type="number" id="alumnoAnio" min="1" max="6" required placeholder="Ej. 3">
+                    </div>
+                </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-ghost" onclick="cerrarModalMateria()">Cancelar</button>
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalAlumnoForm()">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
         </div>
     </div>
+    
     <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
