@@ -38,7 +38,7 @@ async function cargarMaterias() {
                             <div class="course-detail"><i class="fas fa-users"></i> ${m.estudiantes ?? 0} estudiantes</div>
                         </div>
                         <div class="course-footer course-footer--split">
-                            <button type="button" class="btn btn-info btn-sm" onclick="gestionarAlumnos(${m.id})"><i class="fas fa-users"></i> Alumnos</button>
+                            <button type="button" class="btn btn-info btn-sm" onclick="gestionarAlumnos(${m.id}, '${m.nombre}')"><i class="fas fa-users"></i> Alumnos</button>
                             <button type="button" class="btn btn-secondary btn-sm" onclick="editarMateria(${m.id})"><i class="fas fa-pen"></i> Editar</button>
                             <button type="button" class="btn btn-danger btn-sm" onclick="eliminarMateria(${m.id})"><i class="fas fa-trash"></i> Eliminar</button>
                         </div>
@@ -153,10 +153,7 @@ async function guardarMateria(ev) {
 let materiaActualId = null;
 let materiaActualNombre = null;
 
-async function gestionarAlumnos(button) {
-    const materiaId = button.dataset.materiaId;
-    const materiaNombre = button.dataset.materiaNombre;
-    
+async function gestionarAlumnos(materiaId, materiaNombre) {
     materiaActualId = materiaId;
     materiaActualNombre = materiaNombre;
     
