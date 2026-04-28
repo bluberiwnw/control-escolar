@@ -518,51 +518,6 @@ const adminController = {
         }
     },
 
-    // Nuevo endpoint para obtener alumnos de una materia
-    async getAlumnosDeMateria(req, res) {
-        try {
-            const { id } = req.params;
-            
-            // Verificar que la materia existe
-            const materiaCheck = await pool.query(
-                'SELECT id, nombre FROM materias WHERE id = $1',
-                [id]
-            );
-            
-            if (materiaCheck.rows.length === 0) {
-                return res.status(404).json({ message: 'Materia no encontrada' });
-            }
-            
-            // Obtener alumnos inscritos en la materia
-            const alumnosQuery = `
-                SELECT 
-                    e.id,
-                    e.matricula,
-                    e.nombre,
-                    e.email,
-                    e.anio,
-                    e.created_at
-                FROM estudiantes e
-                WHERE e.materia_id = $1
-                ORDER BY e.nombre
-            `;
-            
-            const alumnosResult = await pool.query(alumnosQuery, [id]);
-            
-            res.json({
-                materia: materiaCheck.rows[0],
-                alumnos: alumnosResult.rows,
-                total: alumnosResult.rows.length
-            });
-            
-        } catch (error) {
-            console.error('Error al obtener alumnos de la materia:', error);
-            res.status(500).json({ 
-                message: 'Error al obtener alumnos de la materia',
-                error: error.message 
-            });
-        }
-    }
-};
+    };
 
 module.exports = adminController;

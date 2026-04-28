@@ -44,7 +44,6 @@ router.get('/materias', adminController.listarMaterias);
 router.post('/materias', adminController.crearMateria);
 router.put('/materias/:id', adminController.actualizarMateria);
 router.delete('/materias/:id', adminController.eliminarMateria);
-router.get('/materias/:id/alumnos', adminController.getAlumnosDeMateria);
 router.get('/actividades', adminController.listarActividades);
 router.post('/actividades', adminController.crearActividad);
 router.get('/actividades/:id', adminController.getActividadById);
