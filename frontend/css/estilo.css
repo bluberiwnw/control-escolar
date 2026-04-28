@@ -2414,3 +2414,111 @@ body.dark-mode .materia-resumen {
         font-size: 0.85rem !important;
     }
 }
+
+/* Estilos para perfil del alumno - iconos visibles en computadoras */
+.teacher-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 16px;
+}
+
+.teacher-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.teacher-details h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    color: #fff;
+}
+
+.teacher-details p {
+    font-size: 0.8rem;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.profile-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2.5rem;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-md);
+}
+
+.profile-details {
+    flex: 1;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.info-item label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 100px;
+    margin: 0;
+}
+
+.info-item span {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .profile-info {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        padding: 16px;
+    }
+    
+    .profile-avatar {
+        width: 64px;
+        height: 64px;
+        font-size: 2rem;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        gap: 4px;
+        text-align: left;
+    }
+    
+    .info-item label {
+        min-width: auto;
+    }
+}
