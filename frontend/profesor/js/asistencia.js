@@ -425,6 +425,10 @@ function formatearFecha(fechaStr) {
 async function confirmarGeneracionQR(materiaId, fecha, hora_inicio, hora_fin) {
     cerrarModalConfirmacion();
     
+    // Obtener nombre de la materia
+    const materiaSelect = document.getElementById('materiaSelect');
+    const materiaNombre = materiaSelect.options[materiaSelect.selectedIndex].text;
+    
     try {
         mostrarToast('Generando código QR...', 'info');
         

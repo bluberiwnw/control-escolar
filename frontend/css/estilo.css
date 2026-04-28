@@ -2439,24 +2439,54 @@ body.dark-mode .materia-resumen {
 }
 
 .profile-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     color: white !important;
     font-size: 2.5rem !important;
-    flex-shrink: 0;
-    box-shadow: var(--shadow-md);
-    position: relative;
-    z-index: 1;
+    flex-shrink: 0 !important;
+    box-shadow: var(--shadow-md) !important;
+    position: relative !important;
+    z-index: 1 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
-.profile-avatar i {
+.profile-avatar i,
+.profile-avatar::before,
+.profile-avatar::after {
     font-size: 2.5rem !important;
     color: white !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Forzar emoji del perfil del alumno */
+.alumno .profile-avatar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    font-size: 2.5rem !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.alumno .profile-avatar::before {
+    content: "👨‍🎓" !important;
+    font-size: 2.5rem !important;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
