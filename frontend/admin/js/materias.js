@@ -418,6 +418,6 @@ window.cargarAlumnosMateria = cargarAlumnosMateria;
 window.cerrarModalAlumnos = cerrarModalAlumnos;
 window.abrirModalAlumnoNuevo = abrirModalAlumnoNuevo;
 window.editarAlumno = editarAlumno;
-window.cerrarModalAlumnoForm = cerrarModalAlumnoForm;
 window.guardarAlumno = guardarAlumno;
 window.eliminarAlumnoMateria = eliminarAlumnoMateria;
+window.cerrarModalAlumnoForm = cerrarModalAlumnoForm;

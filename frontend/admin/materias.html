@@ -79,7 +79,7 @@
                     </div>
                 </div>
                 <div class="course-footer course-footer--split">
-                    <button type="button" class="btn btn-info btn-sm" onclick="gestionarAlumnos(this)" data-materia-id="${m.id}" data-materia-nombre="${m.nombre}"><i class="fas fa-users"></i> Alumnos</button>
+                    <button type="button" class="btn btn-info btn-sm" onclick="gestionarAlumnos(${m.id}, '${m.nombre}')"><i class="fas fa-users"></i> Alumnos</button>
                     <button type="button" class="btn btn-secondary btn-sm" onclick="editarMateria(${m.id})"><i class="fas fa-pen"></i> Editar</button>
                     <button type="button" class="btn btn-danger btn-sm" onclick="eliminarMateria(${m.id})"><i class="fas fa-trash"></i> Eliminar</button>
                 </div>
