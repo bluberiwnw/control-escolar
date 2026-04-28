@@ -96,8 +96,8 @@ const adminController = {
             }
 
             const result = await pool.query(
-                'INSERT INTO profesores (nombre, email, password, especialidad) VALUES ($1, $2, $3, $4) RETURNING id, nombre, email, especialidad, created_at',
-                [nombre, email, password, especialidad || '']
+                'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING id, nombre, email, rol, created_at',
+                [nombre, email, password, 'profesor']
             );
 
             res.status(201).json(result.rows[0]);
@@ -136,15 +136,15 @@ const adminController = {
                 return res.status(400).json({ error: 'Nombre y email son obligatorios' });
             }
 
-            let query = 'UPDATE profesores SET nombre = $1, email = $2, especialidad = $3';
-            const params = [nombre, email, especialidad || ''];
+            let query = 'UPDATE usuarios SET nombre = $1, email = $2';
+            const params = [nombre, email];
             
             if (password) {
                 query += ', password = $4';
                 params.push(password);
             }
             
-            query += ' WHERE id = $' + (params.length + 1) + ' RETURNING id, nombre, email, especialidad, updated_at';
+            query += ' WHERE id = $' + (params.length + 1) + ' RETURNING id, nombre, email, rol, updated_at';
             params.push(id);
 
             const result = await pool.query(query, params);
@@ -224,11 +224,11 @@ const adminController = {
 
             let query;
             if (tipo === 'profesor') {
-                query = 'DELETE FROM profesores WHERE id = $1';
+                query = 'DELETE FROM usuarios WHERE id = $1 AND rol = \'profesor\'';
             } else if (tipo === 'estudiante') {
                 query = 'DELETE FROM estudiantes WHERE id = $1';
             } else {
-                return res.status(400).json({ error: 'Tipo de usuario inválido' });
+                return res.status(400).json({ error: 'Tipo de usuario no válido' });
             }
 
             const result = await pool.query(query, [id]);
