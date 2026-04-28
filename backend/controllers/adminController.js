@@ -30,494 +30,1140 @@ function errorUsuario(error, fallback) {
         return 'Ya existe un registro con esos datos. Verifica la información e intenta de nuevo.';
     }
     if (error?.code === '23503') {
-        if (String(error.constraint).includes('profesor_id')) {
-            return 'El profesor seleccionado no existe. Verifica la información.';
-        }
-        if (String(error.constraint).includes('materia_id')) {
-            return 'La materia seleccionada no existe. Verifica la información.';
-        }
+        return 'No se puede completar la operación porque existen datos relacionados.';
     }
-    if (error?.code === '23502') {
-        return 'Falta un campo obligatorio. Verifica que todos los campos requeridos estén completos.';
+    return fallback;
+}
+
+function validarCorreo(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function validarNombre(nombre) {
+    const limpio = String(nombre || '').trim();
+    return limpio.length >= 3 && limpio.length <= 120;
+}
+
+function validarMatricula(matricula) {
+    return /^[A-Za-z0-9-]{4,20}$/.test(String(matricula || '').trim());
+}
+
+function limpiarTextoCorto(valor, max = 120) {
+    return String(valor || '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+function validarActividadPayload(payload) {
+    const materiaId = parseEnteroSeguro(payload?.materia_id, NaN);
+    const tipo = limpiarTextoCorto(payload?.tipo, 20).toLowerCase();
+    const titulo = limpiarTextoCorto(payload?.titulo, 120);
+    const descripcion = String(payload?.descripcion || '').trim().slice(0, 600);
+    const fechaEntrega = String(payload?.fecha_entrega || '').trim();
+    const valor = parseEnteroSeguro(payload?.valor, NaN);
+    if (!Number.isInteger(materiaId) || materiaId <= 0) {
+        return { ok: false, message: 'Selecciona una materia válida.' };
     }
-    if (error?.code === '23514') {
-        return 'Uno de los valores ingresados no es válido. Verifica la información.';
+    if (!TIPOS_ACTIVIDAD.has(tipo)) {
+        return { ok: false, message: 'El tipo de actividad no es válido.' };
     }
-    return fallback || 'Error en la base de datos. Inténtalo de nuevo.';
+    if (titulo.length < 4 || titulo.length > 120) {
+        return { ok: false, message: 'El título debe tener entre 4 y 120 caracteres.' };
+    }
+    if (descripcion.length > 600) {
+        return { ok: false, message: 'La descripción no puede exceder 600 caracteres.' };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaEntrega) || Number.isNaN(Date.parse(fechaEntrega))) {
+        return { ok: false, message: 'La fecha de entrega no es válida.' };
+    }
+    if (!Number.isInteger(valor) || valor < 1 || valor > 100) {
+        return { ok: false, message: 'El valor debe ser un número entre 1 y 100.' };
+    }
+    return {
+        ok: true,
+        data: { materia_id: materiaId, tipo, titulo, descripcion, fecha_entrega: fechaEntrega, valor },
+    };
 }
 
 const adminController = {
+    // Estadísticas generales
     async getStats(req, res) {
         try {
-            const [profesoresResult, estudiantesResult, materiasResult] = await Promise.all([
-                pool.query('SELECT COUNT(*) as total FROM usuarios WHERE rol IN (\'profesor\', \'administrador\')'),
-                pool.query('SELECT COUNT(*) as total FROM estudiantes'),
-                pool.query('SELECT COUNT(*) as total FROM materias')
-            ]);
-
+            const profesores = await pool.query("SELECT COUNT(*) FROM usuarios WHERE rol = 'profesor'");
+            const administradores = await pool.query("SELECT COUNT(*) FROM usuarios WHERE rol = 'administrador'");
+            const estudiantes = await pool.query('SELECT COUNT(*) FROM estudiantes');
+            const materias = await pool.query('SELECT COUNT(*) FROM materias');
+            const actividades = await pool.query('SELECT COUNT(*) FROM actividades');
+            const alumnosPorAnio = await pool.query(`
+                SELECT EXTRACT(YEAR FROM created_at)::int AS anio, COUNT(*)::int AS total
+                FROM estudiantes
+                WHERE created_at IS NOT NULL
+                GROUP BY 1
+                ORDER BY 1 DESC
+                LIMIT 5
+            `);
             res.json({
-                profesores: parseInt(profesoresResult.rows[0].total),
-                estudiantes: parseInt(estudiantesResult.rows[0].total),
-                materias: parseInt(materiasResult.rows[0].total)
+                profesores: parseInt(profesores.rows[0].count),
+                administradores: parseInt(administradores.rows[0].count),
+                estudiantes: parseInt(estudiantes.rows[0].count),
+                materias: parseInt(materias.rows[0].count),
+                actividades: parseInt(actividades.rows[0].count),
+                alumnos_por_anio: alumnosPorAnio.rows.reverse()
             });
         } catch (error) {
-            console.error('Error en stats:', error);
-            res.status(500).json({ error: 'Error al obtener estadísticas' });
+            res.status(500).json({ message: 'No se pudieron cargar las estadísticas del dashboard.' });
         }
     },
 
+    // Listar usuarios (profesores o estudiantes)
     async listarUsuarios(req, res) {
         try {
             const { rol } = req.query;
-            let query = 'SELECT id, nombre, email, rol, created_at FROM usuarios';
-            const params = [];
-
-            if (rol) {
-                query += ' WHERE rol = $1';
-                params.push(rol);
+            console.log(`Listando usuarios con rol: ${rol}`);
+            
+            if (rol === 'profesor') {
+                const query = 'SELECT id, nombre, email, rol, activo, created_at FROM usuarios WHERE rol IN ($1, $2) ORDER BY nombre';
+                const result = await pool.query(query, ['profesor', 'administrador']);
+                console.log(`Profesores encontrados: ${result.rows.length}`);
+                res.json(result.rows);
+            } else if (rol === 'alumno') {
+                const query = 'SELECT id, nombre, email, activo, created_at FROM estudiantes ORDER BY nombre';
+                const result = await pool.query(query);
+                console.log(`Estudiantes encontrados: ${result.rows.length}`);
+                res.json(result.rows);
+            } else {
+                console.log('Rol no válido:', rol);
+                res.status(400).json({ error: 'Rol no válido' });
             }
-
-            query += ' ORDER BY nombre';
-
-            const result = await pool.query(query, params);
-            res.json(result.rows);
         } catch (error) {
-            console.error('Error listando usuarios:', error);
-            res.status(500).json({ error: 'Error al listar usuarios' });
+            console.error('Error en listarUsuarios:', error);
+            res.status(500).json({ 
+                error: 'Error al cargar usuarios', 
+                message: 'No se pudieron cargar los usuarios. Intenta de nuevo.' 
+            });
         }
     },
 
+    // Crear profesor (usuario)
     async crearProfesor(req, res) {
         try {
-            const { nombre, email, password, especialidad } = req.body;
-
-            if (!nombre || !email || !password) {
-                return res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios' });
+            const { nombre, email, password, rol } = req.body;
+            if (!validarNombre(nombre)) {
+                return res.status(400).json({ message: 'El nombre debe tener entre 3 y 120 caracteres.' });
             }
-
+            if (!validarCorreo(email)) {
+                return res.status(400).json({ message: 'Ingresa un correo electrónico válido.' });
+            }
+            if (String(password || '').length < 6) {
+                return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres.' });
+            }
+            if (rol && !['profesor', 'administrador'].includes(rol)) {
+                return res.status(400).json({ message: 'El rol indicado no es válido.' });
+            }
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = bcrypt.hashSync(password, 10);
             const result = await pool.query(
-                'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING id, nombre, email, rol, created_at',
-                [nombre, email, password, 'profesor']
+                'INSERT INTO usuarios (nombre, email, password, rol, activo) VALUES ($1, $2, $3, $4, true) RETURNING id',
+                [nombre, email, hashedPassword, rol || 'profesor']
             );
-
-            res.status(201).json(result.rows[0]);
+            res.status(201).json({ id: result.rows[0].id, message: 'Profesor creado' });
         } catch (error) {
-            console.error('Error creando profesor:', error);
-            res.status(500).json({ error: errorUsuario(error, 'Error al crear profesor') });
+            res.status(500).json({ message: errorUsuario(error, 'No se pudo crear el profesor.') });
         }
     },
 
+    // Crear estudiante
     async crearEstudiante(req, res) {
         try {
-            const { nombre, email, password, matricula, anio, materia_id } = req.body;
-
-            if (!nombre || !email || !matricula) {
-                return res.status(400).json({ error: 'Nombre, email y matrícula son obligatorios' });
+            const { nombre, email, password } = req.body;
+            
+            if (!validarNombre(nombre)) {
+                return res.status(400).json({ message: 'El nombre debe tener entre 3 y 120 caracteres.' });
             }
-
+            if (!validarCorreo(email)) {
+                return res.status(400).json({ message: 'Ingresa un correo electrónico válido.' });
+            }
+            if (String(password || '').length < 6) {
+                return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres.' });
+            }
+            
+            // Generar matrícula automáticamente
+            const year = new Date().getFullYear();
+            const randomNum = Math.floor(Math.random() * 9000) + 1000;
+            const matricula = `${year}-${randomNum}`;
+            
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = bcrypt.hashSync(password, 10);
             const result = await pool.query(
-                'INSERT INTO estudiantes (nombre, email, password, matricula, anio, materia_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nombre, email, matricula, anio, materia_id, created_at',
-                [nombre, email, password || '', matricula, anio || 1, materia_id || null]
+                'INSERT INTO estudiantes (matricula, nombre, email, password, activo) VALUES ($1, $2, $3, $4, true) RETURNING id',
+                [matricula, nombre, email, hashedPassword]
             );
-
-            res.status(201).json(result.rows[0]);
+            res.status(201).json({ id: result.rows[0].id, matricula, message: 'Estudiante creado' });
         } catch (error) {
-            console.error('Error creando estudiante:', error);
-            res.status(500).json({ error: errorUsuario(error, 'Error al crear estudiante') });
+            res.status(500).json({ message: errorUsuario(error, 'No se pudo crear el estudiante.') });
+        }
+    },
+
+    // Eliminar usuario (profesor, administrador o estudiante)
+    async eliminarUsuario(req, res) {
+        try {
+            const { id, tipo } = req.params;
+            if (tipo === 'profesor' || tipo === 'administrador') {
+                await pool.query('DELETE FROM usuarios WHERE id = $1', [id]);
+            } else if (tipo === 'alumno') {
+                await pool.query('DELETE FROM estudiantes WHERE id = $1', [id]);
+            } else {
+                return res.status(400).json({ error: 'Tipo no válido' });
+            }
+            res.json({ message: 'Usuario eliminado' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
     },
 
     async actualizarProfesor(req, res) {
         try {
             const { id } = req.params;
-            const { nombre, email, password, especialidad } = req.body;
-
-            if (!nombre || !email) {
-                return res.status(400).json({ error: 'Nombre y email son obligatorios' });
+            const { nombre, email } = req.body;
+            if (!validarNombre(nombre)) {
+                return res.status(400).json({ message: 'El nombre debe tener entre 3 y 120 caracteres.' });
             }
-
-            let query = 'UPDATE usuarios SET nombre = $1, email = $2';
-            const params = [nombre, email];
-            
-            if (password) {
-                query += ', password = $4';
-                params.push(password);
+            if (!validarCorreo(email)) {
+                return res.status(400).json({ message: 'Ingresa un correo electrónico válido.' });
             }
-            
-            query += ' WHERE id = $' + (params.length + 1) + ' RETURNING id, nombre, email, rol, updated_at';
-            params.push(id);
-
-            const result = await pool.query(query, params);
-
-            if (result.rows.length === 0) {
-                return res.status(404).json({ error: 'Profesor no encontrado' });
-            }
-
-            res.json(result.rows[0]);
+            await pool.query(
+                'UPDATE usuarios SET nombre = $1, email = $2 WHERE id = $3 AND rol IN ($4, $5)',
+                [nombre, email, id, 'profesor', 'administrador']
+            );
+            res.json({ message: 'Profesor actualizado' });
         } catch (error) {
-            console.error('Error actualizando profesor:', error);
-            res.status(500).json({ error: errorUsuario(error, 'Error al actualizar profesor') });
+            res.status(500).json({ message: errorUsuario(error, 'No se pudo actualizar el profesor.') });
         }
     },
 
     async actualizarEstudiante(req, res) {
         try {
             const { id } = req.params;
-            const { nombre, email, password, matricula, anio, materia_id } = req.body;
-
-            if (!nombre || !email || !matricula) {
-                return res.status(400).json({ error: 'Nombre, email y matrícula son obligatorios' });
+            const { nombre, email } = req.body;
+            if (!validarNombre(nombre)) {
+                return res.status(400).json({ message: 'El nombre debe tener entre 3 y 120 caracteres.' });
             }
-
-            let query = 'UPDATE estudiantes SET nombre = $1, email = $2, matricula = $3, anio = $4, materia_id = $5';
-            const params = [nombre, email, matricula, anio || 1, materia_id || null];
-            
-            if (password) {
-                query += ', password = $6';
-                params.push(password);
+            if (!validarCorreo(email)) {
+                return res.status(400).json({ message: 'Ingresa un correo electrónico válido.' });
             }
-            
-            query += ' WHERE id = $' + (params.length + 1) + ' RETURNING id, nombre, email, matricula, anio, materia_id, updated_at';
-            params.push(id);
-
-            const result = await pool.query(query, params);
-
-            if (result.rows.length === 0) {
-                return res.status(404).json({ error: 'Estudiante no encontrado' });
-            }
-
-            res.json(result.rows[0]);
-        } catch (error) {
-            console.error('Error actualizando estudiante:', error);
-            res.status(500).json({ error: errorUsuario(error, 'Error al actualizar estudiante') });
-        }
-    },
-
-    async actualizarContraseña(req, res) {
-        try {
-            const { id } = req.params;
-            const { password } = req.body;
-
-            if (!password) {
-                return res.status(400).json({ error: 'La contraseña es obligatoria' });
-            }
-
-            const result = await pool.query(
-                'UPDATE usuarios SET password = $1 WHERE id = $2 RETURNING id',
-                [password, id]
+            await pool.query(
+                'UPDATE estudiantes SET nombre = $1, email = $2 WHERE id = $3',
+                [nombre, email, id]
             );
-
-            if (result.rows.length === 0) {
-                return res.status(404).json({ error: 'Usuario no encontrado' });
-            }
-
-            res.json({ message: 'Contraseña actualizada correctamente' });
+            res.json({ message: 'Estudiante actualizado' });
         } catch (error) {
-            console.error('Error actualizando contraseña:', error);
-            res.status(500).json({ error: 'Error al actualizar contraseña' });
+            res.status(500).json({ message: errorUsuario(error, 'No se pudo actualizar el estudiante.') });
         }
     },
 
-    async eliminarUsuario(req, res) {
-        try {
-            const { id, tipo } = req.params;
-
-            let query;
-            if (tipo === 'profesor') {
-                query = 'DELETE FROM usuarios WHERE id = $1 AND rol = \'profesor\'';
-            } else if (tipo === 'estudiante') {
-                query = 'DELETE FROM estudiantes WHERE id = $1';
-            } else {
-                return res.status(400).json({ error: 'Tipo de usuario no válido' });
-            }
-
-            const result = await pool.query(query, [id]);
-
-            if (result.rowCount === 0) {
-                return res.status(404).json({ error: 'Usuario no encontrado' });
-            }
-
-            res.json({ message: 'Usuario eliminado correctamente' });
-        } catch (error) {
-            console.error('Error eliminando usuario:', error);
-            res.status(500).json({ error: 'Error al eliminar usuario' });
-        }
-    },
-
+    // Listar todas las materias (con nombre del profesor)
     async listarMaterias(req, res) {
         try {
             const result = await pool.query(`
-                SELECT m.*, p.nombre as profesor_nombre 
-                FROM materias m 
-                LEFT JOIN usuarios p ON m.profesor_id = p.id 
+                SELECT m.*, u.nombre as profesor_nombre 
+                FROM materias m
+                LEFT JOIN usuarios u ON m.profesor_id = u.id
                 ORDER BY m.nombre
             `);
             res.json(result.rows);
         } catch (error) {
-            console.error('Error listando materias:', error);
-            res.status(500).json({ error: 'Error al listar materias' });
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    // Eliminar materia
+    async eliminarMateria(req, res) {
+        try {
+            const { id } = req.params;
+            await pool.query('DELETE FROM materias WHERE id = $1', [id]);
+            res.json({ message: 'Materia eliminada' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
     },
 
     async crearMateria(req, res) {
         try {
-            const { nombre, clave, descripcion, horario, profesor_id, semestre, estudiantes, promedio, bajas } = req.body;
-
-            if (!nombre || !clave) {
-                return res.status(400).json({ error: 'Nombre y clave son obligatorios' });
+            const { nombre, clave, horario, estudiantes, bajas, promedio, semestre, profesor_id } = req.body;
+            const alumnosRegistrados = parseEnteroSeguro(estudiantes, 0);
+            const totalBajas = parseEnteroSeguro(bajas, 0);
+            const promedioMateria = parseDecimalSeguro(promedio, 0);
+            if (!validarNombre(nombre)) {
+                return res.status(400).json({ message: 'El nombre de la materia debe tener entre 3 y 120 caracteres.' });
             }
-
-            const result = await pool.query(
-                'INSERT INTO materias (nombre, clave, descripcion, horario, profesor_id, semestre, estudiantes, promedio, bajas) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-                [nombre, clave, descripcion || '', horario || '', profesor_id || null, semestre || '', estudiantes || 0, promedio || 0, bajas || 0]
+            if (!/^[A-Za-z0-9-]{3,20}$/.test(String(clave || '').trim())) {
+                return res.status(400).json({ message: 'La clave debe tener entre 3 y 20 caracteres válidos.' });
+            }
+            if (!String(horario || '').trim() || !String(semestre || '').trim()) {
+                return res.status(400).json({ message: 'Completa los campos obligatorios de horario y semestre.' });
+            }
+            if (alumnosRegistrados < 0 || totalBajas < 0 || totalBajas > alumnosRegistrados) {
+                return res.status(400).json({ message: 'Los valores de estudiantes y bajas no son válidos.' });
+            }
+            if (promedioMateria < 0 || promedioMateria > 10) {
+                return res.status(400).json({ message: 'El promedio debe estar entre 0 y 10.' });
+            }
+            const r = await pool.query(
+                `INSERT INTO materias (nombre, clave, horario, estudiantes, bajas, promedio, semestre, color, profesor_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+                [
+                    nombre,
+                    clave,
+                    horario || '',
+                    alumnosRegistrados,
+                    totalBajas,
+                    promedioMateria,
+                    semestre || '',
+                    'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
+                    profesor_id || null,
+                ]
             );
-
-            res.status(201).json(result.rows[0]);
+            res.status(201).json({ id: r.rows[0].id, message: 'Materia creada' });
         } catch (error) {
-            console.error('Error creando materia:', error);
-            res.status(500).json({ error: errorUsuario(error, 'Error al crear materia') });
+            res.status(500).json({ message: errorUsuario(error, 'No se pudo crear la materia.') });
         }
     },
 
     async actualizarMateria(req, res) {
         try {
             const { id } = req.params;
-            const { nombre, clave, descripcion, horario, profesor_id, semestre, estudiantes, promedio, bajas } = req.body;
-
-            if (!nombre || !clave) {
-                return res.status(400).json({ error: 'Nombre y clave son obligatorios' });
+            const { nombre, clave, horario, estudiantes, bajas, promedio, semestre, profesor_id } = req.body;
+            const alumnosRegistrados = parseEnteroSeguro(estudiantes, 0);
+            const totalBajas = parseEnteroSeguro(bajas, 0);
+            const promedioMateria = parseDecimalSeguro(promedio, 0);
+            if (!validarNombre(nombre)) {
+                return res.status(400).json({ message: 'El nombre de la materia debe tener entre 3 y 120 caracteres.' });
             }
-
-            const result = await pool.query(
-                'UPDATE materias SET nombre = $1, clave = $2, descripcion = $3, horario = $4, profesor_id = $5, semestre = $6, estudiantes = $7, promedio = $8, bajas = $9 WHERE id = $10 RETURNING *',
-                [nombre, clave, descripcion || '', horario || '', profesor_id || null, semestre || '', estudiantes || 0, promedio || 0, bajas || 0, id]
+            if (!/^[A-Za-z0-9-]{3,20}$/.test(String(clave || '').trim())) {
+                return res.status(400).json({ message: 'La clave debe tener entre 3 y 20 caracteres válidos.' });
+            }
+            if (!String(horario || '').trim() || !String(semestre || '').trim()) {
+                return res.status(400).json({ message: 'Completa los campos obligatorios de horario y semestre.' });
+            }
+            if (alumnosRegistrados < 0 || totalBajas < 0 || totalBajas > alumnosRegistrados) {
+                return res.status(400).json({ message: 'Los valores de estudiantes y bajas no son válidos.' });
+            }
+            if (promedioMateria < 0 || promedioMateria > 10) {
+                return res.status(400).json({ message: 'El promedio debe estar entre 0 y 10.' });
+            }
+            await pool.query(
+                `UPDATE materias SET nombre=$1, clave=$2, horario=$3, estudiantes=$4, bajas=$5, promedio=$6, semestre=$7, color=$8, profesor_id=$9
+                 WHERE id=$10`,
+                [
+                    nombre,
+                    clave,
+                    horario,
+                    alumnosRegistrados,
+                    totalBajas,
+                    promedioMateria,
+                    semestre,
+                    'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
+                    profesor_id || null,
+                    id,
+                ]
             );
-
-            if (result.rows.length === 0) {
-                return res.status(404).json({ error: 'Materia no encontrada' });
-            }
-
-            res.json(result.rows[0]);
+            res.json({ message: 'Materia actualizada' });
         } catch (error) {
-            console.error('Error actualizando materia:', error);
-            res.status(500).json({ error: errorUsuario(error, 'Error al actualizar materia') });
-        }
-    },
-
-    async eliminarMateria(req, res) {
-        try {
-            const { id } = req.params;
-
-            const result = await pool.query('DELETE FROM materias WHERE id = $1', [id]);
-
-            if (result.rowCount === 0) {
-                return res.status(404).json({ error: 'Materia no encontrada' });
-            }
-
-            res.json({ message: 'Materia eliminada correctamente' });
-        } catch (error) {
-            console.error('Error eliminando materia:', error);
-            res.status(500).json({ error: 'Error al eliminar materia' });
-        }
-    },
-
-    // Funciones para actividades (placeholder)
-    async listarActividades(req, res) {
-        try {
-            res.json([]);
-        } catch (error) {
-            res.status(500).json({ error: 'Error al listar actividades' });
+            res.status(500).json({ message: errorUsuario(error, 'No se pudo actualizar la materia.') });
         }
     },
 
     async crearActividad(req, res) {
         try {
-            res.status(201).json({ message: 'Actividad creada' });
+            const validacion = validarActividadPayload(req.body);
+            if (!validacion.ok) {
+                return res.status(400).json({ message: validacion.message });
+            }
+            const { materia_id, tipo, titulo, descripcion, fecha_entrega, valor } = validacion.data;
+            const materiaCheck = await pool.query('SELECT id FROM materias WHERE id = $1', [materia_id]);
+            if (materiaCheck.rowCount === 0) {
+                return res.status(404).json({ message: 'La materia indicada no existe.' });
+            }
+            const r = await pool.query(
+                `INSERT INTO actividades (materia_id, tipo, titulo, descripcion, fecha_entrega, valor)
+                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+                [materia_id, tipo, titulo, descripcion, fecha_entrega, valor]
+            );
+            res.status(201).json({ id: r.rows[0].id, message: 'Actividad creada' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al crear actividad' });
+            res.status(500).json({ message: 'No se pudo crear la actividad.' });
         }
     },
 
-    async getActividadById(req, res) {
+    // Listar todas las actividades (con nombre de materia)
+    async listarActividades(req, res) {
         try {
-            res.json({});
+            const result = await pool.query(`
+                SELECT a.*, m.nombre as materia_nombre 
+                FROM actividades a
+                JOIN materias m ON a.materia_id = m.id
+                ORDER BY a.fecha_entrega DESC
+            `);
+            res.json(result.rows);
         } catch (error) {
-            res.status(500).json({ error: 'Error al obtener actividad' });
+            res.status(500).json({ message: 'No se pudieron cargar las actividades.' });
         }
     },
 
-    async updateActividad(req, res) {
-        try {
-            res.json({ message: 'Actividad actualizada' });
-        } catch (error) {
-            res.status(500).json({ error: 'Error al actualizar actividad' });
-        }
-    },
-
+    // Eliminar actividad
     async eliminarActividad(req, res) {
         try {
+            const { id } = req.params;
+            const idActividad = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(idActividad) || idActividad <= 0) {
+                return res.status(400).json({ message: 'ID de actividad no válido.' });
+            }
+            const result = await pool.query('DELETE FROM actividades WHERE id = $1', [idActividad]);
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'Actividad no encontrada.' });
+            }
             res.json({ message: 'Actividad eliminada' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al eliminar actividad' });
+            res.status(500).json({ message: 'No se pudo eliminar la actividad.' });
         }
     },
 
-    // Funciones para asistencias
-    async getReportesAsistenciaGeneral(req, res) {
-        try {
-            res.json([]);
-        } catch (error) {
-            res.status(500).json({ error: 'Error al obtener reportes de asistencia' });
-        }
-    },
-
+    // Listar asistencias con filtros
     async listarAsistencias(req, res) {
-        try {
-            res.json([]);
-        } catch (error) {
-            res.status(500).json({ error: 'Error al listar asistencias' });
+    try {
+        const { fecha, materia_id, todas } = req.query;
+        let query = `
+            SELECT a.id, a.materia_id, a.estudiante_id, a.fecha, a.estado,
+                   m.nombre as materia_nombre, e.nombre as estudiante_nombre
+            FROM asistencias a
+            JOIN materias m ON a.materia_id = m.id
+            JOIN estudiantes e ON a.estudiante_id = e.id
+            WHERE 1=1
+        `;
+        const params = [];
+        let idx = 1;
+        if (fecha && String(todas) !== 'true') {
+            query += ` AND a.fecha = $${idx}`;
+            params.push(fecha);
+            idx++;
         }
-    },
-
-    async exportarAsistenciasCSV(req, res) {
-        try {
-            res.json([]);
-        } catch (error) {
-            res.status(500).json({ error: 'Error al exportar asistencias CSV' });
+        if (materia_id) {
+            query += ` AND a.materia_id = $${idx}`;
+            params.push(materia_id);
+            idx++;
         }
-    },
+        query += ' ORDER BY a.fecha DESC, m.nombre, e.nombre';
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+},
 
-    async exportarAsistenciasExcel(req, res) {
-        try {
-            res.json([]);
-        } catch (error) {
-            res.status(500).json({ error: 'Error al exportar asistencias Excel' });
-        }
-    },
-
-    async exportarAsistenciasPDF(req, res) {
-        try {
-            res.json([]);
-        } catch (error) {
-            res.status(500).json({ error: 'Error al exportar asistencias PDF' });
-        }
-    },
-
-    async reporteAsistenciaPorCurso(req, res) {
-        try {
-            res.json({});
-        } catch (error) {
-            res.status(500).json({ error: 'Error al generar reporte de asistencia por curso' });
-        }
-    },
-
-    // Funciones para calificaciones
+    // Listar calificaciones con filtros
     async listarCalificaciones(req, res) {
         try {
-            res.json([]);
+            const { materia_id } = req.query;
+            let query = `
+                SELECT c.*, m.nombre as materia_nombre, e.nombre as estudiante_nombre, a.titulo as actividad_titulo
+                FROM calificaciones c
+                JOIN materias m ON c.materia_id = m.id
+                JOIN estudiantes e ON c.estudiante_id = e.id
+                LEFT JOIN actividades a ON c.actividad_id = a.id
+                WHERE 1=1
+            `;
+            const params = [];
+            if (materia_id) {
+                query += ` AND c.materia_id = $1`;
+                params.push(materia_id);
+            }
+            query += ' ORDER BY m.nombre, e.nombre, c.fecha_registro DESC';
+            const result = await pool.query(query, params);
+            res.json(result.rows);
         } catch (error) {
-            res.status(500).json({ error: 'Error al listar calificaciones' });
+            res.status(500).json({ error: error.message });
         }
     },
 
     async actualizarCalificacion(req, res) {
         try {
-            res.json({ message: 'Calificación actualizada' });
+            const { id } = req.params;
+            const { calificacion } = req.body;
+            const valor = parseDecimalSeguro(calificacion, NaN);
+            if (Number.isNaN(valor) || valor < 5 || valor > 10) {
+                return res.status(400).json({ message: 'La calificación debe estar entre 5 y 10.' });
+            }
+            await pool.query(
+                'UPDATE calificaciones SET calificacion = $1 WHERE id = $2',
+                [valor, id]
+            );
+            res.json({ message: 'Calificacion actualizada' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al actualizar calificación' });
+            res.status(500).json({ message: 'No se pudo actualizar la calificación.' });
         }
     },
 
     async eliminarCalificacion(req, res) {
         try {
-            res.json({ message: 'Calificación eliminada' });
+            const { id } = req.params;
+            const result = await pool.query('DELETE FROM calificaciones WHERE id = $1', [id]);
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'La calificación ya no existe.' });
+            }
+            res.json({ message: 'Calificación eliminada correctamente.' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al eliminar calificación' });
+            res.status(500).json({ message: 'No se pudo eliminar la calificación.' });
         }
     },
 
-    // Funciones para reportes
+    // Reportes globales
     async getReportes(req, res) {
         try {
-            res.json([]);
+            // Promedio general de calificaciones
+            const promedio = await pool.query('SELECT AVG(calificacion) as promedio FROM calificaciones');
+            const rendimientoSobresaliente = await pool.query(`
+                SELECT 
+                    (COUNT(CASE WHEN calificacion >= 8 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0)) as porcentaje 
+                FROM calificaciones
+            `);
+            const materiasRendimiento = await pool.query(`
+                SELECT m.nombre, AVG(c.calificacion) as promedio
+                FROM calificaciones c
+                JOIN materias m ON c.materia_id = m.id
+                GROUP BY m.id, m.nombre
+                ORDER BY promedio DESC
+            `);
+            res.json({
+                promedio_general: parseFloat(promedio.rows[0].promedio) || 0,
+                porcentaje_sobresaliente: parseFloat(rendimientoSobresaliente.rows[0].porcentaje) || 0,
+                materias_rendimiento: materiasRendimiento.rows
+            });
         } catch (error) {
-            res.status(500).json({ error: 'Error al obtener reportes' });
+            res.status(500).json({ message: 'No se pudieron generar los reportes.' });
         }
     },
 
-    // Funciones adicionales placeholder
+    // Obtener una actividad por ID (para editar)
+    async getActividadById(req, res) {
+        try {
+            const { id } = req.params;
+            const idActividad = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(idActividad) || idActividad <= 0) {
+                return res.status(400).json({ message: 'ID de actividad no válido.' });
+            }
+            const result = await pool.query('SELECT * FROM actividades WHERE id = $1', [idActividad]);
+            if (result.rows.length === 0) return res.status(404).json({ message: 'Actividad no encontrada.' });
+            res.json(result.rows[0]);
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo obtener la actividad.' });
+        }
+    },
+
+    // Actualizar actividad
+    async updateActividad(req, res) {
+        try {
+            const { id } = req.params;
+            const idActividad = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(idActividad) || idActividad <= 0) {
+                return res.status(400).json({ message: 'ID de actividad no válido.' });
+            }
+            const validacion = validarActividadPayload(req.body);
+            if (!validacion.ok) {
+                return res.status(400).json({ message: validacion.message });
+            }
+            const { titulo, descripcion, fecha_entrega, tipo, valor, materia_id } = validacion.data;
+            const materiaCheck = await pool.query('SELECT id FROM materias WHERE id = $1', [materia_id]);
+            if (materiaCheck.rowCount === 0) {
+                return res.status(404).json({ message: 'La materia indicada no existe.' });
+            }
+            await pool.query(
+                `UPDATE actividades SET materia_id=$1, titulo=$2, descripcion=$3, fecha_entrega=$4, tipo=$5, valor=$6 WHERE id=$7`,
+                [materia_id, titulo, descripcion, fecha_entrega, tipo, valor, idActividad]
+            );
+            res.json({ message: 'Actualizada' });
+        } catch (error) {
+            res.status(500).json({ message: 'No se pudo actualizar la actividad.' });
+        }
+    },
+    
+    // Eliminar asistencia por ID
     async deleteAsistencia(req, res) {
         try {
+            const { id } = req.params;
+            await pool.query('DELETE FROM asistencias WHERE id = $1', [id]);
             res.json({ message: 'Asistencia eliminada' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al eliminar asistencia' });
+            res.status(500).json({ error: error.message });
         }
     },
 
     async actualizarAsistencia(req, res) {
         try {
+            const { id } = req.params;
+            const { estado } = req.body;
+            if (!ESTADOS_ASISTENCIA.has(String(estado || '').trim())) {
+                return res.status(400).json({ message: 'El estado de asistencia no es válido.' });
+            }
+            await pool.query(
+                'UPDATE asistencias SET estado = $1 WHERE id = $2',
+                [estado, id]
+            );
             res.json({ message: 'Asistencia actualizada' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al actualizar asistencia' });
+            res.status(500).json({ message: 'No se pudo actualizar la asistencia.' });
         }
     },
 
     async listarArchivosCalificaciones(req, res) {
         try {
-            res.json([]);
+            const result = await pool.query(
+                `SELECT a.*, m.nombre AS materia_nombre, u.nombre AS profesor_nombre
+                 FROM archivos_calificaciones a
+                 JOIN materias m ON a.materia_id = m.id
+                 JOIN usuarios u ON a.profesor_id = u.id
+                 ORDER BY a.fecha_subida DESC`
+            );
+            res.json(
+                result.rows.map((row) => ({
+                    ...row,
+                    archivo_url: `/uploads/${encodeURIComponent(row.nombre_archivo)}`,
+                }))
+            );
         } catch (error) {
-            res.status(500).json({ error: 'Error al listar archivos de calificaciones' });
+            res.status(500).json({ message: 'No se pudieron cargar los archivos de calificaciones.' });
         }
     },
 
     async descargarArchivoCalificacionAdmin(req, res) {
         try {
-            res.json({ message: 'Descarga de archivo' });
+            const id = parseEnteroSeguro(req.params.id, NaN);
+            if (!Number.isInteger(id) || id <= 0) {
+                return res.status(400).json({ message: 'ID no válido.' });
+            }
+            const find = await pool.query(
+                'SELECT nombre_archivo FROM archivos_calificaciones WHERE id = $1',
+                [id]
+            );
+            if (find.rowCount === 0 || !find.rows[0].nombre_archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado.' });
+            }
+            const nombre = find.rows[0].nombre_archivo;
+            const full = path.join(__dirname, '../uploads', nombre);
+            if (!fs.existsSync(full)) {
+                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
+            }
+            return res.download(full, nombre);
         } catch (error) {
-            res.status(500).json({ error: 'Error al descargar archivo' });
+            res.status(500).json({ message: 'No se pudo descargar el archivo.' });
         }
     },
 
     async eliminarArchivoCalificacion(req, res) {
         try {
+            const { id } = req.params;
+            const result = await pool.query(
+                'DELETE FROM archivos_calificaciones WHERE id = $1 RETURNING nombre_archivo',
+                [id]
+            );
+            if (result.rowCount === 0) {
+                return res.status(404).json({ error: 'Archivo no encontrado' });
+            }
+            const fileName = result.rows[0].nombre_archivo;
+            const fullPath = path.join(__dirname, '../uploads', fileName);
+            if (fs.existsSync(fullPath)) {
+                try {
+                    fs.unlinkSync(fullPath);
+                } catch (_) {
+                    /* ignorar si no se puede borrar el archivo físico */
+                }
+            }
             res.json({ message: 'Archivo eliminado' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al eliminar archivo' });
+            res.status(500).json({ error: error.message });
         }
     },
 
     async listarArchivosEntregas(req, res) {
         try {
-            res.json([]);
+            const { materia_id } = req.query;
+            const params = [];
+            let idx = 1;
+            let query = `
+                SELECT e.id, e.archivo, e.comentario, e.calificacion, e.actividad_id, e.estudiante_id,
+                       a.titulo AS actividad_titulo, a.materia_id,
+                       m.nombre AS materia_nombre, s.nombre AS estudiante_nombre
+                FROM entregas e
+                JOIN actividades a ON e.actividad_id = a.id
+                JOIN materias m ON a.materia_id = m.id
+                JOIN estudiantes s ON e.estudiante_id = s.id
+                WHERE 1=1
+            `;
+            if (materia_id) {
+                query += ` AND a.materia_id = $${idx}`;
+                params.push(parseEnteroSeguro(materia_id, 0));
+                idx++;
+            }
+            query += ' ORDER BY m.nombre, a.titulo, s.nombre';
+            const result = await pool.query(query, params);
+            res.json(
+                result.rows.map((row) => ({
+                    ...row,
+                    archivo_url: row.archivo ? `/uploads/${encodeURIComponent(row.archivo)}` : null,
+                }))
+            );
         } catch (error) {
-            res.status(500).json({ error: 'Error al listar archivos de entregas' });
+            res.status(500).json({ message: 'No se pudieron cargar los archivos de entregas.' });
         }
     },
 
     async descargarArchivoEntrega(req, res) {
         try {
-            res.json({ message: 'Descarga de entrega' });
+            const entregaId = parseEnteroSeguro(req.params.id, NaN);
+            if (!Number.isInteger(entregaId) || entregaId <= 0) {
+                return res.status(400).json({ message: 'ID de entrega no válido.' });
+            }
+            const find = await pool.query('SELECT archivo FROM entregas WHERE id = $1', [entregaId]);
+            if (find.rowCount === 0 || !find.rows[0].archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado.' });
+            }
+            const archivo = find.rows[0].archivo;
+            const full = path.join(__dirname, '../uploads', archivo);
+            if (!fs.existsSync(full)) {
+                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
+            }
+            return res.download(full, archivo);
         } catch (error) {
-            res.status(500).json({ error: 'Error al descargar entrega' });
+            res.status(500).json({ message: 'No se pudo descargar el archivo.' });
         }
     },
 
     async actualizarArchivoEntrega(req, res) {
         try {
-            res.json({ message: 'Entrega actualizada' });
+            const { id } = req.params;
+            const entregaId = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(entregaId) || entregaId <= 0) {
+                if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                return res.status(400).json({ message: 'ID de entrega no válido.' });
+            }
+            const comentario = String(req.body?.comentario || '').trim().slice(0, 500);
+            const body = req.body || {};
+            const hasCalifKey = Object.prototype.hasOwnProperty.call(body, 'calificacion');
+            let updateCalificacion = false;
+            let calificacionValor = null;
+            if (hasCalifKey) {
+                updateCalificacion = true;
+                const raw = String(body.calificacion ?? '').trim();
+                if (raw === '') {
+                    calificacionValor = null;
+                } else {
+                    const n = Number.parseFloat(raw);
+                    if (Number.isNaN(n)) {
+                        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                        return res.status(400).json({ message: 'Calificación no válida.' });
+                    }
+                    calificacionValor = Math.min(100, Math.max(0, n));
+                }
+            }
+            const find = await pool.query('SELECT archivo FROM entregas WHERE id = $1', [entregaId]);
+            if (find.rowCount === 0) {
+                if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                return res.status(404).json({ message: 'Entrega no encontrada.' });
+            }
+            const archivoAnterior = find.rows[0].archivo;
+            const nuevoArchivo = req.file ? req.file.filename : archivoAnterior;
+            if (updateCalificacion) {
+                await pool.query(
+                    'UPDATE entregas SET archivo = $1, comentario = $2, calificacion = $3 WHERE id = $4',
+                    [nuevoArchivo, comentario, calificacionValor, entregaId]
+                );
+            } else {
+                await pool.query('UPDATE entregas SET archivo = $1, comentario = $2 WHERE id = $3', [nuevoArchivo, comentario, entregaId]);
+            }
+            if (req.file && archivoAnterior && archivoAnterior !== nuevoArchivo) {
+                const full = path.join(__dirname, '../uploads', archivoAnterior);
+                if (fs.existsSync(full)) {
+                    try {
+                        fs.unlinkSync(full);
+                    } catch (_) {
+                        /* ignore delete error */
+                    }
+                }
+            }
+            res.json({ message: 'Entrega actualizada correctamente.' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al actualizar entrega' });
+            if (req.file?.path && fs.existsSync(req.file.path)) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (_) {
+                    /* ignore rollback delete */
+                }
+            }
+            res.status(500).json({ message: 'No se pudo actualizar el archivo de entrega.' });
         }
     },
 
     async eliminarArchivoEntrega(req, res) {
         try {
-            res.json({ message: 'Entrega eliminada' });
+            const { id } = req.params;
+            const entregaId = parseEnteroSeguro(id, NaN);
+            if (!Number.isInteger(entregaId) || entregaId <= 0) {
+                return res.status(400).json({ message: 'ID de entrega no válido.' });
+            }
+            const result = await pool.query('DELETE FROM entregas WHERE id = $1 RETURNING archivo', [entregaId]);
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'Entrega no encontrada.' });
+            }
+            const archivo = result.rows[0]?.archivo;
+            if (archivo) {
+                const full = path.join(__dirname, '../uploads', archivo);
+                if (fs.existsSync(full)) {
+                    try {
+                        fs.unlinkSync(full);
+                    } catch (_) {
+                        /* ignore delete error */
+                    }
+                }
+            }
+            res.json({ message: 'Archivo de entrega eliminado correctamente.' });
         } catch (error) {
-            res.status(500).json({ error: 'Error al eliminar entrega' });
+            res.status(500).json({ message: 'No se pudo eliminar el archivo de entrega.' });
         }
     },
 
-    };
+    // Actualizar contraseña de usuario (profesor o estudiante)
+    async actualizarContraseña(req, res) {
+        try {
+            const { id } = req.params;
+            const { password } = req.body;
+            
+            if (!password || password.length < 6) {
+                return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+            }
+
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = bcrypt.hashSync(password, 10);
+
+            // Intentar actualizar en tabla usuarios (profesores)
+            const resultProfesor = await pool.query(
+                'UPDATE usuarios SET password = $1 WHERE id = $2 RETURNING id',
+                [hashedPassword, id]
+            );
+
+            // Si no se actualizó en usuarios, intentar en estudiantes
+            if (resultProfesor.rowCount === 0) {
+                const resultEstudiante = await pool.query(
+                    'UPDATE estudiantes SET password = $1 WHERE id = $2 RETURNING id',
+                    [hashedPassword, id]
+                );
+
+                if (resultEstudiante.rowCount === 0) {
+                    return res.status(404).json({ message: 'Usuario no encontrado' });
+                }
+            }
+
+            res.json({ message: 'Contraseña actualizada correctamente' });
+        } catch (error) {
+            console.error('Error al actualizar contraseña:', error);
+            res.status(500).json({ message: 'Error al actualizar contraseña' });
+        }
+    },
+
+    // Reportes generales de asistencia para admin
+    async getReportesAsistenciaGeneral(req, res) {
+        try {
+            // Estadísticas generales
+            const totales = await pool.query(
+                `SELECT 
+                    SUM(CASE WHEN a.estado = 'presente' THEN 1 ELSE 0 END) as total_presentes,
+                    SUM(CASE WHEN a.estado = 'ausente' THEN 1 ELSE 0 END) as total_ausentes,
+                    SUM(CASE WHEN a.estado = 'retardo' THEN 1 ELSE 0 END) as total_retardos,
+                    COUNT(DISTINCT a.fecha) as total_clases
+                 FROM asistencias a`
+            );
+
+            // Estadísticas por materia
+            const porMateria = await pool.query(
+                `SELECT 
+                    m.nombre as materia_nombre,
+                    SUM(CASE WHEN a.estado = 'presente' THEN 1 ELSE 0 END) as presentes,
+                    SUM(CASE WHEN a.estado = 'ausente' THEN 1 ELSE 0 END) as ausentes,
+                    SUM(CASE WHEN a.estado = 'retardo' THEN 1 ELSE 0 END) as retardos,
+                    COUNT(*) as total
+                 FROM asistencias a
+                 JOIN materias m ON a.materia_id = m.id
+                 GROUP BY m.id, m.nombre
+                 ORDER BY m.nombre`
+            );
+
+            res.json({
+                total_clases: totales.rows[0]?.total_clases || 0,
+                total_presentes: totales.rows[0]?.total_presentes || 0,
+                total_ausentes: totales.rows[0]?.total_ausentes || 0,
+                total_retardos: totales.rows[0]?.total_retardos || 0,
+                por_materia: porMateria.rows
+            });
+        } catch (error) {
+            console.error('Error al generar reportes generales:', error);
+            res.status(500).json({ message: 'Error al generar reportes', error: error.message });
+        }
+    },
+
+    // Exportar asistencias a CSV
+    async exportarAsistenciasCSV(req, res) {
+        try {
+            const { materia_id, fecha } = req.query;
+            let query = `
+                SELECT a.id, a.materia_id, a.estudiante_id, a.fecha, a.estado,
+                       m.nombre as materia_nombre, e.nombre as estudiante_nombre, e.email as estudiante_email
+                FROM asistencias a
+                JOIN materias m ON a.materia_id = m.id
+                JOIN estudiantes e ON a.estudiante_id = e.id
+                WHERE 1=1
+            `;
+            const params = [];
+            let idx = 1;
+            
+            if (fecha) {
+                query += ` AND a.fecha = $${idx}`;
+                params.push(fecha);
+                idx++;
+            }
+            if (materia_id) {
+                query += ` AND a.materia_id = $${idx}`;
+                params.push(materia_id);
+                idx++;
+            }
+            query += ' ORDER BY a.fecha DESC, m.nombre, e.nombre';
+            
+            const result = await pool.query(query, params);
+            
+            // Generar CSV
+            let csv = 'ID,Materia,Estudiante,Email,Fecha,Estado\n';
+            result.rows.forEach(row => {
+                csv += `${row.id},"${row.materia_nombre}","${row.estudiante_nombre}","${row.estudiante_email}","${row.fecha}","${row.estado}"\n`;
+            });
+            
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="asistencias_${new Date().toISOString().split('T')[0]}.csv"`);
+            res.send('\ufeff' + csv); // BOM para UTF-8
+        } catch (error) {
+            console.error('Error exportando CSV:', error);
+            res.status(500).json({ error: 'Error al exportar asistencias a CSV' });
+        }
+    },
+
+    // Exportar asistencias a Excel
+    async exportarAsistenciasExcel(req, res) {
+        try {
+            const { materia_id, fecha } = req.query;
+            let query = `
+                SELECT a.id, a.materia_id, a.estudiante_id, a.fecha, a.estado,
+                       m.nombre as materia_nombre, e.nombre as estudiante_nombre, e.email as estudiante_email
+                FROM asistencias a
+                JOIN materias m ON a.materia_id = m.id
+                JOIN estudiantes e ON a.estudiante_id = e.id
+                WHERE 1=1
+            `;
+            const params = [];
+            let idx = 1;
+            
+            if (fecha) {
+                query += ` AND a.fecha = $${idx}`;
+                params.push(fecha);
+                idx++;
+            }
+            if (materia_id) {
+                query += ` AND a.materia_id = $${idx}`;
+                params.push(materia_id);
+                idx++;
+            }
+            query += ' ORDER BY a.fecha DESC, m.nombre, e.nombre';
+            
+            const result = await pool.query(query, params);
+            
+            // Generar Excel simple (HTML table)
+            let excel = '<table>';
+            excel += '<tr><th>ID</th><th>Materia</th><th>Estudiante</th><th>Email</th><th>Fecha</th><th>Estado</th></tr>';
+            result.rows.forEach(row => {
+                excel += `<tr>`;
+                excel += `<td>${row.id}</td>`;
+                excel += `<td>${row.materia_nombre}</td>`;
+                excel += `<td>${row.estudiante_nombre}</td>`;
+                excel += `<td>${row.estudiante_email}</td>`;
+                excel += `<td>${row.fecha}</td>`;
+                excel += `<td>${row.estado}</td>`;
+                excel += `</tr>`;
+            });
+            excel += '</table>';
+            
+            res.setHeader('Content-Type', 'application/vnd.ms-excel');
+            res.setHeader('Content-Disposition', `attachment; filename="asistencias_${new Date().toISOString().split('T')[0]}.xls"`);
+            res.send(excel);
+        } catch (error) {
+            console.error('Error exportando Excel:', error);
+            res.status(500).json({ error: 'Error al exportar asistencias a Excel' });
+        }
+    },
+
+    // Exportar asistencias a PDF
+    async exportarAsistenciasPDF(req, res) {
+        try {
+            const { materia_id, fecha } = req.query;
+            let query = `
+                SELECT a.id, a.materia_id, a.estudiante_id, a.fecha, a.estado,
+                       m.nombre as materia_nombre, e.nombre as estudiante_nombre, e.email as estudiante_email
+                FROM asistencias a
+                JOIN materias m ON a.materia_id = m.id
+                JOIN estudiantes e ON a.estudiante_id = e.id
+                WHERE 1=1
+            `;
+            const params = [];
+            let idx = 1;
+            
+            if (fecha) {
+                query += ` AND a.fecha = $${idx}`;
+                params.push(fecha);
+                idx++;
+            }
+            if (materia_id) {
+                query += ` AND a.materia_id = $${idx}`;
+                params.push(materia_id);
+                idx++;
+            }
+            query += ' ORDER BY a.fecha DESC, m.nombre, e.nombre';
+            
+            const result = await pool.query(query, params);
+            
+            // Generar HTML para PDF
+            let html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Reporte de Asistencias</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; font-weight: bold; }
+                        .header { text-align: center; margin-bottom: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>Reporte de Asistencias</h1>
+                        <p>Fecha: ${new Date().toLocaleDateString('es-MX')}</p>
+                        ${materia_id ? `<p>Materia ID: ${materia_id}</p>` : ''}
+                        ${fecha ? `<p>Fecha filtro: ${fecha}</p>` : ''}
+                    </div>
+                    <table>
+                        <tr>
+                            <th>ID</th>
+                            <th>Materia</th>
+                            <th>Estudiante</th>
+                            <th>Email</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                        </tr>
+            `;
+            
+            result.rows.forEach(row => {
+                html += `
+                    <tr>
+                        <td>${row.id}</td>
+                        <td>${row.materia_nombre}</td>
+                        <td>${row.estudiante_nombre}</td>
+                        <td>${row.estudiante_email}</td>
+                        <td>${row.fecha}</td>
+                        <td>${row.estado}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </table>
+                </body>
+                </html>
+            `;
+            
+            res.setHeader('Content-Type', 'text/html');
+            res.setHeader('Content-Disposition', `attachment; filename="asistencias_${new Date().toISOString().split('T')[0]}.html"`);
+            res.send(html);
+        } catch (error) {
+            console.error('Error exportando PDF:', error);
+            res.status(500).json({ error: 'Error al exportar asistencias a PDF' });
+        }
+    },
+
+    // Reporte de asistencia por curso con porcentajes
+    async reporteAsistenciaPorCurso(req, res) {
+        try {
+            const { materia_id } = req.params;
+            
+            // Estadísticas generales del curso
+            const statsQuery = `
+                SELECT 
+                    COUNT(*) as total_clases,
+                    COUNT(CASE WHEN estado = 'presente' THEN 1 END) as total_presentes,
+                    COUNT(CASE WHEN estado = 'ausente' THEN 1 END) as total_ausentes,
+                    COUNT(CASE WHEN estado = 'retardo' THEN 1 END) as total_retardos,
+                    COUNT(DISTINCT estudiante_id) as total_estudiantes
+                FROM asistencias a
+                WHERE a.materia_id = $1
+            `;
+            
+            const statsResult = await pool.query(statsQuery, [materia_id]);
+            const stats = statsResult.rows[0];
+            
+            // Porcentaje de asistencia
+            const porcentajeAsistencia = stats.total_clases > 0 
+                ? ((stats.total_presentes / stats.total_clases) * 100).toFixed(1) 
+                : 0;
+            
+            // Detalle por estudiante
+            const detalleQuery = `
+                SELECT 
+                    e.nombre as estudiante_nombre,
+                    e.email as estudiante_email,
+                    COUNT(*) as total_asistencias,
+                    COUNT(CASE WHEN a.estado = 'presente' THEN 1 END) as presentes,
+                    COUNT(CASE WHEN a.estado = 'ausente' THEN 1 END) as ausentes,
+                    COUNT(CASE WHEN a.estado = 'retardo' THEN 1 END) as retardos,
+                    ROUND((COUNT(CASE WHEN a.estado = 'presente' THEN 1 END) * 100.0 / COUNT(*)), 1) as porcentaje_asistencia
+                FROM estudiantes e
+                LEFT JOIN asistencias a ON e.id = a.estudiante_id AND a.materia_id = $1
+                GROUP BY e.id, e.nombre, e.email
+                ORDER BY e.nombre
+            `;
+            
+            const detalleResult = await pool.query(detalleQuery, [materia_id]);
+            
+            // Información de la materia
+            const materiaQuery = 'SELECT * FROM materias WHERE id = $1';
+            const materiaResult = await pool.query(materiaQuery, [materia_id]);
+            const materia = materiaResult.rows[0];
+            
+            res.json({
+                materia: materia,
+                estadisticas_generales: {
+                    total_clases: parseInt(stats.total_clases),
+                    total_presentes: parseInt(stats.total_presentes),
+                    total_ausentes: parseInt(stats.total_ausentes),
+                    total_retardos: parseInt(stats.total_retardos),
+                    total_estudiantes: parseInt(stats.total_estudiantes),
+                    porcentaje_asistencia_general: parseFloat(porcentajeAsistencia)
+                },
+                detalle_estudiantes: detalleResult.rows,
+                resumen: {
+                    excelentes: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 90).length,
+                    buenos: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 80 && e.porcentaje_asistencia < 90).length,
+                    regulares: detalleResult.rows.filter(e => e.porcentaje_asistencia >= 70 && e.porcentaje_asistencia < 80).length,
+                    deficientes: detalleResult.rows.filter(e => e.porcentaje_asistencia < 70).length
+                }
+            });
+        } catch (error) {
+            console.error('Error generando reporte por curso:', error);
+            res.status(500).json({ error: 'Error al generar reporte de asistencia por curso' });
+        }
+    }
+};
 
 module.exports = adminController;

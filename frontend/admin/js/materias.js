@@ -26,30 +26,19 @@ async function cargarMaterias() {
         }
         container.innerHTML = materias
             .map(
-                (m) => {
-                    const materiaCard = document.createElement('div');
-                    materiaCard.className = 'course-card course-card--elevated';
-                    
-                    materiaCard.innerHTML = `
-                        <div class="course-header">
-                            <h3>${m.nombre}</h3>
-                            <p>${m.clave}</p>
-                        </div>
-                        <div class="course-body">
-                            <div class="course-detail"><i class="fas fa-chalkboard-user"></i> ${m.profesor_nombre || 'Sin asignar'}</div>
-                            <div class="course-detail"><i class="fas fa-clock"></i> ${m.horario || '—'}</div>
-                            <div class="course-detail"><i class="fas fa-users"></i> ${m.estudiantes ?? 0} estudiantes</div>
-                            <div class="course-detail"><i class="fas fa-chart-line"></i> Promedio: ${m.promedio || 0}</div>
-                            <div class="course-detail"><i class="fas fa-user-minus"></i> Bajas: ${m.bajas || 0}</div>
-                        </div>
-                        <div class="course-footer course-footer--split">
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="editarMateria(${m.id})"><i class="fas fa-pen"></i> Editar</button>
-                            <button type="button" class="btn btn-danger btn-sm" onclick="eliminarMateria(${m.id})"><i class="fas fa-trash"></i> Eliminar</button>
-                        </div>
-                    `;
-                    
-                    return materiaCard.outerHTML;
-                }
+                (m) => `
+            <div class="course-card course-card--elevated">
+                <div class="course-header"><h3>${m.nombre}</h3><p>${m.clave}</p></div>
+                <div class="course-body">
+                    <div class="course-detail"><i class="fas fa-chalkboard-user"></i> ${m.profesor_nombre || 'Sin asignar'}</div>
+                    <div class="course-detail"><i class="fas fa-clock"></i> ${m.horario || '—'}</div>
+                    <div class="course-detail"><i class="fas fa-users"></i> ${m.estudiantes ?? 0} estudiantes</div>
+                </div>
+                <div class="course-footer course-footer--split">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editarMateria(${m.id})"><i class="fas fa-pen"></i> Editar</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarMateria(${m.id})"><i class="fas fa-trash"></i> Eliminar</button>
+                </div>
+            </div>`
             )
             .join('');
     } catch (error) {
@@ -153,7 +142,6 @@ async function guardarMateria(ev) {
     }
 }
 
-// Exportar funciones al scope global
 window.abrirModalMateriaNueva = abrirModalMateriaNueva;
 window.editarMateria = editarMateria;
 window.eliminarMateria = eliminarMateria;

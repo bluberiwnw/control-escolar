@@ -103,30 +103,17 @@ const materiaController = {
         }
     },
 
-    async getEstudiantesDeMateria(req, res) {
+        async getEstudiantesDeMateria(req, res) {
         try {
             const { id } = req.params;
-            
-            // Verificar acceso: profesor de la materia o administrador
-            let materiaCheck;
-            if (req.usuario.rol === 'admin') {
-                // Administradores pueden ver cualquier materia
-                materiaCheck = await pool.query(
-                    'SELECT id FROM materias WHERE id = $1',
-                    [id]
-                );
-            } else {
-                // Profesores solo pueden ver sus propias materias
-                materiaCheck = await pool.query(
-                    'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
-                    [id, req.usuario.id]
-                );
-            }
-            
+            // Verificar que la materia pertenece al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
+                [id, req.usuario.id]
+            );
             if (materiaCheck.rows.length === 0) {
                 return res.status(404).json({ message: 'Materia no encontrada' });
             }
-            
             // Obtener estudiantes inscritos (usando inscripciones)
             const estudiantes = await pool.query(`
                 SELECT e.id, e.matricula, e.nombre, e.email
