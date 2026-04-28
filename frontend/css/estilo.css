@@ -2464,13 +2464,23 @@ body.dark-mode .materia-resumen {
     height: 80px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 2.5rem;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: white !important;
+    font-size: 2.5rem !important;
     flex-shrink: 0;
     box-shadow: var(--shadow-md);
+    position: relative;
+    z-index: 1;
+}
+
+.profile-avatar i {
+    font-size: 2.5rem !important;
+    color: white !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .profile-details {
@@ -2513,12 +2523,273 @@ body.dark-mode .materia-resumen {
     }
     
     .info-item {
-        flex-direction: column;
         gap: 4px;
         text-align: left;
     }
     
     .info-item label {
         min-width: auto;
+    }
+}
+
+/* Modal moderno para generación QR */
+.qr-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.qr-modal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.qr-modal-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.qr-modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.qr-modal-title i {
+    color: var(--primary);
+    font-size: 1.3rem;
+}
+
+.qr-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.qr-modal-close:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.qr-modal-body {
+    padding: 24px;
+}
+
+.qr-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.qr-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.qr-form-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qr-form-label i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.qr-form-input {
+    padding: 12px 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.qr-form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+.qr-time-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.qr-suggestions {
+    background: var(--primary-light);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-top: 12px;
+}
+
+.qr-suggestions-title {
+    font-weight: 600;
+    color: var(--primary);
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+}
+
+.qr-suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(var(--primary-rgb), 0.05);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.qr-suggestion-item:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.qr-suggestion-item i {
+    color: var(--primary);
+    font-size: 0.8rem;
+}
+
+.qr-suggestion-text {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.qr-modal-footer {
+    padding: 20px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.qr-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.qr-btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.qr-btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.qr-btn-secondary {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.qr-btn-secondary:hover {
+    background: var(--text-secondary);
+    color: white;
+}
+
+/* Responsive para modal */
+@media (max-width: 768px) {
+    .qr-modal-content {
+        width: 95%;
+        margin: 16px;
+        max-height: calc(100vh - 32px);
+    }
+    
+    .qr-modal-header {
+        padding: 20px;
+    }
+    
+    .qr-modal-title {
+        font-size: 1.2rem;
+    }
+    
+    .qr-modal-body {
+        padding: 20px;
+    }
+    
+    .qr-time-inputs {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .qr-modal-footer {
+        padding: 16px 20px;
+        flex-direction: column;
+    }
+    
+    .qr-btn {
+        width: 100%;
+        padding: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .qr-modal-header {
+        padding: 16px;
+    }
+    
+    .qr-modal-body {
+        padding: 16px;
+    }
+    
+    .qr-form-group {
+        gap: 6px;
+    }
+    
+    .qr-form-input {
+        padding: 10px 12px;
+        font-size: 0.9rem;
     }
 }

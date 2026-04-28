@@ -174,90 +174,173 @@ async function generarQR() {
         return;
     }
 
+    // Mostrar modal moderno para configuración de QR
+    mostrarModalQR(materiaId, fecha);
+}
+
+function mostrarModalQR(materiaId, fecha) {
     // Obtener hora actual para sugerencias inteligentes
     const ahora = new Date();
     const horaActual = ahora.toTimeString().slice(0, 5);
     const horaActualNum = parseInt(horaActual.split(':')[0]) * 60 + parseInt(horaActual.split(':')[1]);
     
     // Sugerencias basadas en hora actual
-    let horaSugeridaInicio, horaSugeridaFin, mensajeEjemplo;
+    let sugerencias = [];
     
     if (horaActualNum >= 7 * 60 && horaActualNum < 9 * 60) {
-        // Clase de 7-9am
-        horaSugeridaInicio = "07:00";
-        horaSugeridaFin = "09:00";
-        mensajeEjemplo = "Ejemplo: Clase matutina (7:00 - 9:00)";
+        sugerencias = [
+            { inicio: "07:00", fin: "09:00", texto: "Clase matutina (7:00 - 9:00)" },
+            { inicio: "08:00", fin: "10:00", texto: "Clase matutina tardía (8:00 - 10:00)" }
+        ];
     } else if (horaActualNum >= 9 * 60 && horaActualNum < 11 * 60) {
-        // Clase de 9-11am
-        horaSugeridaInicio = "09:00";
-        horaSugeridaFin = "11:00";
-        mensajeEjemplo = "Ejemplo: Clase de la mañana (9:00 - 11:00)";
+        sugerencias = [
+            { inicio: "09:00", fin: "11:00", texto: "Clase de la mañana (9:00 - 11:00)" },
+            { inicio: "10:00", fin: "12:00", texto: "Clase de media mañana (10:00 - 12:00)" }
+        ];
     } else if (horaActualNum >= 11 * 60 && horaActualNum < 13 * 60) {
-        // Clase de 11am-1pm
-        horaSugeridaInicio = "11:00";
-        horaSugeridaFin = "13:00";
-        mensajeEjemplo = "Ejemplo: Clase de mediodía (11:00 - 13:00)";
+        sugerencias = [
+            { inicio: "11:00", fin: "13:00", texto: "Clase de mediodía (11:00 - 13:00)" },
+            { inicio: "12:00", fin: "14:00", texto: "Clase de mediodía tardía (12:00 - 14:00)" }
+        ];
     } else if (horaActualNum >= 13 * 60 && horaActualNum < 15 * 60) {
-        // Clase de 1-3pm
-        horaSugeridaInicio = "13:00";
-        horaSugeridaFin = "15:00";
-        mensajeEjemplo = "Ejemplo: Clase de la tarde (13:00 - 15:00)";
+        sugerencias = [
+            { inicio: "13:00", fin: "15:00", texto: "Clase de la tarde (13:00 - 15:00)" },
+            { inicio: "14:00", fin: "16:00", texto: "Clase de media tarde (14:00 - 16:00)" }
+        ];
     } else if (horaActualNum >= 15 * 60 && horaActualNum < 17 * 60) {
-        // Clase de 3-5pm
-        horaSugeridaInicio = "15:00";
-        horaSugeridaFin = "17:00";
-        mensajeEjemplo = "Ejemplo: Clase vespertina (15:00 - 17:00)";
+        sugerencias = [
+            { inicio: "15:00", fin: "17:00", texto: "Clase vespertina (15:00 - 17:00)" },
+            { inicio: "16:00", fin: "18:00", texto: "Clase vespertina tardía (16:00 - 18:00)" }
+        ];
     } else if (horaActualNum >= 17 * 60 && horaActualNum < 19 * 60) {
-        // Clase de 5-7pm
-        horaSugeridaInicio = "17:00";
-        horaSugeridaFin = "19:00";
-        mensajeEjemplo = "Ejemplo: Clase de la tarde-noche (17:00 - 19:00)";
+        sugerencias = [
+            { inicio: "17:00", fin: "19:00", texto: "Clase de la tarde-noche (17:00 - 19:00)" },
+            { inicio: "18:00", fin: "20:00", texto: "Clase nocturna (18:00 - 20:00)" }
+        ];
     } else if (horaActualNum >= 19 * 60 && horaActualNum < 21 * 60) {
-        // Clase de 7-9pm
-        horaSugeridaInicio = "19:00";
-        horaSugeridaFin = "21:00";
-        mensajeEjemplo = "Ejemplo: Última clase del día (19:00 - 21:00)";
+        sugerencias = [
+            { inicio: "19:00", fin: "21:00", texto: "Última clase del día (19:00 - 21:00)" },
+            { inicio: "17:00", fin: "21:00", texto: "Clase extendida (17:00 - 21:00)" }
+        ];
     } else {
-        // Fuera de horario, sugerir próxima clase
-        horaSugeridaInicio = "07:00";
-        horaSugeridaFin = "09:00";
-        mensajeEjemplo = "Ejemplo: Primera clase del día (7:00 - 9:00)";
+        sugerencias = [
+            { inicio: "07:00", fin: "09:00", texto: "Primera clase del día (7:00 - 9:00)" },
+            { inicio: "09:00", fin: "11:00", texto: "Clase matutina (9:00 - 11:00)" },
+            { inicio: "14:00", fin: "16:00", texto: "Clase de la tarde (14:00 - 16:00)" }
+        ];
     }
 
-    // Mostrar diálogo con ejemplos
-    const hora_inicio = window.prompt(
-        `HORA DE INICIO\n\n${mensajeEjemplo}\n\nFormato: HH:MM (24 horas)\nHorario escolar: 07:00 - 21:00\n\nEjemplos válidos:\n• 07:00 (7 AM)\n• 14:30 (2:30 PM)\n• 19:00 (7 PM)\n\nIngresa la hora de inicio:`, 
-        horaSugeridaInicio
-    );
+    // Crear modal HTML
+    const modalHTML = `
+        <div class="qr-modal" id="qrModal">
+            <div class="qr-modal-content">
+                <div class="qr-modal-header">
+                    <h2 class="qr-modal-title">
+                        <i class="fas fa-qrcode"></i>
+                        Generar Código QR
+                    </h2>
+                    <button class="qr-modal-close" onclick="cerrarModalQR()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="qr-modal-body">
+                    <div class="qr-form-grid">
+                        <div class="qr-form-group">
+                            <label class="qr-form-label">
+                                <i class="fas fa-clock"></i>
+                                Hora de Inicio
+                            </label>
+                            <input type="time" id="horaInicio" class="qr-form-input" value="${sugerencias[0].inicio}" min="07:00" max="21:00">
+                            <div class="qr-suggestions">
+                                <div class="qr-suggestions-title">
+                                    <i class="fas fa-lightbulb"></i>
+                                    Sugerencias rápidas
+                                </div>
+                                ${sugerencias.map((sug, index) => `
+                                    <div class="qr-suggestion-item" onclick="aplicarSugerencia('${sug.inicio}', '${sug.fin}')">
+                                        <i class="fas fa-clock"></i>
+                                        <span class="qr-suggestion-text">${sug.texto}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div class="qr-form-group">
+                            <label class="qr-form-label">
+                                <i class="fas fa-clock"></i>
+                                Hora de Fin
+                            </label>
+                            <input type="time" id="horaFin" class="qr-form-input" value="${sugerencias[0].fin}" min="07:00" max="21:00">
+                        </div>
+                        
+                        <div class="qr-form-group">
+                            <label class="qr-form-label">
+                                <i class="fas fa-info-circle"></i>
+                                Información
+                            </label>
+                            <div style="background: var(--primary-light); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 12px;">
+                                <p style="margin: 0; font-size: 0.85rem; color: var(--text-primary);">
+                                    <strong>Horario escolar:</strong> 07:00 - 21:00<br>
+                                    <strong>Duración máxima:</strong> 4 horas<br>
+                                    <strong>Formato:</strong> 24 horas (HH:MM)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qr-modal-footer">
+                    <button class="qr-btn qr-btn-secondary" onclick="cerrarModalQR()">
+                        <i class="fas fa-times"></i>
+                        Cancelar
+                    </button>
+                    <button class="qr-btn qr-btn-primary" onclick="procesarGeneracionQR('${materiaId}', '${fecha}')">
+                        <i class="fas fa-qrcode"></i>
+                        Generar QR
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Agregar modal al body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    if (!hora_inicio) return;
+    // Prevenir scroll del body
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalQR() {
+    const modal = document.getElementById('qrModal');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = '';
+    }
+}
+
+function aplicarSugerencia(inicio, fin) {
+    document.getElementById('horaInicio').value = inicio;
+    document.getElementById('horaFin').value = fin;
+}
+
+async function procesarGeneracionQR(materiaId, fecha) {
+    const hora_inicio = document.getElementById('horaInicio').value;
+    const hora_fin = document.getElementById('horaFin').value;
+    
+    if (!hora_inicio || !hora_fin) {
+        mostrarToast('Por favor completa ambos campos de hora', 'error');
+        return;
+    }
     
     // Validar formato de hora
-    if (!/^\d{2}:\d{2}$/.test(hora_inicio)) {
+    if (!/^\d{2}:\d{2}$/.test(hora_inicio) || !/^\d{2}:\d{2}$/.test(hora_fin)) {
         mostrarToast('Formato inválido. Usa HH:MM (ej: 08:00, 14:30)', 'error');
         return;
     }
     
     const [hi, mi] = hora_inicio.split(':').map(Number);
-    if (hi < 7 || hi > 21 || mi < 0 || mi > 59) {
-        mostrarToast('Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
-        return;
-    }
-    
-    const hora_fin = window.prompt(
-        `HORA DE FIN\n\nInicio: ${hora_inicio}\n${mensajeEjemplo}\n\nFormato: HH:MM (24 horas)\nMáximo 4 horas de diferencia\n\nEjemplos según inicio:\n• Si inicia 07:00 → fin 11:00\n• Si inicia 14:30 → fin 18:30\n• Si inicia 19:00 → fin 21:00\n\nIngresa la hora de fin:`, 
-        horaSugeridaFin
-    );
-    
-    if (!hora_fin) return;
-    
-    if (!/^\d{2}:\d{2}$/.test(hora_fin)) {
-        mostrarToast('Formato inválido. Usa HH:MM (ej: 10:00, 16:30)', 'error');
-        return;
-    }
-    
     const [hf, mf] = hora_fin.split(':').map(Number);
-    if (hf < 7 || hf > 21 || mf < 0 || mf > 59) {
+    
+    if (hi < 7 || hi > 21 || hf < 7 || hf > 21 || mi < 0 || mi > 59 || mf < 0 || mf > 59) {
         mostrarToast('Hora fuera de rango. El horario escolar es 07:00 - 21:00', 'error');
         return;
     }
