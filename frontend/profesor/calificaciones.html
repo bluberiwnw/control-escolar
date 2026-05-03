@@ -33,9 +33,24 @@
             <div class="form-group-modern"><label>Materia</label><select id="materiaSelect"></select></div>
             <div class="form-group-modern"><label>Tipo</label><select id="tipoSelect"><option value="tarea">Tarea</option><option value="proyecto">Proyecto</option><option value="examen">Examen</option></select></div>
     <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-        <i class="fas fa-cloud-upload-alt"></i><h3>Subir calificaciones (Excel/PDF)</h3>
-        <p>Formato requerido: columnas <strong>"Materia", "Nombre", "Calificacion"</strong> para Excel. Las calificaciones válidas van de 5 a 10.</p>
-        <input type="file" id="fileInput" style="display:none" accept=".xlsx,.xls,.pdf" onchange="previsualizarArchivo(this)">
+        <i class="fas fa-cloud-upload-alt"></i><h3>Subir calificaciones (HTM/Excel/PDF)</h3>
+        <p>Formato requerido: HTM de lista de clase BUAP o Excel con columnas <strong>"Nombre completo", "Nombre", "Apellidos", "Dirección de correo", "Participaciones", "Tareas", "Actividades", "Examenes", "Calificaciones", "Porcentaje Final"</strong>. Las calificaciones válidas van de 5 a 10.</p>
+        <input type="file" id="fileInput" style="display:none" accept=".htm,.html,.xlsx,.xls,.pdf" onchange="previsualizarArchivo(this)">
+    </div>
+    <div class="panel-card" style="margin-top: 20px;">
+        <h3>Gestión de Alumnos</h3>
+        <div class="form-group-modern">
+            <button type="button" class="btn btn-primary" onclick="abrirModalAlumno()">
+                <i class="fas fa-plus"></i> Agregar Alumno
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="cargarAlumnos()">
+                <i class="fas fa-sync"></i> Actualizar Lista
+            </button>
+            <button type="button" class="btn btn-success" onclick="exportarExcel()">
+                <i class="fas fa-file-excel"></i> Exportar a Excel
+            </button>
+        </div>
+        <div id="alumnosTable" style="margin-top: 15px;"></div>
     </div>
     <div id="previewTable" style="margin-top: 20px; overflow-x:auto;"></div>
     <div id="resultadoUpload"></div>
@@ -43,6 +58,36 @@
         <div class="historial-archivos"><h3>Archivos subidos</h3><div id="archivosList"></div></div>
         </div>
     </main>
+    <!-- Modal para agregar/editar alumno -->
+    <div id="modalAlumno" class="modal" style="display:none;">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h2 id="modalAlumnoTitulo">Agregar Alumno</h2>
+                <button type="button" class="close-modal" onclick="cerrarModalAlumno()" aria-label="Cerrar">&times;</button>
+            </div>
+            <form id="formAlumno" onsubmit="guardarAlumno(event)">
+                <input type="hidden" id="alumnoIdEdit">
+                <div class="form-grid">
+                    <div class="form-group-modern">
+                        <label for="alumnoMatricula">Matrícula</label>
+                        <input type="text" id="alumnoMatricula" required placeholder="Ej. 202400001">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="alumnoNombre">Nombre completo</label>
+                        <input type="text" id="alumnoNombre" required placeholder="Ej. Juan Pérez López">
+                    </div>
+                    <div class="form-group-modern">
+                        <label for="alumnoEmail">Email</label>
+                        <input type="email" id="alumnoEmail" placeholder="Ej. juan.perez@alumno.buap.mx">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="cerrarModalAlumno()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>

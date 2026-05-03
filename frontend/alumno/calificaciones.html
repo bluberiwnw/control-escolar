@@ -27,8 +27,35 @@
     </aside>    
     <main class="main-content-profesor">
         <div class="app-page-shell">
-        <div class="top-bar"><h1>Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
-        <div id="calificacionesContainer"></div>
+        <div class="top-bar"><h1>Mis Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
+        
+        <!-- Resumen General -->
+        <div class="stats-grid-profesor" id="resumenGeneral">
+            <div class="stat-card-profesor">
+                <div class="stat-info">
+                    <h3>Promedio General</h3>
+                    <span class="stat-number" id="promedioGeneral">0.0</span>
+                </div>
+                <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+            </div>
+            <div class="stat-card-profesor">
+                <div class="stat-info">
+                    <h3>Total Materias</h3>
+                    <span class="stat-number" id="totalMaterias">0</span>
+                </div>
+                <div class="stat-icon"><i class="fas fa-book"></i></div>
+            </div>
+            <div class="stat-card-profesor">
+                <div class="stat-info">
+                    <h3>Materias Aprobadas</h3>
+                    <span class="stat-number" id="materiasAprobadas">0</span>
+                </div>
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+            </div>
+        </div>
+
+        <!-- Lista de Materias con Calificaciones -->
+        <div id="calificacionesContainer" class="calificaciones-grid"></div>
         </div>
     </main>
     <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>

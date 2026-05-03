@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { procesarExcelCalificaciones } = require('../services/excelService');
+const HtmlParser = require('../services/htmlParser');
+const XLSX = require('xlsx');
 
 const TIPOS_CALIFICACION = new Set(['tarea', 'proyecto', 'examen']);
 
@@ -38,9 +40,17 @@ const upload = multer({
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'application/pdf',
+            'text/html',
+            'text/htm',
         ];
-        if (allowedTypes.includes(file.mimetype)) cb(null, true);
-        else cb(new Error('Tipo de archivo no permitido. Solo Excel y PDF'), false);
+        const allowedExtensions = ['.xlsx', '.xls', '.pdf', '.htm', '.html'];
+        const fileExtension = path.extname(file.originalname).toLowerCase();
+        
+        if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Tipo de archivo no permitido. Solo Excel, PDF y HTM'), false);
+        }
     }
 }).single('archivo');
 
@@ -99,6 +109,16 @@ const calificacionController = {
                 if (req.file.mimetype.includes('spreadsheet') || req.file.originalname.match(/\.(xlsx|xls)$/i)) {
                     const resultado = await procesarExcelCalificaciones(req.file.path, req.usuario.id);
                     detalles = `Insertados: ${resultado.exitosos}, Errores: ${resultado.errores.length}${resultado.errores.length ? ' — ' + resultado.errores.join('; ') : ''}`;
+                    await pool.query(
+                        `UPDATE archivos_calificaciones SET estado = 'Procesado', detalles = $1 WHERE id = $2`,
+                        [detalles, insertResult.rows[0].id]
+                    );
+                }
+
+                // Procesar archivos HTM
+                if (req.file.originalname.match(/\.(htm|html)$/i)) {
+                    const resultado = await this.processHtmlFile(req.file.path, materia_id, req.usuario.id);
+                    detalles = `Procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`;
                     await pool.query(
                         `UPDATE archivos_calificaciones SET estado = 'Procesado', detalles = $1 WHERE id = $2`,
                         [detalles, insertResult.rows[0].id]
@@ -295,6 +315,358 @@ const calificacionController = {
             res.json({ promedio_general: promedio.rows[0].promedio || 0, distribucion: distribucion.rows[0], por_tipo: porTipo.rows });
         } catch (error) {
             res.status(500).json({ message: 'Error en el servidor', error: error.message });
+        }
+    },
+
+    async processHtmlFile(filePath, materia_id, profesor_id) {
+        try {
+            const htmlContent = fs.readFileSync(filePath, 'utf8');
+            const students = HtmlParser.parseStudentList(htmlContent);
+            
+            let procesados = 0;
+            let nuevos = 0;
+            let actualizados = 0;
+
+            for (const student of students) {
+                procesados++;
+                
+                // Buscar si el estudiante ya existe por matrícula
+                const existingStudent = await pool.query(
+                    'SELECT id FROM estudiantes WHERE matricula = $1',
+                    [student.id]
+                );
+
+                let estudianteId;
+                if (existingStudent.rows.length > 0) {
+                    estudianteId = existingStudent.rows[0].id;
+                    actualizados++;
+                } else {
+                    // Crear nuevo estudiante
+                    const newStudent = await pool.query(
+                        `INSERT INTO estudiantes (matricula, nombre, email, materia_id, created_at)
+                         VALUES ($1, $2, $3, $4, NOW()) RETURNING id`,
+                        [student.id, student.nombre_completo, student.email, materia_id]
+                    );
+                    estudianteId = newStudent.rows[0].id;
+                    nuevos++;
+                }
+
+                // Actualizar o crear calificaciones
+                await this.updateStudentGrades(estudianteId, materia_id, student);
+            }
+
+            return { procesados, nuevos, actualizados };
+        } catch (error) {
+            console.error('Error procesando archivo HTM:', error);
+            throw error;
+        }
+    },
+
+    async updateStudentGrades(estudianteId, materiaId, studentData) {
+        const tipos = ['participaciones', 'tareas', 'actividades', 'examenes'];
+        
+        for (const tipo of tipos) {
+            const valor = studentData[tipo] || 0;
+            if (valor > 0) {
+                // Verificar si ya existe una calificación de este tipo
+                const existing = await pool.query(
+                    'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 AND tipo = $3',
+                    [estudianteId, materiaId, tipo.slice(0, -1)] // quitar la 's' final
+                );
+
+                if (existing.rows.length > 0) {
+                    // Actualizar calificación existente
+                    await pool.query(
+                        'UPDATE calificaciones SET calificacion = $1, updated_at = NOW() WHERE id = $2',
+                        [valor, existing.rows[0].id]
+                    );
+                } else {
+                    // Crear nueva calificación
+                    await pool.query(
+                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                         VALUES ($1, $2, $3, $4, NOW())`,
+                        [estudianteId, materiaId, tipo.slice(0, -1), valor]
+                    );
+                }
+            }
+        }
+
+        // Calcular y actualizar la calificación final
+        const finalGrade = HtmlParser.calculateGrade(
+            studentData.participaciones || 0,
+            studentData.tareas || 0,
+            studentData.actividades || 0,
+            studentData.examenes || 0
+        );
+
+        await pool.query(
+            `UPDATE calificaciones 
+             SET calificacion_final = $1, porcentaje_final = $2, updated_at = NOW()
+             WHERE estudiante_id = $3 AND materia_id = $4`,
+            [finalGrade, (finalGrade * 10), estudianteId, materiaId]
+        );
+    },
+
+    async getAlumnosByMateria(req, res) {
+        try {
+            const { materia_id } = req.params;
+            const materiaCheck = await pool.query(
+                'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materia_id, req.usuario.id]
+            );
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+
+            const result = await pool.query(
+                `SELECT e.*, 
+                        COALESCE(c.calificacion_final, 0) as calificacion_final,
+                        COALESCE(c.porcentaje_final, 0) as porcentaje_final
+                 FROM estudiantes e
+                 LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1
+                 WHERE e.materia_id = $1
+                 ORDER BY e.nombre`,
+                [materia_id]
+            );
+
+            res.json(result.rows);
+        } catch (error) {
+            res.status(500).json({ message: 'Error al obtener alumnos', error: error.message });
+        }
+    },
+
+    async createAlumno(req, res) {
+        try {
+            const { materia_id, matricula, nombre, email } = req.body;
+            
+            if (!materia_id || !matricula || !nombre) {
+                return res.status(400).json({ message: 'Completa los campos obligatorios' });
+            }
+
+            const materiaCheck = await pool.query(
+                'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materia_id, req.usuario.id]
+            );
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+
+            const existing = await pool.query(
+                'SELECT id FROM estudiantes WHERE matricula = $1',
+                [matricula]
+            );
+
+            if (existing.rows.length > 0) {
+                return res.status(400).json({ message: 'La matrícula ya existe' });
+            }
+
+            const result = await pool.query(
+                `INSERT INTO estudiantes (matricula, nombre, email, materia_id, created_at)
+                 VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
+                [matricula, nombre, email, materia_id]
+            );
+
+            res.status(201).json(result.rows[0]);
+        } catch (error) {
+            res.status(500).json({ message: 'Error al crear alumno', error: error.message });
+        }
+    },
+
+    async updateAlumno(req, res) {
+        try {
+            const { id } = req.params;
+            const { nombre, email } = req.body;
+
+            const result = await pool.query(
+                `UPDATE estudiantes 
+                 SET nombre = $1, email = $2, updated_at = NOW()
+                 WHERE id = $3 AND materia_id IN (
+                     SELECT id FROM materias WHERE profesor_id = $4
+                 ) RETURNING *`,
+                [nombre, email, id, req.usuario.id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ message: 'Alumno no encontrado' });
+            }
+
+            res.json(result.rows[0]);
+        } catch (error) {
+            res.status(500).json({ message: 'Error al actualizar alumno', error: error.message });
+        }
+    },
+
+    async deleteAlumno(req, res) {
+        try {
+            const { id } = req.params;
+
+            const result = await pool.query(
+                `DELETE FROM estudiantes 
+                 WHERE id = $1 AND materia_id IN (
+                     SELECT id FROM materias WHERE profesor_id = $2
+                 ) RETURNING *`,
+                [id, req.usuario.id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ message: 'Alumno no encontrado' });
+            }
+
+            res.json({ message: 'Alumno eliminado correctamente' });
+        } catch (error) {
+            res.status(500).json({ message: 'Error al eliminar alumno', error: error.message });
+        }
+    },
+
+    async exportToExcel(req, res) {
+        try {
+            const { materia_id } = req.params;
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materia_id, req.usuario.id]
+            );
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+
+            const students = await pool.query(
+                `SELECT e.matricula, e.nombre, e.email,
+                        COALESCE(c.calificacion_final, 0) as calificacion_final,
+                        COALESCE(c.porcentaje_final, 0) as porcentaje_final
+                 FROM estudiantes e
+                 LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1
+                 WHERE e.materia_id = $1
+                 ORDER BY e.nombre`,
+                [materia_id]
+            );
+
+            const excelData = HtmlParser.convertToExcelFormat(students.rows);
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Calificaciones');
+
+            const fileName = `calificaciones_${materiaCheck.rows[0].nombre}_${Date.now()}.xlsx`;
+            const filePath = path.join(__dirname, '../uploads', fileName);
+            XLSX.writeFile(wb, filePath);
+
+            res.json({
+                fileName,
+                downloadUrl: `/uploads/${fileName}`
+            });
+        } catch (error) {
+            res.status(500).json({ message: 'Error al exportar a Excel', error: error.message });
+        }
+    },
+
+    async getCalificacionesAlumno(req, res) {
+        try {
+            const { materia_id } = req.params;
+            
+            // Obtener calificaciones del alumno autenticado
+            const result = await pool.query(
+                `SELECT c.*, m.nombre as materia_nombre, m.clave as materia_clave,
+                        p.nombre as profesor_nombre
+                 FROM calificaciones c
+                 JOIN materias m ON c.materia_id = m.id
+                 JOIN usuarios p ON m.profesor_id = p.id
+                 WHERE c.estudiante_id = $1 AND c.materia_id = $2
+                 ORDER BY m.nombre`,
+                [req.usuario.id, materia_id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.json({
+                    materia: null,
+                    calificaciones: [],
+                    promedio_final: 0,
+                    mensaje: 'No hay calificaciones registradas para esta materia'
+                });
+            }
+
+            const materia = {
+                nombre: result.rows[0].materia_nombre,
+                clave: result.rows[0].materia_clave,
+                profesor: result.rows[0].profesor_nombre
+            };
+
+            const calificaciones = result.rows.map(row => ({
+                tipo: row.tipo,
+                calificacion: row.calificacion,
+                calificacion_final: row.calificacion_final,
+                porcentaje_final: row.porcentaje_final,
+                created_at: row.created_at
+            }));
+
+            const promedioFinal = result.rows[0].calificacion_final || 0;
+
+            res.json({
+                materia,
+                calificaciones,
+                promedio_final: promedioFinal,
+                mensaje: 'Calificaciones obtenidas exitosamente'
+            });
+        } catch (error) {
+            res.status(500).json({ message: 'Error al obtener calificaciones', error: error.message });
+        }
+    },
+
+    async getAllCalificacionesAlumno(req, res) {
+        try {
+            // Obtener todas las calificaciones del alumno autenticado
+            const result = await pool.query(
+                `SELECT c.*, m.nombre as materia_nombre, m.clave as materia_clave,
+                        p.nombre as profesor_nombre
+                 FROM calificaciones c
+                 JOIN materias m ON c.materia_id = m.id
+                 JOIN usuarios p ON m.profesor_id = p.id
+                 WHERE c.estudiante_id = $1
+                 ORDER BY m.nombre, c.tipo`,
+                [req.usuario.id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.json({
+                    materias: [],
+                    promedio_general: 0,
+                    total_materias: 0,
+                    mensaje: 'No hay calificaciones registradas'
+                });
+            }
+
+            // Agrupar por materia
+            const materiasMap = new Map();
+            result.rows.forEach(row => {
+                if (!materiasMap.has(row.materia_id)) {
+                    materiasMap.set(row.materia_id, {
+                        materia_id: row.materia_id,
+                        nombre: row.materia_nombre,
+                        clave: row.materia_clave,
+                        profesor: row.profesor_nombre,
+                        calificaciones: [],
+                        promedio_final: row.calificacion_final || 0
+                    });
+                }
+                
+                materiasMap.get(row.materia_id).calificaciones.push({
+                    tipo: row.tipo,
+                    calificacion: row.calificacion,
+                    calificacion_final: row.calificacion_final,
+                    porcentaje_final: row.porcentaje_final,
+                    created_at: row.created_at
+                });
+            });
+
+            const materias = Array.from(materiasMap.values());
+            const promedioGeneral = materias.reduce((sum, m) => sum + m.promedio_final, 0) / materias.length;
+
+            res.json({
+                materias,
+                promedio_general: Number(promedioGeneral.toFixed(2)),
+                total_materias: materias.length,
+                mensaje: 'Calificaciones obtenidas exitosamente'
+            });
+        } catch (error) {
+            res.status(500).json({ message: 'Error al obtener calificaciones', error: error.message });
         }
     }
 };
