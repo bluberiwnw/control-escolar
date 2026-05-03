@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { procesarExcelCalificaciones } = require('../services/excelService');
-const HtmlParser = require('../services/htmlParser');
+const HtmlParser = require('../services/htmlParserSimple');
 const XLSX = require('xlsx');
 
 const TIPOS_CALIFICACION = new Set(['tarea', 'proyecto', 'examen']);
