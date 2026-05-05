@@ -49,21 +49,39 @@ function mostrarResumenVacio() {
 }
 
 function actualizarResumenGeneral(data) {
+    console.log('Actualizando resumen general con datos:', data);
+    
     // Calcular promedio general correctamente
-    const promedioGeneral = data.materias && data.materias.length > 0 
-        ? data.materias.reduce((sum, m) => sum + (m.promedio_final || 0), 0) / data.materias.length 
+    const materias = data.materias || [];
+    const promedioGeneral = materias.length > 0 
+        ? materias.reduce((sum, m) => sum + (parseFloat(m.promedio_final) || 0), 0) / materias.length 
         : 0;
     
-    document.getElementById('promedioGeneral').textContent = promedioGeneral.toFixed(1);
-    document.getElementById('totalMaterias').textContent = data.total_materias || data.materias?.length || 0;
+    const totalMaterias = data.total_materias || materias.length || 0;
+    const aprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) >= 6).length;
     
-    const aprobadas = data.materias ? data.materias.filter(m => (m.promedio_final || 0) >= 6).length : 0;
+    console.log('Estadísticas calculadas:', {
+        promedioGeneral,
+        totalMaterias,
+        aprobadas,
+        materiasCount: materias.length
+    });
+    
+    // Actualizar DOM
+    document.getElementById('promedioGeneral').textContent = promedioGeneral.toFixed(1);
+    document.getElementById('totalMaterias').textContent = totalMaterias;
     document.getElementById('materiasAprobadas').textContent = aprobadas;
     
     // Actualizar el círculo de promedio con color dinámico
     const promedioCircle = document.querySelector('.stat-circle');
     if (promedioCircle) {
         promedioCircle.style.background = getPromedioColor(promedioGeneral);
+    }
+    
+    // Actualizar título de estadísticas si existe
+    const statsTitle = document.querySelector('.stats-title');
+    if (statsTitle) {
+        statsTitle.textContent = `Tu Rendimiento Académico (${totalMaterias} ${totalMaterias === 1 ? 'materia' : 'materias'})`;
     }
 }
 
@@ -92,7 +110,7 @@ function mostrarCalificacionesPorMateria(materias) {
                         <p class="materia-profesor">Prof. ${materia.profesor}</p>
                     </div>
                     <div class="promedio-circle" style="background: ${promedioColor};">
-                        <span class="promedio-number">${materia.promedio_final.toFixed(1)}</span>
+                        <span class="promedio-number">${(parseFloat(materia.promedio_final) || 0).toFixed(1)}</span>
                         <span class="promedio-icon">${promedioIcon}</span>
                     </div>
                 </div>
@@ -100,7 +118,7 @@ function mostrarCalificacionesPorMateria(materias) {
                     ${materia.calificaciones.length > 0 ? materia.calificaciones.map(cal => `
                         <div class="calificacion-item">
                             <span class="calificacion-tipo">${formatearTipo(cal.tipo)}</span>
-                            <span class="calificacion-valor">${cal.calificacion.toFixed(1)}</span>
+                            <span class="calificacion-valor">${(parseFloat(cal.calificacion) || 0).toFixed(1)}</span>
                         </div>
                     `).join('') : '<p class="no-calificaciones">No hay calificaciones detalladas aún</p>'}
                 </div>

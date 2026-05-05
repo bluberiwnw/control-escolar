@@ -51,39 +51,69 @@ const upload = multer({
 const calificacionController = {
     async uploadFile(req, res) {
         upload(req, res, async function(err) {
-            if (err) return res.status(400).json({ message: err.message });
-            if (!req.file) return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
+            if (err) {
+                console.error('Error en upload middleware:', err);
+                return res.status(400).json({ message: err.message });
+            }
+            if (!req.file) {
+                console.error('No se proporcionó archivo');
+                return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
+            }
+            
             try {
+                console.log('Procesando uploadFile:', {
+                    materia_id: req.body.materia_id,
+                    filename: req.file.filename,
+                    originalname: req.file.originalname,
+                    path: req.file.path
+                });
+                
                 const { materia_id } = req.body;
                 if (!materia_id) {
                     fs.unlinkSync(req.file.path);
                     return res.status(400).json({ message: 'Selecciona una materia antes de subir el archivo.' });
                 }
+                
                 const materiaCheck = await pool.query(
-                    'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
+                    'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
                     [materia_id, req.usuario.id]
                 );
                 if (materiaCheck.rows.length === 0) {
+                    console.log('Materia no encontrada para materia_id:', materia_id);
                     fs.unlinkSync(req.file.path);
-                    return res.status(404).json({ message: 'Materia no encontrada' });
+                    return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
                 }
+                
+                console.log('Materia verificada:', materiaCheck.rows[0].nombre);
+                
+                // Asegurar que el directorio uploads exista
+                const uploadsDir = path.join(__dirname, '../uploads');
+                if (!fs.existsSync(uploadsDir)) {
+                    fs.mkdirSync(uploadsDir, { recursive: true });
+                }
+                
                 const insertResult = await pool.query(
                     `INSERT INTO archivos_calificaciones (profesor_id, materia_id, nombre_archivo, tipo)
                      VALUES ($1, $2, $3, $4) RETURNING id`,
                     [req.usuario.id, materia_id, req.file.filename, 'htm']
                 );
+                
                 let detalles = '';
                 let estado = 'Procesado';
 
                 // Procesar archivos HTM
                 if (req.file.originalname.match(/\.(htm|html)$/i)) {
+                    console.log('Procesando archivo HTM...');
                     const resultado = await this.processHtmlFile(req.file.path, materia_id, req.usuario.id);
                     detalles = `Procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`;
+                    console.log('Resultado del procesamiento:', resultado);
+                    
                     await pool.query(
                         `UPDATE archivos_calificaciones SET estado = 'Procesado', detalles = $1 WHERE id = $2`,
-                        [estado, detalles, insertResult.rows[0].id]
+                        [detalles, insertResult.rows[0].id]
                     );
                 }
+                
                 res.json({
                     message: 'Archivo HTM procesado correctamente',
                     archivo: {
@@ -97,8 +127,11 @@ const calificacionController = {
                     },
                 });
             } catch (error) {
-                if (req.file) fs.unlinkSync(req.file.path);
-                res.status(500).json({ message: mensajeErrorCarga(error) });
+                console.error('Error en uploadFile:', error);
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                res.status(500).json({ message: mensajeErrorCarga(error), error: error.message });
             }
         });
     },
@@ -125,9 +158,12 @@ const calificacionController = {
     async descargarArchivoCalificacion(req, res) {
         try {
             const id = Number.parseInt(req.params.id, 10);
+            console.log('descargarArchivoCalificacion - id:', id, 'usuario:', req.usuario.id, 'rol:', req.usuario.rol);
+            
             if (!Number.isInteger(id) || id <= 0) {
                 return res.status(400).json({ message: 'ID no válido.' });
             }
+            
             const find =
                 req.usuario.rol === 'administrador'
                     ? await pool.query('SELECT nombre_archivo FROM archivos_calificaciones WHERE id = $1', [id])
@@ -135,17 +171,34 @@ const calificacionController = {
                           'SELECT nombre_archivo FROM archivos_calificaciones WHERE id = $1 AND profesor_id = $2',
                           [id, req.usuario.id]
                       );
+                      
             if (find.rowCount === 0 || !find.rows[0].nombre_archivo) {
+                console.log('Archivo no encontrado en BD para id:', id);
                 return res.status(404).json({ message: 'Archivo no encontrado.' });
             }
+            
             const nombre = find.rows[0].nombre_archivo;
-            const full = path.join(__dirname, '../uploads', nombre);
+            const uploadsDir = path.join(__dirname, '../uploads');
+            const full = path.join(uploadsDir, nombre);
+            
+            console.log('Buscando archivo:', full);
+            
+            // Asegurar que el directorio uploads exista
+            if (!fs.existsSync(uploadsDir)) {
+                console.log('Directorio uploads no existe, creándolo...');
+                fs.mkdirSync(uploadsDir, { recursive: true });
+            }
+            
             if (!fs.existsSync(full)) {
+                console.log('Archivo no existe en el servidor:', full);
                 return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
             }
+            
+            console.log('Enviando archivo:', nombre);
             return res.download(full, nombre);
         } catch (error) {
-            res.status(500).json({ message: 'No se pudo descargar el archivo.' });
+            console.error('Error en descargarArchivoCalificacion:', error);
+            res.status(500).json({ message: 'Error al descargar archivo.', error: error.message });
         }
     },
 
@@ -235,12 +288,22 @@ const calificacionController = {
 
     async getPlantilla(req, res) {
         try {
+            console.log('Generando plantilla HTM...');
+            
             // Generar archivo HTM de ejemplo
             const ejemploHTM = this.generarEjemploHTM();
             const fileName = 'ejemplo_lista_clase.htm';
-            const filePath = path.join(__dirname, '../uploads', fileName);
+            const uploadsDir = path.join(__dirname, '../uploads');
+            const filePath = path.join(uploadsDir, fileName);
+            
+            // Asegurar que el directorio uploads exista
+            if (!fs.existsSync(uploadsDir)) {
+                console.log('Creando directorio uploads...');
+                fs.mkdirSync(uploadsDir, { recursive: true });
+            }
             
             fs.writeFileSync(filePath, ejemploHTM, 'utf8');
+            console.log('Plantilla HTM generada:', filePath);
             
             res.json({
                 nombre: fileName,
@@ -248,7 +311,8 @@ const calificacionController = {
                 tipo: 'htm'
             });
         } catch (error) {
-            res.status(500).json({ message: 'No se pudo generar la plantilla de ejemplo.' });
+            console.error('Error en getPlantilla:', error);
+            res.status(500).json({ message: 'No se pudo generar la plantilla de ejemplo.', error: error.message });
         }
     },
 
@@ -458,15 +522,19 @@ const calificacionController = {
     async getAlumnosByMateria(req, res) {
         try {
             const { materia_id } = req.params;
+            console.log('getAlumnosByMateria - materia_id:', materia_id, 'usuario_id:', req.usuario.id);
             
             // Verificar que la materia exista y pertenezca al profesor
             const materiaCheck = await pool.query(
-                'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
                 [materia_id, req.usuario.id]
             );
             if (materiaCheck.rows.length === 0) {
+                console.log('Materia no encontrada o sin permisos para materia_id:', materia_id);
                 return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
             }
+
+            console.log('Materia verificada:', materiaCheck.rows[0].nombre);
 
             const result = await pool.query(
                 `SELECT e.*, 
@@ -479,6 +547,7 @@ const calificacionController = {
                 [materia_id]
             );
 
+            console.log('Alumnos encontrados:', result.rows.length);
             res.json(result.rows);
         } catch (error) {
             console.error('Error en getAlumnosByMateria:', error);
@@ -590,13 +659,18 @@ const calificacionController = {
     async exportToExcel(req, res) {
         try {
             const { materia_id } = req.params;
+            console.log('exportToExcel - materia_id:', materia_id, 'usuario:', req.usuario.id);
+            
             const materiaCheck = await pool.query(
                 'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
                 [materia_id, req.usuario.id]
             );
             if (materiaCheck.rows.length === 0) {
-                return res.status(404).json({ message: 'Materia no encontrada' });
+                console.log('Materia no encontrada para exportación:', materia_id);
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
             }
+
+            console.log('Materia encontrada para exportación:', materiaCheck.rows[0].nombre);
 
             const students = await pool.query(
                 `SELECT e.matricula, e.nombre, e.email,
@@ -609,20 +683,34 @@ const calificacionController = {
                 [materia_id]
             );
 
+            console.log('Estudiantes encontrados para exportación:', students.rows.length);
+
+            // Asegurar que el directorio uploads exista
+            const uploadsDir = path.join(__dirname, '../uploads');
+            if (!fs.existsSync(uploadsDir)) {
+                fs.mkdirSync(uploadsDir, { recursive: true });
+            }
+
+            // Convertir datos a formato Excel
             const excelData = HtmlParser.convertToExcelFormat(students.rows);
+            console.log('Datos convertidos a formato Excel:', excelData.length, 'filas');
+            
             const ws = XLSX.utils.aoa_to_sheet(excelData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Calificaciones');
 
-            const fileName = `calificaciones_${materiaCheck.rows[0].nombre}_${Date.now()}.xlsx`;
-            const filePath = path.join(__dirname, '../uploads', fileName);
+            const fileName = `calificaciones_${materiaCheck.rows[0].nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.xlsx`;
+            const filePath = path.join(uploadsDir, fileName);
+            
             XLSX.writeFile(wb, filePath);
+            console.log('Archivo Excel generado:', filePath);
 
             res.json({
                 fileName,
                 downloadUrl: `/uploads/${fileName}`
             });
         } catch (error) {
+            console.error('Error en exportToExcel:', error);
             res.status(500).json({ message: 'Error al exportar a Excel', error: error.message });
         }
     },
