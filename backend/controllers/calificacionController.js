@@ -624,14 +624,26 @@ const calificacionController = {
             const { materia_id } = req.params;
             console.log('getAlumnosByMateria - materia_id:', materia_id, 'usuario_id:', req.usuario.id);
             
-            // Verificar que la materia exista y pertenezca al profesor
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                console.log('Usuario no autorizado:', req.usuario);
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Verificar que la materia exista
             const materiaCheck = await pool.query(
-                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
-                [materia_id, req.usuario.id]
+                'SELECT id, nombre, profesor_id FROM materias WHERE id = $1',
+                [materia_id]
             );
             if (materiaCheck.rows.length === 0) {
-                console.log('Materia no encontrada o sin permisos para materia_id:', materia_id);
-                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
+                console.log('Materia no encontrada para materia_id:', materia_id);
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+            
+            // Verificar que la materia pertenezca al profesor
+            if (materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                console.log('Materia no pertenece al profesor. materia.profesor_id:', materiaCheck.rows[0].profesor_id, 'usuario.id:', req.usuario.id);
+                return res.status(403).json({ message: 'No tienes permisos para ver los alumnos de esta materia' });
             }
 
             console.log('Materia verificada:', materiaCheck.rows[0].nombre);
@@ -664,19 +676,27 @@ const calificacionController = {
         try {
             const { materia_id, matricula, nombre, email } = req.body;
             
-            console.log('Creando alumno:', { materia_id, matricula, nombre, email });
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
             
             if (!materia_id || !matricula || !nombre) {
                 return res.status(400).json({ message: 'Completa los campos obligatorios' });
             }
 
-            // Verificar que la materia pertenezca al profesor
+            // Verificar que la materia exista
             const materiaCheck = await pool.query(
-                'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
-                [materia_id, req.usuario.id]
+                'SELECT id, profesor_id FROM materias WHERE id = $1',
+                [materia_id]
             );
             if (materiaCheck.rows.length === 0) {
-                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+            
+            // Verificar que la materia pertenezca al profesor
+            if (materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'No tienes permisos para agregar alumnos a esta materia' });
             }
 
             // Verificar si la matrícula ya existe
@@ -689,11 +709,11 @@ const calificacionController = {
                 return res.status(400).json({ message: 'La matrícula ya existe en el sistema' });
             }
 
-            // Crear nuevo estudiante
+            // Crear nuevo estudiante con todos los campos requeridos
             const result = await pool.query(
-                `INSERT INTO estudiantes (matricula, nombre, email, materia_id, created_at)
-                 VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
-                [matricula, nombre, email, materia_id]
+                `INSERT INTO estudiantes (matricula, nombre, email, materia_id, password, rol, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING *`,
+                [matricula, nombre, email, materia_id, 'temp123', 'alumno']
             );
 
             console.log('Estudiante creado:', result.rows[0]);
