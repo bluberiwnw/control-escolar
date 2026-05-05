@@ -636,13 +636,18 @@ const calificacionController = {
 
             console.log('Materia verificada:', materiaCheck.rows[0].nombre);
 
+            // Obtener todos los estudiantes que tienen calificaciones en esta materia
             const result = await pool.query(
-                `SELECT e.*, 
+                `SELECT DISTINCT e.*, 
                         COALESCE(c.calificacion_final, 0) as calificacion_final,
                         COALESCE(c.porcentaje_final, 0) as porcentaje_final
                  FROM estudiantes e
-                 LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1
-                 WHERE e.materia_id = $1
+                 LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1 AND c.tipo = 'final'
+                 WHERE e.id IN (
+                     SELECT DISTINCT estudiante_id 
+                     FROM calificaciones 
+                     WHERE materia_id = $1
+                 )
                  ORDER BY e.nombre`,
                 [materia_id]
             );
@@ -786,24 +791,32 @@ const calificacionController = {
 
             console.log('Materia encontrada para exportación:', materiaCheck.rows[0].nombre);
 
-            // Obtener todos los estudiantes con sus calificaciones detalladas
+            // Obtener todos los estudiantes que tienen calificaciones en esta materia (misma lógica que getAlumnosByMateria)
             const students = await pool.query(
-                `SELECT e.matricula, e.nombre, e.email,
+                `SELECT DISTINCT e.matricula, e.nombre, e.email,
                         COALESCE(c.calificacion_final, 0) as calificacion_final,
                         COALESCE(c.porcentaje_final, 0) as porcentaje_final
                  FROM estudiantes e
                  LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1 AND c.tipo = 'final'
-                 WHERE e.materia_id = $1
+                 WHERE e.id IN (
+                     SELECT DISTINCT estudiante_id 
+                     FROM calificaciones 
+                     WHERE materia_id = $1
+                 )
                  ORDER BY e.nombre`,
                 [materia_id]
             );
 
-            // Obtener calificaciones detalladas por tipo
+            // Obtener calificaciones detalladas por tipo (misma lógica que getAlumnosByMateria)
             const detailedGrades = await pool.query(
                 `SELECT e.matricula, e.nombre, c.tipo, c.calificacion
                  FROM estudiantes e
                  JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1
-                 WHERE e.materia_id = $1 AND c.tipo != 'final'
+                 WHERE e.id IN (
+                     SELECT DISTINCT estudiante_id 
+                     FROM calificaciones 
+                     WHERE materia_id = $1
+                 ) AND c.tipo != 'final'
                  ORDER BY e.nombre, c.tipo`,
                 [materia_id]
             );

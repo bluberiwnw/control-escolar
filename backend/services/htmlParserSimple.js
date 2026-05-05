@@ -3,36 +3,94 @@ class HtmlParserSimple {
         const students = [];
         
         try {
-            // Buscar la tabla específica con caption "Resumen de Lista de Clase"
-            const tableRegex = /<table[^>]*class="datadisplaytable"[^>]*>[\s\S]*?<caption[^>]*>[\s\S]*?<\/caption>[\s\S]*?<\/table>/gi;
+            console.log('Iniciando parseStudentList...');
+            
+            // Buscar cualquier tabla que contenga información de estudiantes
+            const tableRegex = /<table[^>]*class="datadisplaytable"[^>]*>[\s\S]*?<\/table>/gi;
             const tables = htmlContent.match(tableRegex);
             
             if (!tables) {
-                console.warn('No se encontraron tablas con clase datadisplaytable y caption Resumen de Lista de Clase');
+                console.warn('No se encontraron tablas con clase datadisplaytable');
+                // Intentar buscar tablas genéricas
+                const genericTableRegex = /<table[^>]*>[\s\S]*?<\/table>/gi;
+                const genericTables = htmlContent.match(genericTableRegex);
+                if (genericTables) {
+                    console.log('Buscando en tablas genéricas...');
+                    return this.parseGenericTables(genericTables, htmlContent);
+                }
                 return students;
             }
             
+            console.log(`Encontradas ${tables.length} tablas datadisplaytable`);
+            
             for (const table of tables) {
-                if (table.includes('Resumen de Lista de Clase')) {
+                // Buscar cualquier tabla que tenga filas con datos de estudiantes
+                if (table.includes('Lista') || table.includes('Estudiante') || table.includes('Alumno') || 
+                    table.includes('Nombre') || table.includes('Matrícula') || table.includes('ID')) {
+                    
+                    console.log('Procesando tabla con información de estudiantes...');
+                    
                     // Extraer información del curso
                     const courseInfo = this.extractCourseInfoSimple(htmlContent);
                     
-                    // Extraer filas de la tabla (saltar el encabezado)
+                    // Extraer filas de la tabla
                     const rowRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
                     const rows = table.match(rowRegex);
+                    
+                    console.log(`Encontradas ${rows ? rows.length : 0} filas en la tabla`);
                     
                     if (rows && rows.length > 1) { // Al menos el header + 1 fila de datos
                         for (let i = 1; i < rows.length; i++) { // Skip header row
                             const studentData = this.extractStudentDataSimple(rows[i], courseInfo);
                             if (studentData) {
                                 students.push(studentData);
+                                console.log(`Estudiante extraído: ${studentData.nombre_completo}`);
                             }
                         }
                     }
                 }
             }
+            
+            console.log(`Total estudiantes extraídos: ${students.length}`);
+            
         } catch (error) {
             console.error('Error parsing HTML:', error);
+        }
+        
+        return students;
+    }
+    
+    static parseGenericTables(tables, htmlContent) {
+        const students = [];
+        
+        try {
+            const courseInfo = this.extractCourseInfoSimple(htmlContent);
+            
+            for (const table of tables) {
+                // Buscar filas que contengan patrones de nombres y IDs
+                const rowRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
+                const rows = table.match(rowRegex);
+                
+                if (rows && rows.length > 1) {
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        
+                        // Buscar patrones de nombres en formato BUAP
+                        if (row.includes('fieldmediumtext') || 
+                            row.match(/[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+,\s*[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+/)) {
+                             
+                            const studentData = this.extractStudentDataSimple(row, courseInfo);
+                            if (studentData) {
+                                students.push(studentData);
+                                console.log(`Estudiante extraído de tabla genérica: ${studentData.nombre_completo}`);
+                            }
+                        }
+                    }
+                }
+            }
+            
+        } catch (error) {
+            console.error('Error parsing generic tables:', error);
         }
         
         return students;
