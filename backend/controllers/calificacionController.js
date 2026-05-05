@@ -318,21 +318,34 @@ const calificacionController = {
                     const tiposCalificacion = ['tarea', 'examen', 'participacion', 'proyecto'];
                     
                     for (const tipo of tiposCalificacion) {
-                        await pool.query(
-                            `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
-                             VALUES ($1, $2, $3, 0, NOW())
-                             ON CONFLICT (estudiante_id, materia_id, tipo) DO NOTHING`,
+                        // Verificar si ya existe la calificación
+                        const existingGrade = await pool.query(
+                            'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 AND tipo = $3',
                             [estudianteId, materia_id, tipo]
                         );
+                        
+                        if (existingGrade.rows.length === 0) {
+                            await pool.query(
+                                `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                                 VALUES ($1, $2, $3, 0, NOW())`,
+                                [estudianteId, materia_id, tipo]
+                            );
+                        }
                     }
                     
                     // Crear calificación final
-                    await pool.query(
-                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, calificacion_final, created_at)
-                         VALUES ($1, $2, 'final', 0, 0, NOW())
-                         ON CONFLICT (estudiante_id, materia_id, tipo) DO NOTHING`,
-                        [estudianteId, materia_id]
+                    const existingFinal = await pool.query(
+                        'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 AND tipo = $3',
+                        [estudianteId, materia_id, 'final']
                     );
+                    
+                    if (existingFinal.rows.length === 0) {
+                        await pool.query(
+                            `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, calificacion_final, created_at)
+                             VALUES ($1, $2, 'final', 0, 0, NOW())`,
+                            [estudianteId, materia_id]
+                        );
+                    }
                     
                     console.log(`📊 Calificaciones iniciales creadas para: ${student.nombre_completo}`);
                     
@@ -460,12 +473,22 @@ const calificacionController = {
             console.log('Estudiante creado:', result.rows[0]);
 
             // Crear registro de calificaciones inicial para el alumno
-            await pool.query(
-                `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
-                 VALUES ($1, $2, 'general', 0, NOW())
-                 ON CONFLICT (estudiante_id, materia_id, tipo) DO NOTHING`,
+            // Verificar si ya existe una calificación para este estudiante y materia
+            const existingGrade = await pool.query(
+                'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2',
                 [result.rows[0].id, materia_id]
             );
+            
+            if (existingGrade.rows.length === 0) {
+                await pool.query(
+                    `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                     VALUES ($1, $2, 'general', 0, NOW())`,
+                    [result.rows[0].id, materia_id]
+                );
+                console.log('Calificación inicial creada para el estudiante');
+            } else {
+                console.log('Calificación ya existe para el estudiante');
+            }
 
             console.log('Calificación inicial creada para el estudiante');
 
@@ -748,6 +771,110 @@ const calificacionController = {
         } catch (error) {
             console.error('Error en deleteArchivo:', error);
             res.status(500).json({ message: 'Error al eliminar archivo', error: error.message });
+        }
+    },
+
+    async updateAlumno(req, res) {
+        try {
+            const { id } = req.params;
+            const { matricula, nombre, email } = req.body;
+            
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            if (!matricula || !nombre) {
+                return res.status(400).json({ message: 'Completa los campos obligatorios' });
+            }
+
+            // Verificar si el estudiante existe
+            const existingStudent = await pool.query(
+                'SELECT id, materia_id FROM estudiantes WHERE id = $1',
+                [id]
+            );
+            if (existingStudent.rows.length === 0) {
+                return res.status(404).json({ message: 'Estudiante no encontrado' });
+            }
+            
+            // Verificar que la materia pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, profesor_id FROM materias WHERE id = $1',
+                [existingStudent.rows[0].materia_id]
+            );
+            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'No tienes permisos para modificar este alumno' });
+            }
+
+            // Verificar si la matrícula ya existe en otro estudiante
+            const matriculaCheck = await pool.query(
+                'SELECT id FROM estudiantes WHERE matricula = $1 AND id != $2',
+                [matricula, id]
+            );
+            if (matriculaCheck.rows.length > 0) {
+                return res.status(400).json({ message: 'La matrícula ya existe en el sistema' });
+            }
+
+            // Actualizar estudiante
+            const result = await pool.query(
+                `UPDATE estudiantes 
+                 SET matricula = $1, nombre = $2, email = $3, updated_at = NOW()
+                 WHERE id = $4 RETURNING *`,
+                [matricula, nombre, email, id]
+            );
+
+            console.log('Estudiante actualizado:', result.rows[0]);
+            res.json(result.rows[0]);
+        } catch (error) {
+            console.error('Error en updateAlumno:', error);
+            res.status(500).json({ message: 'Error al actualizar alumno', error: error.message });
+        }
+    },
+
+    async deleteAlumno(req, res) {
+        try {
+            const { id } = req.params;
+            
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Verificar si el estudiante existe
+            const existingStudent = await pool.query(
+                'SELECT id, materia_id FROM estudiantes WHERE id = $1',
+                [id]
+            );
+            if (existingStudent.rows.length === 0) {
+                return res.status(404).json({ message: 'Estudiante no encontrado' });
+            }
+            
+            // Verificar que la materia pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, profesor_id FROM materias WHERE id = $1',
+                [existingStudent.rows[0].materia_id]
+            );
+            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'No tienes permisos para eliminar este alumno' });
+            }
+
+            // Eliminar calificaciones del estudiante
+            await pool.query(
+                'DELETE FROM calificaciones WHERE estudiante_id = $1',
+                [id]
+            );
+
+            // Eliminar estudiante
+            const result = await pool.query(
+                'DELETE FROM estudiantes WHERE id = $1',
+                [id]
+            );
+
+            console.log('Estudiante eliminado:', result.rowCount);
+            res.json({ message: 'Estudiante eliminado correctamente' });
+        } catch (error) {
+            console.error('Error en deleteAlumno:', error);
+            res.status(500).json({ message: 'Error al eliminar alumno', error: error.message });
         }
     },
 

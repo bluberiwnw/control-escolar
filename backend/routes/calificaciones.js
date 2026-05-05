@@ -17,6 +17,8 @@ router.delete('/archivos/:id', verificarRol(['profesor', 'administrador']), cali
 // Rutas para CRUD de alumnos (solo profesores)
 router.get('/materia/:materia_id/alumnos', verificarRol(['profesor', 'administrador']), calificacionController.getAlumnosByMateria);
 router.post('/alumnos', verificarRol(['profesor', 'administrador']), calificacionController.createAlumno);
+router.put('/alumnos/:id', verificarRol(['profesor', 'administrador']), calificacionController.updateAlumno);
+router.delete('/alumnos/:id', verificarRol(['profesor', 'administrador']), calificacionController.deleteAlumno);
 router.get('/materia/:materia_id/exportar', verificarRol(['profesor', 'administrador']), calificacionController.exportToExcel);
 
 // Rutas para alumnos (separadas para no tener conflicto de roles)

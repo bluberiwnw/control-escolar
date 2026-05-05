@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarInfoUsuario(); 
     mostrarFechaActual();
     await cargarCalificaciones();
-    await cargarMateriasParaBaja();
 });
 
 async function cargarCalificaciones() {
@@ -38,28 +37,6 @@ async function cargarCalificaciones() {
     }
 }
 
-async function cargarMateriasParaBaja() {
-    try {
-        const data = await apiRequest('/calificaciones/alumno/todas');
-        const select = document.getElementById('materiaBajaSelect');
-        
-        if (data.materias && data.materias.length > 0) {
-            select.innerHTML = '<option value="">Selecciona una materia...</option>';
-            data.materias.forEach(materia => {
-                const option = document.createElement('option');
-                option.value = materia.materia_id;
-                option.textContent = `${materia.nombre} (${materia.clave})`;
-                select.appendChild(option);
-            });
-        } else {
-            select.innerHTML = '<option value="">No hay materias inscritas</option>';
-            select.disabled = true;
-        }
-    } catch (error) {
-        console.error('Error al cargar materias para baja:', error);
-    }
-}
-
 function mostrarResumenVacio() {
     document.getElementById('promedioGeneral').textContent = '0.0';
     document.getElementById('totalMaterias').textContent = '0';
@@ -71,24 +48,19 @@ function actualizarResumenGeneral(data) {
     
     const materias = data.materias || [];
     
-    // Calcular promedio general como promedio simple de todas las calificaciones individuales
-    let totalCalificaciones = 0;
-    let cantidadCalificaciones = 0;
+    // Calcular promedio general como promedio simple de los promedios finales
+    let totalPromedios = 0;
+    let cantidadMaterias = 0;
     
     materias.forEach(materia => {
-        if (materia.calificaciones && materia.calificaciones.length > 0) {
-            materia.calificaciones.forEach(cal => {
-                const valor = parseFloat(cal.calificacion) || 0;
-                if (valor > 0) {
-                    totalCalificaciones += valor;
-                    cantidadCalificaciones++;
-                }
-            });
+        const promedio = parseFloat(materia.promedio_final) || 0;
+        if (promedio > 0) {
+            totalPromedios += promedio;
+            cantidadMaterias++;
         }
     });
     
-    const promedioGeneral = cantidadCalificaciones > 0 ? totalCalificaciones / cantidadCalificaciones : 0;
-    
+    const promedioGeneral = cantidadMaterias > 0 ? totalPromedios / cantidadMaterias : 0;
     const totalMaterias = data.total_materias || materias.length || 0;
     const aprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) >= 6).length;
     
@@ -97,8 +69,8 @@ function actualizarResumenGeneral(data) {
         totalMaterias,
         aprobadas,
         materiasCount: materias.length,
-        totalCalificaciones,
-        cantidadCalificaciones
+        totalPromedios,
+        cantidadMaterias
     });
     
     // Actualizar DOM
@@ -222,30 +194,4 @@ function formatearTipo(tipo) {
         'final': 'Final'
     };
     return tipos[tipo] || tipo.charAt(0).toUpperCase() + tipo.slice(1);
-}
-
-async function darseDeBaja() {
-    const select = document.getElementById('materiaBajaSelect');
-    const materiaId = select.value;
-    
-    if (!materiaId) {
-        mostrarToast('Por favor selecciona una materia', 'warning');
-        return;
-    }
-    
-    if (!confirm('¿Estás seguro de que deseas darte de baja de esta materia? Esta acción no se puede deshacer.')) {
-        return;
-    }
-    
-    try {
-        await apiRequest(`/calificaciones/alumno/baja/${materiaId}`, 'DELETE');
-        mostrarToast('Te has dado de baja de la materia correctamente', 'success');
-        
-        // Recargar calificaciones y materias
-        await cargarCalificaciones();
-        await cargarMateriasParaBaja();
-    } catch (error) {
-        console.error('Error al darse de baja:', error);
-        mostrarToast('Error al darse de baja de la materia', 'error');
-    }
 }
