@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     mostrarInfoUsuario(); 
     mostrarFechaActual();
     await cargarCalificaciones();
+    await cargarMateriasParaBaja();
 });
 
 async function cargarCalificaciones() {
@@ -182,3 +183,62 @@ function actualizarCalificacionesEnTiempoReal() {
 
 // Iniciar actualización en tiempo real
 actualizarCalificacionesEnTiempoReal();
+
+// Función para cargar materias disponibles para darse de baja
+async function cargarMateriasParaBaja() {
+    try {
+        const data = await apiRequest('/calificaciones/alumno/todas');
+        const select = document.getElementById('materiaBajaSelect');
+        
+        if (!data.materias || data.materias.length === 0) {
+            select.innerHTML = '<option value="">No hay materias inscritas</option>';
+            select.disabled = true;
+            return;
+        }
+        
+        select.innerHTML = '<option value="">Selecciona una materia...</option>';
+        data.materias.forEach(materia => {
+            select.innerHTML += `<option value="${materia.materia_id}">${materia.nombre} - ${materia.clave}</option>`;
+        });
+    } catch (error) {
+        console.error('Error al cargar materias para baja:', error);
+        const select = document.getElementById('materiaBajaSelect');
+        select.innerHTML = '<option value="">Error al cargar materias</option>';
+        select.disabled = true;
+    }
+}
+
+// Función para darse de baja de una materia
+async function darseDeBaja() {
+    const materiaId = document.getElementById('materiaBajaSelect').value;
+    
+    if (!materiaId) {
+        mostrarToast('Selecciona una materia para darte de baja', 'error');
+        return;
+    }
+    
+    if (!confirm('¿Estás seguro de que quieres darte de baja de esta materia? Esta acción no se puede deshacer y perderás acceso a todas tus calificaciones y actividades.')) {
+        return;
+    }
+    
+    try {
+        const response = await apiRequest(`/calificaciones/alumno/materia/${materiaId}/baja`, {
+            method: 'DELETE'
+        });
+        
+        mostrarToast('Te has dado de baja correctamente', 'success');
+        
+        // Recargar calificaciones y materias
+        await cargarCalificaciones();
+        await cargarMateriasParaBaja();
+        
+        // Limpiar el select
+        document.getElementById('materiaBajaSelect').value = '';
+        
+    } catch (error) {
+        mostrarToast(error.message || 'No se pudo procesar la solicitud de baja', 'error');
+    }
+}
+
+// Exportar funciones al scope global
+window.darseDeBaja = darseDeBaja;

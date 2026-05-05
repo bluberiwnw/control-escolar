@@ -31,11 +31,15 @@
         <div class="top-bar"><h1>Registro de Calificaciones</h1><div class="date-display"><i class="fas fa-calendar-alt"></i> <span id="fechaActualCompleta"></span></div></div>
         <div class="panel-card">
             <div class="form-group-modern"><label>Materia</label><select id="materiaSelect"></select></div>
-            <div class="form-group-modern"><label>Tipo</label><select id="tipoSelect"><option value="tarea">Tarea</option><option value="proyecto">Proyecto</option><option value="examen">Examen</option></select></div>
     <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-        <i class="fas fa-cloud-upload-alt"></i><h3>Subir calificaciones (HTM/Excel/PDF)</h3>
-        <p>Formato requerido: HTM de lista de clase BUAP o Excel con columnas <strong>"Nombre completo", "Nombre", "Apellidos", "Dirección de correo", "Participaciones", "Tareas", "Actividades", "Examenes", "Calificaciones", "Porcentaje Final"</strong>. Las calificaciones válidas van de 5 a 10.</p>
-        <input type="file" id="fileInput" style="display:none" accept=".htm,.html,.xlsx,.xls,.pdf" onchange="previsualizarArchivo(this)">
+        <i class="fas fa-cloud-upload-alt"></i><h3>Subir calificaciones (HTM)</h3>
+        <p>Formato requerido: HTM de lista de clase BUAP. El sistema procesará automáticamente la lista de alumnos y extraerá toda la información necesaria.</p>
+        <input type="file" id="fileInput" style="display:none" accept=".htm,.html" onchange="previsualizarArchivo(this)">
+    </div>
+    <div class="form-group-modern" style="margin-top: 15px;">
+        <button type="button" class="btn btn-secondary" onclick="descargarPlantilla()">
+            <i class="fas fa-download"></i> Descargar Plantilla HTM
+        </button>
     </div>
     <div class="panel-card" style="margin-top: 20px;">
         <h3>Gestión de Alumnos</h3>

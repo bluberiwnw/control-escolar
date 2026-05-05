@@ -98,6 +98,23 @@ class HtmlParserSimple {
                 }
             }
             
+            // Extraer información adicional si existe
+            let carrera = '';
+            let planEstudios = '';
+            let campus = '';
+            
+            // Buscar información adicional en celdas extras
+            for (let i = 8; i < cells.length; i++) {
+                const cellText = getCellText(cells[i]);
+                if (cellText.includes('Carrera:')) {
+                    carrera = cellText.replace('Carrera:', '').trim();
+                } else if (cellText.includes('Plan:')) {
+                    planEstudios = cellText.replace('Plan:', '').trim();
+                } else if (cellText.includes('Campus:')) {
+                    campus = cellText.replace('Campus:', '').trim();
+                }
+            }
+            
             // Dividir nombre en nombre y apellidos
             const nombreParts = nombreCompleto.split(',');
             const apellidos = nombreParts[0]?.trim() || '';
@@ -113,10 +130,14 @@ class HtmlParserSimple {
                 status: status,
                 nivel: nivel,
                 creditos: parseFloat(creditos) || 0,
+                carrera: carrera,
+                plan_estudios: planEstudios,
+                campus: campus,
                 curso: courseInfo.nombre || '',
                 clave_curso: courseInfo.clave || '',
                 nrc: courseInfo.nrc || '',
-                // Campos para calificaciones
+                duracion: courseInfo.duracion || '',
+                // Campos para calificaciones (inicializados en 0)
                 participaciones: 0,
                 tareas: 0,
                 actividades: 0,

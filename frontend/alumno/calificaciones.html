@@ -56,6 +56,24 @@
 
         <!-- Lista de Materias con Calificaciones -->
         <div id="calificacionesContainer" class="calificaciones-grid"></div>
+        
+        <!-- Apartado para darse de baja -->
+        <div class="panel-card" style="margin-top: 2rem;">
+            <h3>Gestión de Matrícula</h3>
+            <div class="alert alert-warning" style="margin-bottom: 1rem;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Importante:</strong> Si te das de baja de una materia, perderás acceso a todas tus calificaciones y actividades.
+            </div>
+            <div class="form-group-modern">
+                <label>Materia a dar de baja</label>
+                <select id="materiaBajaSelect">
+                    <option value="">Selecciona una materia...</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-danger" onclick="darseDeBaja()">
+                <i class="fas fa-user-minus"></i> Darme de Baja
+            </button>
+        </div>
         </div>
     </main>
     <button type="button" class="theme-toggle" data-theme-icon onclick="toggleTheme()" aria-label="Tema"><i class="fas fa-moon"></i></button>

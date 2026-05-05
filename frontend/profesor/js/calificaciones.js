@@ -16,25 +16,42 @@ async function cargarMaterias() {
 async function subirArchivo(input) {
     const file = input.files[0];
     const materia_id = document.getElementById('materiaSelect').value;
-    const tipo = document.getElementById('tipoSelect').value;
     if (!materia_id) { mostrarToast('Selecciona una materia', 'error'); return; }
     if (!file) { mostrarToast('Selecciona un archivo', 'error'); return; }
     const formData = new FormData();
     formData.append('archivo', file);
     formData.append('materia_id', materia_id);
-    formData.append('tipo', tipo);
     const token = localStorage.getItem('token');
     const res = await fetch(`${window.API_URL}/calificaciones/upload`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
     });
     const data = await res.json();
     if (res.ok) {
-        mostrarToast(data.message || 'Archivo subido', 'success');
+        mostrarToast(data.message || 'Archivo HTM procesado', 'success');
         document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
         cargarHistorial();
+        await cargarAlumnos(); // Actualizar lista de alumnos
     } else {
         mostrarToast(data.message || 'Error al subir archivo', 'error');
         document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir archivo'}</div>`;
+    }
+}
+
+async function descargarPlantilla() {
+    try {
+        const data = await apiRequest('/calificaciones/plantilla');
+        
+        // Crear un enlace temporal para descargar el archivo
+        const link = document.createElement('a');
+        link.href = `${window.API_URL}${data.archivo_url}`;
+        link.download = data.nombre;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        mostrarToast('Plantilla HTM descargada correctamente', 'success');
+    } catch (error) {
+        mostrarToast(error.message || 'Error al descargar plantilla', 'error');
     }
 }
 
@@ -131,24 +148,18 @@ async function previsualizarArchivo(input) {
 
 async function confirmarSubida() {
     if (!window.tempFile) {
-        mostrarToast('No hay archivo para subir', 'error');
+        mostrarToast('No hay archivo para procesar', 'error');
         return;
     }
     const materia_id = document.getElementById('materiaSelect').value;
-    const tipo = document.getElementById('tipoSelect').value;
     if (!materia_id) {
         mostrarToast('Seleccione una materia', 'error');
-        return;
-    }
-    if (!['tarea', 'proyecto', 'examen'].includes(tipo)) {
-        mostrarToast('Selecciona un tipo de evaluación válido', 'error');
         return;
     }
 
     const formData = new FormData();
     formData.append('archivo', window.tempFile);
     formData.append('materia_id', materia_id);
-    formData.append('tipo', tipo);
 
     const token = localStorage.getItem('token');
     const res = await fetch(`${window.API_URL}/calificaciones/upload`, {
@@ -160,11 +171,14 @@ async function confirmarSubida() {
     if (res.ok) {
         document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo.detalles || ''}</div>`;
         cargarHistorial();   // recargar lista de archivos subidos
+        await cargarAlumnos(); // actualizar lista de alumnos
         document.getElementById('previewTable').innerHTML = ''; // limpiar preview
         window.tempFile = null;
         document.getElementById('fileInput').value = '';
+        mostrarToast('Archivo HTM procesado correctamente', 'success');
     } else {
-        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir'}</div>`;
+        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al procesar archivo HTM'}</div>`;
+        mostrarToast(data.message || 'Error al procesar archivo', 'error');
     }
 }
 
@@ -351,81 +365,36 @@ async function exportarExcel() {
     }
 }
 
-// Actualizar la función de previsualización para soportar HTM
+// Función de previsualización para archivos HTM
 async function previsualizarArchivo(input) {
     const file = input.files[0];
     if (!file) return;
 
     // Validar extensión
-    const validExt = ['.xlsx', '.xls', '.pdf', '.htm', '.html'];
+    const validExt = ['.htm', '.html'];
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!validExt.includes(ext)) {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos Excel (.xlsx, .xls), PDF o HTM (.htm, .html).</div>';
+        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos HTM (.htm, .html).</div>';
         return;
     }
 
     window.tempFile = file;
     
-    if (ext === '.pdf') {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-info">Archivo PDF listo para subir. No requiere vista previa.</div>';
-        return;
-    }
-
     if (ext === '.htm' || ext === '.html') {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-info">Archivo HTM de lista de clase BUAP listo para subir. El sistema procesará automáticamente la lista de alumnos.</div>';
+        document.getElementById('previewTable').innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Archivo HTM de lista de clase BUAP listo para procesar.</strong><br>
+                El sistema extraerá automáticamente: Nombre completo, matrícula, email, y toda la información del curso.
+            </div>
+            <div style="margin-top: 15px;">
+                <button class="btn btn-primary" onclick="confirmarSubida()">
+                    <i class="fas fa-upload"></i> Procesar Archivo HTM
+                </button>
+            </div>
+        `;
         return;
     }
-
-    // Procesar archivos Excel
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet);
-        
-        if (rows.length === 0) {
-            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">El archivo está vacío.</div>';
-            return;
-        }
-
-        // Validar columnas requeridas para el nuevo formato
-        const requiredCols = ['Nombre completo', 'Nombre', 'Apellidos', 'Dirección de correo', 'Participaciones', 'Tareas', 'Actividades', 'Examenes', 'Calificaciones', 'Porcentaje Final'];
-        const firstRow = rows[0];
-        const missing = requiredCols.filter(col => !firstRow.hasOwnProperty(col));
-        
-        if (missing.length) {
-            document.getElementById('previewTable').innerHTML = `<div class="alert alert-error">Error: Faltan columnas: ${missing.join(', ')}. Asegúrate de que los encabezados sean exactamente: ${requiredCols.join(', ')}.</div>`;
-            return;
-        }
-
-        // Mostrar previsualización (primeras 10 filas)
-        let html = `<h4>Vista previa (primeros 10 registros)</h4>
-                    <table class="asistencia-tabla">
-                        <thead><tr>${requiredCols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-                        <tbody>`;
-        rows.slice(0, 10).forEach(row => {
-            html += `<tr>
-                        <td>${row['Nombre completo']}</td>
-                        <td>${row.Nombre}</td>
-                        <td>${row.Apellidos}</td>
-                        <td>${row['Dirección de correo']}</td>
-                        <td>${row.Participaciones}</td>
-                        <td>${row.Tareas}</td>
-                        <td>${row.Actividades}</td>
-                        <td>${row.Examenes}</td>
-                        <td>${row.Calificaciones}</td>
-                        <td>${row['Porcentaje Final']}</td>
-                     </tr>`;
-        });
-        html += `</tbody></table>
-                 <button class="btn-login-buap" onclick="confirmarSubida()">Confirmar subida</button>`;
-        document.getElementById('previewTable').innerHTML = html;
-
-        // Guardar archivo temporalmente para subir después
-        window.tempFile = file;
-    };
-    reader.readAsArrayBuffer(file);
 }
 
 // Actualizar cuando se cambia la materia
@@ -442,3 +411,4 @@ window.eliminarAlumno = eliminarAlumno;
 window.cerrarModalAlumno = cerrarModalAlumno;
 window.exportarExcel = exportarExcel;
 window.cargarAlumnos = cargarAlumnos;
+window.descargarPlantilla = descargarPlantilla;

@@ -36,20 +36,14 @@ const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        const allowedTypes = [
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/pdf',
-            'text/html',
-            'text/htm',
-        ];
-        const allowedExtensions = ['.xlsx', '.xls', '.pdf', '.htm', '.html'];
+        const allowedTypes = ['text/html', 'text/htm'];
+        const allowedExtensions = ['.htm', '.html'];
         const fileExtension = path.extname(file.originalname).toLowerCase();
         
         if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
             cb(null, true);
         } else {
-            cb(new Error('Tipo de archivo no permitido. Solo Excel, PDF y HTM'), false);
+            cb(new Error('Tipo de archivo no permitido. Solo archivos HTM/HTML'), false);
         }
     }
 }).single('archivo');
@@ -60,14 +54,10 @@ const calificacionController = {
             if (err) return res.status(400).json({ message: err.message });
             if (!req.file) return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
             try {
-                const { materia_id, tipo } = req.body;
+                const { materia_id } = req.body;
                 if (!materia_id) {
                     fs.unlinkSync(req.file.path);
                     return res.status(400).json({ message: 'Selecciona una materia antes de subir el archivo.' });
-                }
-                if (!TIPOS_CALIFICACION.has(String(tipo || '').trim())) {
-                    fs.unlinkSync(req.file.path);
-                    return res.status(400).json({ message: 'Selecciona un tipo de evaluación válido.' });
                 }
                 const materiaCheck = await pool.query(
                     'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
@@ -80,40 +70,10 @@ const calificacionController = {
                 const insertResult = await pool.query(
                     `INSERT INTO archivos_calificaciones (profesor_id, materia_id, nombre_archivo, tipo)
                      VALUES ($1, $2, $3, $4) RETURNING id`,
-                    [req.usuario.id, materia_id, req.file.filename, tipo]
+                    [req.usuario.id, materia_id, req.file.filename, 'htm']
                 );
                 let detalles = '';
                 let estado = 'Procesado';
-
-                if (req.file.mimetype === 'application/pdf') {
-                    estado = 'Pendiente';
-                    detalles = 'Función en desarrollo. Por favor use formato Excel por ahora.';
-                    await pool.query(
-                        `UPDATE archivos_calificaciones SET estado = $1, detalles = $2 WHERE id = $3`,
-                        [estado, detalles, insertResult.rows[0].id]
-                    );
-                    return res.json({
-                        message: detalles,
-                        archivo: {
-                            id: insertResult.rows[0].id,
-                            nombre: req.file.originalname,
-                            archivo_url: `/uploads/${encodeURIComponent(req.file.filename)}`,
-                            tipo,
-                            fecha: new Date().toISOString().split('T')[0],
-                            estado,
-                            detalles,
-                        },
-                    });
-                }
-
-                if (req.file.mimetype.includes('spreadsheet') || req.file.originalname.match(/\.(xlsx|xls)$/i)) {
-                    const resultado = await procesarExcelCalificaciones(req.file.path, req.usuario.id);
-                    detalles = `Insertados: ${resultado.exitosos}, Errores: ${resultado.errores.length}${resultado.errores.length ? ' — ' + resultado.errores.join('; ') : ''}`;
-                    await pool.query(
-                        `UPDATE archivos_calificaciones SET estado = 'Procesado', detalles = $1 WHERE id = $2`,
-                        [detalles, insertResult.rows[0].id]
-                    );
-                }
 
                 // Procesar archivos HTM
                 if (req.file.originalname.match(/\.(htm|html)$/i)) {
@@ -121,16 +81,16 @@ const calificacionController = {
                     detalles = `Procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`;
                     await pool.query(
                         `UPDATE archivos_calificaciones SET estado = 'Procesado', detalles = $1 WHERE id = $2`,
-                        [detalles, insertResult.rows[0].id]
+                        [estado, detalles, insertResult.rows[0].id]
                     );
                 }
                 res.json({
-                    message: 'Archivo subido correctamente',
+                    message: 'Archivo HTM procesado correctamente',
                     archivo: {
                         id: insertResult.rows[0].id,
                         nombre: req.file.originalname,
                         archivo_url: `/uploads/${encodeURIComponent(req.file.filename)}`,
-                        tipo,
+                        tipo: 'htm',
                         fecha: new Date().toISOString().split('T')[0],
                         estado,
                         detalles,
@@ -275,17 +235,89 @@ const calificacionController = {
 
     async getPlantilla(req, res) {
         try {
-            const ejemploPath = path.join(__dirname, '../uploads/alumnos_ejemplo.csv');
-            if (!fs.existsSync(ejemploPath)) {
-                return res.status(404).json({ message: 'La plantilla de ejemplo no está disponible.' });
-            }
+            // Generar archivo HTM de ejemplo
+            const ejemploHTM = this.generarEjemploHTM();
+            const fileName = 'ejemplo_lista_clase.htm';
+            const filePath = path.join(__dirname, '../uploads', fileName);
+            
+            fs.writeFileSync(filePath, ejemploHTM, 'utf8');
+            
             res.json({
-                nombre: 'alumnos_ejemplo.csv',
-                archivo_url: '/uploads/alumnos_ejemplo.csv',
+                nombre: fileName,
+                archivo_url: `/uploads/${fileName}`,
+                tipo: 'htm'
             });
         } catch (error) {
-            res.status(500).json({ message: 'No se pudo obtener la plantilla de ejemplo.' });
+            res.status(500).json({ message: 'No se pudo generar la plantilla de ejemplo.' });
         }
+    },
+
+    generarEjemploHTM() {
+        return `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen de Lista de Clase</title>
+    <style>
+        .datadisplaytable { border-collapse: collapse; width: 100%; }
+        .datadisplaytable th, .datadisplaytable td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .datadisplaytable th { background-color: #f2f2f2; }
+        .ddheader { font-weight: bold; background-color: #003366; color: white; }
+        .dddefault { background-color: white; }
+        .fieldmediumtext { font-weight: normal; }
+        .captiontext { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Información de Curso</h1>
+    <table class="datadisplaytable">
+        <tr><th class="ddheader">Campo</th><th class="ddheader">Valor</th></tr>
+        <tr><td class="dddefault">Visión y Animación</td><td class="dddefault">Visión y Animación - 202401</td></tr>
+        <tr><td class="dddefault">NRC</td><td class="dddefault">12345</td></tr>
+        <tr><td class="dddefault">Duración</td><td class="dddefault">16 semanas</td></tr>
+    </table>
+
+    <h2 class="captiontext">Resumen de Lista de Clase</h2>
+    <table class="datadisplaytable">
+        <tr>
+            <th class="ddheader">#</th>
+            <th class="ddheader">Nombre</th>
+            <th class="ddheader">ID</th>
+            <th class="ddheader">Status</th>
+            <th class="ddheader">Nivel</th>
+            <th class="ddheader">Créditos</th>
+            <th class="ddheader">Email</th>
+        </tr>
+        <tr>
+            <td class="dddefault">1</td>
+            <td class="dddefault"><span class="fieldmediumtext">PÉREZ LÓPEZ, JUAN CARLOS</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">202400001</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">Activo</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">1</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">8</span></td>
+            <td class="dddefault"><a href="mailto:juan.perez@alumno.buap.mx">juan.perez@alumno.buap.mx</a></td>
+        </tr>
+        <tr>
+            <td class="dddefault">2</td>
+            <td class="dddefault"><span class="fieldmediumtext">GARCÍA MENDOZA, MARÍA ELENA</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">202400002</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">Activo</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">1</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">8</span></td>
+            <td class="dddefault"><a href="mailto:maria.garcia@alumno.buap.mx">maria.garcia@alumno.buap.mx</a></td>
+        </tr>
+        <tr>
+            <td class="dddefault">3</td>
+            <td class="dddefault"><span class="fieldmediumtext">RODRÍGUEZ HERNÁNDEZ, PEDRO LUIS</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">202400003</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">Activo</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">1</span></td>
+            <td class="dddefault"><span class="fieldmediumtext">8</span></td>
+            <td class="dddefault"><a href="mailto:pedro.rodriguez@alumno.buap.mx">pedro.rodriguez@alumno.buap.mx</a></td>
+        </tr>
+    </table>
+</body>
+</html>`;
     },
 
     async getEstadisticas(req, res) {
@@ -464,6 +496,13 @@ const calificacionController = {
                 `INSERT INTO estudiantes (matricula, nombre, email, materia_id, created_at)
                  VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
                 [matricula, nombre, email, materia_id]
+            );
+
+            // Crear registro de calificaciones inicial para el alumno
+            await pool.query(
+                `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                 VALUES ($1, $2, 'general', 0, NOW())`,
+                [result.rows[0].id, materia_id]
             );
 
             res.status(201).json(result.rows[0]);
@@ -667,6 +706,43 @@ const calificacionController = {
             });
         } catch (error) {
             res.status(500).json({ message: 'Error al obtener calificaciones', error: error.message });
+        }
+    },
+
+    async darseDeBajaMateria(req, res) {
+        try {
+            const { materia_id } = req.params;
+            
+            // Verificar que el alumno esté inscrito en la materia
+            const inscripcionCheck = await pool.query(
+                `SELECT e.id, e.nombre 
+                 FROM estudiantes e
+                 WHERE e.id = $1 AND e.materia_id = $2`,
+                [req.usuario.id, materia_id]
+            );
+            
+            if (inscripcionCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'No estás inscrito en esta materia' });
+            }
+
+            // Eliminar calificaciones del alumno en esta materia
+            await pool.query(
+                'DELETE FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2',
+                [req.usuario.id, materia_id]
+            );
+
+            // Eliminar inscripción del alumno
+            await pool.query(
+                'DELETE FROM estudiantes WHERE id = $1 AND materia_id = $2',
+                [req.usuario.id, materia_id]
+            );
+
+            res.json({
+                message: 'Te has dado de baja correctamente de la materia',
+                alumno: inscripcionCheck.rows[0].nombre
+            });
+        } catch (error) {
+            res.status(500).json({ message: 'Error al procesar la solicitud de baja', error: error.message });
         }
     }
 };
