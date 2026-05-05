@@ -49,82 +49,69 @@ function mostrarResumenVacio() {
 }
 
 function actualizarResumenGeneral(data) {
-    document.getElementById('promedioGeneral').textContent = data.promedio_general.toFixed(1);
-    document.getElementById('totalMaterias').textContent = data.total_materias;
+    // Calcular promedio general correctamente
+    const promedioGeneral = data.materias && data.materias.length > 0 
+        ? data.materias.reduce((sum, m) => sum + (m.promedio_final || 0), 0) / data.materias.length 
+        : 0;
     
-    const aprobadas = data.materias.filter(m => m.promedio_final >= 6).length;
+    document.getElementById('promedioGeneral').textContent = promedioGeneral.toFixed(1);
+    document.getElementById('totalMaterias').textContent = data.total_materias || data.materias?.length || 0;
+    
+    const aprobadas = data.materias ? data.materias.filter(m => (m.promedio_final || 0) >= 6).length : 0;
     document.getElementById('materiasAprobadas').textContent = aprobadas;
+    
+    // Actualizar el círculo de promedio con color dinámico
+    const promedioCircle = document.querySelector('.stat-circle');
+    if (promedioCircle) {
+        promedioCircle.style.background = getPromedioColor(promedioGeneral);
+    }
+}
+
+function getPromedioColor(promedio) {
+    if (promedio >= 9) return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+    if (promedio >= 8) return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+    if (promedio >= 7) return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+    if (promedio >= 6) return 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)';
+    return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
 }
 
 function mostrarCalificacionesPorMateria(materias) {
-    let html = '<div class="materias-calificaciones">';
+    const container = document.getElementById('calificacionesContainer');
     
+    let html = '';
     materias.forEach(materia => {
-        const promedioColor = obtenerColorCalificacion(materia.promedio_final);
-        const promedioIcono = obtenerIconoCalificacion(materia.promedio_final);
-        
+        const promedioColor = getCalificacionColor(materia.promedio_final);
+        const promedioIcon = getCalificacionIcon(materia.promedio_final);
+            
         html += `
-            <div class="materia-calificacion-card">
+            <div class="materia-card">
                 <div class="materia-header">
                     <div class="materia-info">
                         <h3>${materia.nombre}</h3>
                         <p class="materia-clave">${materia.clave}</p>
-                        <p class="materia-profesor"><i class="fas fa-chalkboard-teacher"></i> ${materia.profesor}</p>
+                        <p class="materia-profesor">Prof. ${materia.profesor}</p>
                     </div>
-                    <div class="materia-promedio">
-                        <div class="promedio-circle ${promedioColor}">
-                            <span class="promedio-number">${materia.promedio_final.toFixed(1)}</span>
-                            <span class="promedio-icon">${promedioIcono}</span>
-                        </div>
-                        <span class="promedio-label">Promedio</span>
+                    <div class="promedio-circle" style="background: ${promedioColor};">
+                        <span class="promedio-number">${materia.promedio_final.toFixed(1)}</span>
+                        <span class="promedio-icon">${promedioIcon}</span>
                     </div>
                 </div>
-                
-                <div class="calificaciones-detalle">
-                    <h4>Desglose de Calificaciones</h4>
-                    <div class="calificaciones-grid">
-        `;
-        
-        // Mostrar calificaciones individuales
-        if (materia.calificaciones && materia.calificaciones.length > 0) {
-            materia.calificaciones.forEach(calificacion => {
-                const calificacionColor = obtenerColorCalificacion(calificacion.calificacion);
-                const tipoIcono = obtenerIconoTipo(calificacion.tipo);
-                
-                html += `
-                    <div class="calificacion-item">
-                        <div class="calificacion-tipo">
-                            <i class="${tipoIcono}"></i>
-                            <span>${formatearTipo(calificacion.tipo)}</span>
+                <div class="materia-calificaciones">
+                    ${materia.calificaciones.length > 0 ? materia.calificaciones.map(cal => `
+                        <div class="calificacion-item">
+                            <span class="calificacion-tipo">${formatearTipo(cal.tipo)}</span>
+                            <span class="calificacion-valor">${cal.calificacion.toFixed(1)}</span>
                         </div>
-                        <div class="calificacion-valor">
-                            <span class="badge badge-${calificacionColor}">${calificacion.calificacion}</span>
-                            ${calificacion.porcentaje_final ? `<small>${calificacion.porcentaje_final}%</small>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-        } else {
-            html += `
-                <div class="calificacion-vacia">
-                    <i class="fas fa-info-circle"></i>
-                    <span>No hay calificaciones detalladas registradas</span>
-                </div>
-            `;
-        }
-        
-        html += `
-                    </div>
+                    `).join('') : '<p class="no-calificaciones">No hay calificaciones detalladas aún</p>'}
                 </div>
             </div>
         `;
     });
     
-    html += '</div>';
-    document.getElementById('calificacionesContainer').innerHTML = html;
+    container.innerHTML = html;
 }
 
-function obtenerColorCalificacion(calificacion) {
+function getCalificacionColor(calificacion) {
     if (calificacion >= 9) return 'excellent';
     if (calificacion >= 8) return 'good';
     if (calificacion >= 7) return 'average';
@@ -132,7 +119,7 @@ function obtenerColorCalificacion(calificacion) {
     return 'fail';
 }
 
-function obtenerIconoCalificacion(calificacion) {
+function getCalificacionIcon(calificacion) {
     if (calificacion >= 9) return '🌟';
     if (calificacion >= 8) return '😊';
     if (calificacion >= 7) return '👍';

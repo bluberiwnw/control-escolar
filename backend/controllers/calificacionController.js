@@ -355,6 +355,8 @@ const calificacionController = {
             const htmlContent = fs.readFileSync(filePath, 'utf8');
             const students = HtmlParser.parseStudentList(htmlContent);
             
+            console.log(`Procesando ${students.length} estudiantes del archivo HTM`);
+            
             let procesados = 0;
             let nuevos = 0;
             let actualizados = 0;
@@ -362,31 +364,45 @@ const calificacionController = {
             for (const student of students) {
                 procesados++;
                 
-                // Buscar si el estudiante ya existe por matrícula
-                const existingStudent = await pool.query(
-                    'SELECT id FROM estudiantes WHERE matricula = $1',
-                    [student.id]
-                );
-
-                let estudianteId;
-                if (existingStudent.rows.length > 0) {
-                    estudianteId = existingStudent.rows[0].id;
-                    actualizados++;
-                } else {
-                    // Crear nuevo estudiante
-                    const newStudent = await pool.query(
-                        `INSERT INTO estudiantes (matricula, nombre, email, materia_id, created_at)
-                         VALUES ($1, $2, $3, $4, NOW()) RETURNING id`,
-                        [student.id, student.nombre_completo, student.email, materia_id]
+                try {
+                    // Buscar si el estudiante ya existe por matrícula (usar el campo ID del BUAP como matrícula)
+                    const existingStudent = await pool.query(
+                        'SELECT id FROM estudiantes WHERE matricula = $1',
+                        [student.id]
                     );
-                    estudianteId = newStudent.rows[0].id;
-                    nuevos++;
-                }
 
-                // Actualizar o crear calificaciones
-                await this.updateStudentGrades(estudianteId, materia_id, student);
+                    let estudianteId;
+                    if (existingStudent.rows.length > 0) {
+                        estudianteId = existingStudent.rows[0].id;
+                        actualizados++;
+                        console.log(`Estudiante actualizado: ${student.nombre_completo} (${student.id})`);
+                    } else {
+                        // Crear nuevo estudiante
+                        const newStudent = await pool.query(
+                            `INSERT INTO estudiantes (matricula, nombre, email, materia_id, created_at)
+                             VALUES ($1, $2, $3, $4, NOW()) RETURNING id`,
+                            [student.id, student.nombre_completo, student.email, materia_id]
+                        );
+                        estudianteId = newStudent.rows[0].id;
+                        nuevos++;
+                        console.log(`Nuevo estudiante creado: ${student.nombre_completo} (${student.id})`);
+                    }
+
+                    // Crear calificación inicial para el estudiante
+                    await pool.query(
+                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                         VALUES ($1, $2, 'general', 0, NOW())
+                         ON CONFLICT (estudiante_id, materia_id, tipo) DO NOTHING`,
+                        [estudianteId, materia_id]
+                    );
+                } catch (studentError) {
+                    console.error(`Error procesando estudiante ${student.nombre_completo}:`, studentError);
+                    // Continuar con el siguiente estudiante
+                    continue;
+                }
             }
 
+            console.log(`Procesamiento completado: ${procesados} procesados, ${nuevos} nuevos, ${actualizados} actualizados`);
             return { procesados, nuevos, actualizados };
         } catch (error) {
             console.error('Error procesando archivo HTM:', error);
@@ -474,42 +490,53 @@ const calificacionController = {
         try {
             const { materia_id, matricula, nombre, email } = req.body;
             
+            console.log('Creando alumno:', { materia_id, matricula, nombre, email });
+            
             if (!materia_id || !matricula || !nombre) {
                 return res.status(400).json({ message: 'Completa los campos obligatorios' });
             }
 
+            // Verificar que la materia pertenezca al profesor
             const materiaCheck = await pool.query(
                 'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
                 [materia_id, req.usuario.id]
             );
             if (materiaCheck.rows.length === 0) {
-                return res.status(404).json({ message: 'Materia no encontrada' });
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
             }
 
+            // Verificar si la matrícula ya existe
             const existing = await pool.query(
                 'SELECT id FROM estudiantes WHERE matricula = $1',
                 [matricula]
             );
 
             if (existing.rows.length > 0) {
-                return res.status(400).json({ message: 'La matrícula ya existe' });
+                return res.status(400).json({ message: 'La matrícula ya existe en el sistema' });
             }
 
+            // Crear nuevo estudiante
             const result = await pool.query(
                 `INSERT INTO estudiantes (matricula, nombre, email, materia_id, created_at)
                  VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
                 [matricula, nombre, email, materia_id]
             );
 
+            console.log('Estudiante creado:', result.rows[0]);
+
             // Crear registro de calificaciones inicial para el alumno
             await pool.query(
                 `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
-                 VALUES ($1, $2, 'general', 0, NOW())`,
+                 VALUES ($1, $2, 'general', 0, NOW())
+                 ON CONFLICT (estudiante_id, materia_id, tipo) DO NOTHING`,
                 [result.rows[0].id, materia_id]
             );
 
+            console.log('Calificación inicial creada para el estudiante');
+
             res.status(201).json(result.rows[0]);
         } catch (error) {
+            console.error('Error en createAlumno:', error);
             res.status(500).json({ message: 'Error al crear alumno', error: error.message });
         }
     },

@@ -3,12 +3,12 @@ class HtmlParserSimple {
         const students = [];
         
         try {
-            // Buscar la tabla con el resumen de lista de clase usando expresiones regulares
-            const tableRegex = /<table[^>]*class="datadisplaytable"[^>]*>[\s\S]*?<\/table>/gi;
+            // Buscar la tabla específica con caption "Resumen de Lista de Clase"
+            const tableRegex = /<table[^>]*class="datadisplaytable"[^>]*>[\s\S]*?<caption[^>]*>[\s\S]*?<\/caption>[\s\S]*?<\/table>/gi;
             const tables = htmlContent.match(tableRegex);
             
             if (!tables) {
-                console.warn('No se encontraron tablas con clase datadisplaytable');
+                console.warn('No se encontraron tablas con clase datadisplaytable y caption Resumen de Lista de Clase');
                 return students;
             }
             
@@ -17,11 +17,11 @@ class HtmlParserSimple {
                     // Extraer información del curso
                     const courseInfo = this.extractCourseInfoSimple(htmlContent);
                     
-                    // Extraer filas de la tabla
+                    // Extraer filas de la tabla (saltar el encabezado)
                     const rowRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
                     const rows = table.match(rowRegex);
                     
-                    if (rows) {
+                    if (rows && rows.length > 1) { // Al menos el header + 1 fila de datos
                         for (let i = 1; i < rows.length; i++) { // Skip header row
                             const studentData = this.extractStudentDataSimple(rows[i], courseInfo);
                             if (studentData) {
@@ -42,23 +42,24 @@ class HtmlParserSimple {
         const courseInfo = {};
         
         try {
-            // Extraer nombre del curso
-            const courseNameMatch = htmlContent.match(/Visión y Animación[\s\S]*?<\/td>[\s\S]*?<td[^>]*class="dddefault"[^>]*>([^<]+)<\/td>/i);
+            // Extraer nombre del curso del formato BUAP real (buscar en la tabla de Información de Curso)
+            const courseNameMatch = htmlContent.match(/<caption[^>]*class="captiontext"[^>]*>Información de Curso<\/caption>[\s\S]*?<th[^>]*class="ddlabel"[^>]*scope="row"[^>]*>([^<]+)<\/th>/i);
             if (courseNameMatch) {
                 const courseText = courseNameMatch[1].trim();
+                // Formato: "Visión y Animación por Computadora - ICCS 616 001"
                 const parts = courseText.split(' - ');
                 courseInfo.nombre = parts[0]?.trim() || '';
                 courseInfo.clave = parts[1]?.trim() || '';
             }
             
-            // Extraer NRC
-            const nrcMatch = htmlContent.match(/NRC[\s\S]*?<\/td>[\s\S]*?<td[^>]*class="dddefault"[^>]*>([^<]+)<\/td>/i);
+            // Extraer NRC del formato BUAP real
+            const nrcMatch = htmlContent.match(/<acronym[^>]*>NRC:<\/acronym>[\s\S]*?<td[^>]*class="dddefault"[^>]*>([^<]+)<\/td>/i);
             if (nrcMatch) {
                 courseInfo.nrc = nrcMatch[1].trim();
             }
             
-            // Extraer duración
-            const durationMatch = htmlContent.match(/Duración[\s\S]*?<\/td>[\s\S]*?<td[^>]*class="dddefault"[^>]*>([^<]+)<\/td>/i);
+            // Extraer duración del formato BUAP real
+            const durationMatch = htmlContent.match(/<th[^>]*class="ddlabel"[^>]*>Duración:<\/th>[\s\S]*?<td[^>]*class="dddefault"[^>]*>([^<]+)<\/td>/i);
             if (durationMatch) {
                 courseInfo.duracion = durationMatch[1].trim();
             }
@@ -74,11 +75,14 @@ class HtmlParserSimple {
             const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
             const cells = rowHtml.match(cellRegex);
             
-            if (!cells || cells.length < 6) return null;
+            if (!cells || cells.length < 7) return null;
             
-            // Extraer texto de cada celda
+            // Extraer texto de cada celda (manejo específico para formato BUAP)
             const getCellText = (cellHtml) => {
-                const text = cellHtml.replace(/<[^>]*>/g, '').trim();
+                // Primero remover spans y luego extraer texto
+                let text = cellHtml.replace(/<span[^>]*class="fieldmediumtext"[^>]*>/gi, '');
+                text = text.replace(/<\/span>/gi, '');
+                text = text.replace(/<[^>]*>/g, '').trim();
                 return text;
             };
             
@@ -89,50 +93,46 @@ class HtmlParserSimple {
             const nivel = getCellText(cells[4]);
             const creditos = getCellText(cells[5]);
             
-            // Extraer email si existe
+            // Extraer email del formato BUAP real
             let email = '';
             if (cells.length > 7) {
-                const emailMatch = cells[7].match(/mailto:([^"]+)/);
-                if (emailMatch) {
-                    email = emailMatch[1];
+                // Buscar enlace mailto en las celdas
+                for (let i = 6; i < cells.length; i++) {
+                    const emailMatch = cells[i].match(/mailto:([^"\s]+)/);
+                    if (emailMatch) {
+                        email = emailMatch[1];
+                        break;
+                    }
                 }
             }
             
-            // Extraer información adicional si existe
-            let carrera = '';
-            let planEstudios = '';
-            let campus = '';
-            
-            // Buscar información adicional en celdas extras
-            for (let i = 8; i < cells.length; i++) {
-                const cellText = getCellText(cells[i]);
-                if (cellText.includes('Carrera:')) {
-                    carrera = cellText.replace('Carrera:', '').trim();
-                } else if (cellText.includes('Plan:')) {
-                    planEstudios = cellText.replace('Plan:', '').trim();
-                } else if (cellText.includes('Campus:')) {
-                    campus = cellText.replace('Campus:', '').trim();
-                }
+            // Limpiar el nombre (formato BUAP: "APELLIDOS, NOMBRE ")
+            let nombreLimpiado = nombreCompleto.trim();
+            if (nombreLimpiado.endsWith(' ')) {
+                nombreLimpiado = nombreLimpiado.slice(0, -1);
             }
             
             // Dividir nombre en nombre y apellidos
-            const nombreParts = nombreCompleto.split(',');
+            const nombreParts = nombreLimpiado.split(',');
             const apellidos = nombreParts[0]?.trim() || '';
             const nombre = nombreParts[1]?.trim() || '';
             
+            // Limpiar status (remover asteriscos y normalizar)
+            let statusLimpiado = status.replace(/\*\*/g, '').trim();
+            if (statusLimpiado === 'Inscrito por Web') {
+                statusLimpiado = 'Activo';
+            }
+            
             return {
                 numero_registro: numeroRegistro,
-                nombre_completo: nombreCompleto,
+                nombre_completo: nombreLimpiado,
                 nombre: nombre,
                 apellidos: apellidos,
                 email: email,
                 id: id,
-                status: status,
+                status: statusLimpiado,
                 nivel: nivel,
                 creditos: parseFloat(creditos) || 0,
-                carrera: carrera,
-                plan_estudios: planEstudios,
-                campus: campus,
                 curso: courseInfo.nombre || '',
                 clave_curso: courseInfo.clave || '',
                 nrc: courseInfo.nrc || '',
