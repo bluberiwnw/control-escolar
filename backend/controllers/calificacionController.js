@@ -116,7 +116,10 @@ const calificacionController = {
                 res.json({
                     message: 'Archivo procesado correctamente',
                     resultado,
-                    fileName: req.file.filename
+                    fileName: req.file.filename,
+                    archivo: {
+                        detalles: `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`
+                    }
                 });
                 
             } catch (error) {
@@ -566,22 +569,21 @@ const calificacionController = {
             const estudianteId = req.usuario.id;
             console.log('getAllCalificacionesAlumno - estudiante_id:', estudianteId);
             
+            // Obtener todas las materias en las que el estudiante tiene calificaciones
             const result = await pool.query(`
-                SELECT 
+                SELECT DISTINCT 
                     m.id as materia_id,
                     m.nombre as materia_nombre, 
                     m.clave as materia_clave,
                     u.nombre as profesor_nombre,
-                    COALESCE(c.calificacion_final, 0) as promedio_final,
-                    COUNT(c.id) as total_calificaciones
+                    COALESCE(c_final.calificacion, 0) as promedio_final
                 FROM materias m
                 JOIN usuarios u ON m.profesor_id = u.id
-                LEFT JOIN estudiantes e ON (e.materia_id = m.id OR e.id IN (
-                    SELECT estudiante_id FROM calificaciones WHERE materia_id = m.id
-                ))
-                LEFT JOIN calificaciones c ON (c.estudiante_id = e.id OR c.estudiante_id = $1) AND c.materia_id = m.id
-                WHERE e.id = $1 OR c.estudiante_id = $1
-                GROUP BY m.id, m.nombre, m.clave, u.nombre, c.calificacion_final
+                JOIN calificaciones c ON c.materia_id = m.id
+                LEFT JOIN calificaciones c_final ON c_final.estudiante_id = c.estudiante_id 
+                    AND c_final.materia_id = m.id 
+                    AND c_final.tipo = 'final'
+                WHERE c.estudiante_id = $1
                 ORDER BY m.nombre
             `, [estudianteId]);
 
@@ -611,6 +613,8 @@ const calificacionController = {
                 ? materiasConCalificaciones.reduce((sum, m) => sum + m.promedio_final, 0) / totalMaterias 
                 : 0;
 
+            console.log(`Estudiante ${estudianteId}: ${totalMaterias} materias, promedio: ${promedioGeneral}`);
+
             res.json({
                 materias: materiasConCalificaciones,
                 total_materias: totalMaterias,
@@ -619,6 +623,179 @@ const calificacionController = {
         } catch (error) {
             console.error('Error en getAllCalificacionesAlumno:', error);
             res.status(500).json({ message: 'Error al obtener calificaciones', error: error.message });
+        }
+    },
+
+    async getArchivos(req, res) {
+        try {
+            console.log('getArchivos - usuario_id:', req.usuario.id, 'rol:', req.usuario.rol);
+            
+            // Verificar que el usuario exista y sea profesor o administrador
+            if (!req.usuario || (req.usuario.rol !== 'profesor' && req.usuario.rol !== 'administrador')) {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Obtener archivos del directorio uploads
+            const uploadsDir = path.join(__dirname, '../uploads');
+            if (!fs.existsSync(uploadsDir)) {
+                return res.json([]);
+            }
+            
+            const files = fs.readdirSync(uploadsDir);
+            const archivos = files
+                .filter(file => file.endsWith('.htm') || file.endsWith('.html') || file.endsWith('.xlsx'))
+                .map((file, index) => {
+                    const filePath = path.join(uploadsDir, file);
+                    const stats = fs.statSync(filePath);
+                    const tipo = file.endsWith('.htm') || file.endsWith('.html') ? 'HTM' : 'Excel';
+                    
+                    return {
+                        id: index + 1,
+                        nombre_archivo: file,
+                        tipo: tipo,
+                        fecha_subida: stats.mtime,
+                        estado: 'Procesado',
+                        detalles: {
+                            ruta: filePath,
+                            tamaño: stats.size,
+                            extension: path.extname(file)
+                        }
+                    };
+                })
+                .sort((a, b) => new Date(b.fecha_subida) - new Date(a.fecha_subida));
+            
+            console.log('Archivos encontrados:', archivos.length);
+            res.json(archivos);
+        } catch (error) {
+            console.error('Error en getArchivos:', error);
+            res.status(500).json({ message: 'Error al obtener archivos', error: error.message });
+        }
+    },
+
+    async descargarArchivoCalificacion(req, res) {
+        try {
+            const { id } = req.params;
+            console.log('descargarArchivoCalificacion - archivo_id:', id, 'usuario_id:', req.usuario.id);
+            
+            // Verificar que el usuario exista y sea profesor o administrador
+            if (!req.usuario || (req.usuario.rol !== 'profesor' && req.usuario.rol !== 'administrador')) {
+                return res.status(403).json({ message: 'No tienes permisos para descargar archivos' });
+            }
+            
+            // Obtener archivos del directorio
+            const uploadsDir = path.join(__dirname, '../uploads');
+            if (!fs.existsSync(uploadsDir)) {
+                return res.status(404).json({ message: 'Directorio de archivos no encontrado' });
+            }
+            
+            const files = fs.readdirSync(uploadsDir);
+            const archivos = files
+                .filter(file => file.endsWith('.htm') || file.endsWith('.html') || file.endsWith('.xlsx'))
+                .map((file, index) => ({
+                    id: index + 1,
+                    nombre: file,
+                    path: path.join(uploadsDir, file)
+                }));
+            
+            const archivo = archivos.find(a => a.id == id);
+            if (!archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado' });
+            }
+            
+            console.log('Descargando archivo:', archivo.nombre);
+            res.download(archivo.path, archivo.nombre);
+        } catch (error) {
+            console.error('Error en descargarArchivoCalificacion:', error);
+            res.status(500).json({ message: 'Error al descargar archivo', error: error.message });
+        }
+    },
+
+    async deleteArchivo(req, res) {
+        try {
+            const { id } = req.params;
+            console.log('deleteArchivo - archivo_id:', id, 'usuario_id:', req.usuario.id);
+            
+            // Verificar que el usuario exista y sea profesor o administrador
+            if (!req.usuario || (req.usuario.rol !== 'profesor' && req.usuario.rol !== 'administrador')) {
+                return res.status(403).json({ message: 'No tienes permisos para eliminar archivos' });
+            }
+            
+            // Obtener archivos del directorio
+            const uploadsDir = path.join(__dirname, '../uploads');
+            if (!fs.existsSync(uploadsDir)) {
+                return res.status(404).json({ message: 'Directorio de archivos no encontrado' });
+            }
+            
+            const files = fs.readdirSync(uploadsDir);
+            const archivos = files
+                .filter(file => file.endsWith('.htm') || file.endsWith('.html') || file.endsWith('.xlsx'))
+                .map((file, index) => ({
+                    id: index + 1,
+                    nombre: file,
+                    path: path.join(uploadsDir, file)
+                }));
+            
+            const archivo = archivos.find(a => a.id == id);
+            if (!archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado' });
+            }
+            
+            // Eliminar archivo físico
+            fs.unlinkSync(archivo.path);
+            console.log('Archivo eliminado:', archivo.nombre);
+            
+            res.json({ message: 'Archivo eliminado correctamente' });
+        } catch (error) {
+            console.error('Error en deleteArchivo:', error);
+            res.status(500).json({ message: 'Error al eliminar archivo', error: error.message });
+        }
+    },
+
+    async darseDeBajaMateria(req, res) {
+        try {
+            const { materia_id } = req.params;
+            const estudianteId = req.usuario.id;
+            
+            console.log('darseDeBajaMateria - estudiante_id:', estudianteId, 'materia_id:', materia_id);
+            
+            // Verificar que el usuario exista y sea alumno
+            if (!req.usuario || req.usuario.rol !== 'alumno') {
+                return res.status(403).json({ message: 'No tienes permisos para usar esta función' });
+            }
+            
+            // Verificar que la materia exista
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1',
+                [materia_id]
+            );
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+            
+            // Verificar que el estudiante esté inscrito en la materia
+            const inscripcionCheck = await pool.query(
+                'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 LIMIT 1',
+                [estudianteId, materia_id]
+            );
+            if (inscripcionCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'No estás inscrito en esta materia' });
+            }
+            
+            // Eliminar todas las calificaciones del estudiante en esa materia
+            const deleteResult = await pool.query(
+                'DELETE FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2',
+                [estudianteId, materia_id]
+            );
+            
+            console.log(`Estudiante ${estudianteId} dado de baja de materia ${materia_id}, ${deleteResult.rowCount} calificaciones eliminadas`);
+            
+            res.json({ 
+                message: `Te has dado de baja correctamente de la materia ${materiaCheck.rows[0].nombre}`,
+                materia: materiaCheck.rows[0].nombre
+            });
+        } catch (error) {
+            console.error('Error en darseDeBajaMateria:', error);
+            res.status(500).json({ message: 'Error al darse de baja de la materia', error: error.message });
         }
     }
 };
