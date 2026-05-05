@@ -442,12 +442,14 @@ const calificacionController = {
     async getAlumnosByMateria(req, res) {
         try {
             const { materia_id } = req.params;
+            
+            // Verificar que la materia exista y pertenezca al profesor
             const materiaCheck = await pool.query(
                 'SELECT id FROM materias WHERE id = $1 AND profesor_id = $2',
                 [materia_id, req.usuario.id]
             );
             if (materiaCheck.rows.length === 0) {
-                return res.status(404).json({ message: 'Materia no encontrada' });
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
             }
 
             const result = await pool.query(
@@ -463,6 +465,7 @@ const calificacionController = {
 
             res.json(result.rows);
         } catch (error) {
+            console.error('Error en getAlumnosByMateria:', error);
             res.status(500).json({ message: 'Error al obtener alumnos', error: error.message });
         }
     },
@@ -651,6 +654,8 @@ const calificacionController = {
 
     async getAllCalificacionesAlumno(req, res) {
         try {
+            console.log('getAllCalificacionesAlumno - Usuario:', req.usuario);
+            
             // Obtener todas las calificaciones del alumno autenticado
             const result = await pool.query(
                 `SELECT c.*, m.nombre as materia_nombre, m.clave as materia_clave,
@@ -662,6 +667,8 @@ const calificacionController = {
                  ORDER BY m.nombre, c.tipo`,
                 [req.usuario.id]
             );
+
+            console.log('Calificaciones encontradas:', result.rows.length);
 
             if (result.rows.length === 0) {
                 return res.json({
@@ -696,7 +703,8 @@ const calificacionController = {
             });
 
             const materias = Array.from(materiasMap.values());
-            const promedioGeneral = materias.reduce((sum, m) => sum + m.promedio_final, 0) / materias.length;
+            const promedioGeneral = materias.length > 0 ? 
+                materias.reduce((sum, m) => sum + m.promedio_final, 0) / materias.length : 0;
 
             res.json({
                 materias,
@@ -705,6 +713,7 @@ const calificacionController = {
                 mensaje: 'Calificaciones obtenidas exitosamente'
             });
         } catch (error) {
+            console.error('Error en getAllCalificacionesAlumno:', error);
             res.status(500).json({ message: 'Error al obtener calificaciones', error: error.message });
         }
     },
