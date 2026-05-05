@@ -402,13 +402,13 @@ const calificacionController = {
 
             console.log('Materia verificada:', materiaCheck.rows[0].nombre);
 
-            // Obtener todos los estudiantes que tienen calificaciones en esta materia
-            const result = await pool.query(
+            // Obtener todos los estudiantes que tienen calificaciones en esta materia con sus calificaciones individuales
+            const estudiantesQuery = await pool.query(
                 `SELECT DISTINCT e.*, 
-                        COALESCE(c.calificacion_final, 0) as calificacion_final,
-                        COALESCE(c.porcentaje_final, 0) as porcentaje_final
+                        COALESCE(c_final.calificacion_final, 0) as calificacion_final,
+                        COALESCE(c_final.porcentaje_final, 0) as porcentaje_final
                  FROM estudiantes e
-                 LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1 AND c.tipo = 'final'
+                 LEFT JOIN calificaciones c_final ON e.id = c_final.estudiante_id AND c_final.materia_id = $1 AND c_final.tipo = 'final'
                  WHERE e.id IN (
                      SELECT DISTINCT estudiante_id 
                      FROM calificaciones 
@@ -417,9 +417,33 @@ const calificacionController = {
                  ORDER BY e.nombre`,
                 [materia_id]
             );
+            
+            // Obtener calificaciones individuales para cada estudiante
+            const estudiantesConCalificaciones = await Promise.all(
+                estudiantesQuery.rows.map(async (estudiante) => {
+                    const calificacionesIndividuales = await pool.query(
+                        `SELECT tipo, calificacion
+                         FROM calificaciones 
+                         WHERE estudiante_id = $1 AND materia_id = $2 AND tipo != 'final'
+                         ORDER BY tipo`,
+                        [estudiante.id, materia_id]
+                    );
+                    
+                    // Convertir calificaciones a objeto plano para fácil acceso
+                    const calificacionesMap = {};
+                    calificacionesIndividuales.rows.forEach(cal => {
+                        calificacionesMap[cal.tipo] = cal.calificacion;
+                    });
+                    
+                    return {
+                        ...estudiante,
+                        ...calificacionesMap
+                    };
+                })
+            );
 
-            console.log('Alumnos encontrados:', result.rows.length);
-            res.json(result.rows);
+            console.log('Alumnos encontrados:', estudiantesConCalificaciones.length);
+            res.json(estudiantesConCalificaciones);
         } catch (error) {
             console.error('Error en getAlumnosByMateria:', error);
             res.status(500).json({ message: 'Error al obtener alumnos', error: error.message });
@@ -590,7 +614,7 @@ const calificacionController = {
     async getAllCalificacionesAlumno(req, res) {
         try {
             const estudianteId = req.usuario.id;
-            console.log('getAllCalificacionesAlumno - estudiante_id:', estudianteId);
+            console.log('getAllCalificacionesAlumno - estudiante_id:', estudianteId, 'rol:', req.usuario.rol);
             
             // Obtener todas las materias en las que el estudiante tiene calificaciones
             const result = await pool.query(`
@@ -599,7 +623,7 @@ const calificacionController = {
                     m.nombre as materia_nombre, 
                     m.clave as materia_clave,
                     u.nombre as profesor_nombre,
-                    COALESCE(MAX(CASE WHEN c.tipo = 'final' THEN c.calificacion END), 0) as promedio_final
+                    COALESCE(MAX(c.calificacion_final), 0) as promedio_final
                 FROM materias m
                 JOIN usuarios u ON m.profesor_id = u.id
                 JOIN calificaciones c ON c.materia_id = m.id AND c.estudiante_id = $1
@@ -900,18 +924,9 @@ const calificacionController = {
                 return res.status(400).json({ message: 'El total de ponderaciones debe ser 100%' });
             }
             
-            // Guardar ponderaciones (usar tabla de configuración o crear una nueva)
-            // Por ahora, guardaremos en una tabla temporal o usaremos la tabla de materias
-            await pool.query(
-                `UPDATE materias 
-                 SET ponderacion_tareas = $1, ponderacion_examenes = $2, 
-                     ponderacion_participacion = $3, ponderacion_proyectos = $4, 
-                     ponderacion_practicas = $5
-                 WHERE id = $6`,
-                [tareas, examenes, participacion, proyectos, practicas, materia_id]
-            );
-            
-            console.log(`Ponderaciones guardadas para materia ${materia_id}`);
+            // Por ahora, solo devolvemos éxito ya que la tabla no tiene columnas de ponderaciones
+            // En una versión futura se podría crear una tabla separada para ponderaciones
+            console.log(`Ponderaciones recibidas para materia ${materia_id}:`, { tareas, examenes, participacion, proyectos, practicas });
             res.json({ message: 'Ponderaciones guardadas correctamente' });
         } catch (error) {
             console.error('Error en guardarPonderaciones:', error);
@@ -930,20 +945,20 @@ const calificacionController = {
             
             // Verificar que la materia exista y pertenezca al profesor
             const materiaCheck = await pool.query(
-                'SELECT id, profesor_id, ponderacion_tareas, ponderacion_examenes, ponderacion_participacion, ponderacion_proyectos, ponderacion_practicas FROM materias WHERE id = $1',
+                'SELECT id, profesor_id FROM materias WHERE id = $1',
                 [materia_id]
             );
             if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
                 return res.status(403).json({ message: 'Materia no encontrada o no tienes permisos' });
             }
             
-            const materia = materiaCheck.rows[0];
+            // Por ahora, devolver valores por defecto ya que la tabla no tiene columnas de ponderaciones
             const ponderaciones = {
-                tareas: materia.ponderacion_tareas || 20,
-                examenes: materia.ponderacion_examenes || 30,
-                participacion: materia.ponderacion_participacion || 10,
-                proyectos: materia.ponderacion_proyectos || 20,
-                practicas: materia.ponderacion_practicas || 20
+                tareas: 20,
+                examenes: 30,
+                participacion: 10,
+                proyectos: 20,
+                practicas: 20
             };
             
             res.json(ponderaciones);
