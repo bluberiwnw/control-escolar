@@ -71,23 +71,10 @@ function actualizarResumenGeneral(data) {
     
     const materias = data.materias || [];
     
-    // Calcular promedio general como promedio simple de todas las calificaciones individuales
-    let totalCalificaciones = 0;
-    let cantidadCalificaciones = 0;
-    
-    materias.forEach(materia => {
-        if (materia.calificaciones && materia.calificaciones.length > 0) {
-            materia.calificaciones.forEach(cal => {
-                const valor = parseFloat(cal.calificacion) || 0;
-                if (valor > 0) {
-                    totalCalificaciones += valor;
-                    cantidadCalificaciones++;
-                }
-            });
-        }
-    });
-    
-    const promedioGeneral = cantidadCalificaciones > 0 ? totalCalificaciones / cantidadCalificaciones : 0;
+    // Calcular promedio general correctamente
+    const promedioGeneral = materias.length > 0 
+        ? materias.reduce((sum, m) => sum + (parseFloat(m.promedio_final) || 0), 0) / materias.length 
+        : 0;
     
     const totalMaterias = data.total_materias || materias.length || 0;
     const aprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) >= 6).length;
@@ -96,9 +83,7 @@ function actualizarResumenGeneral(data) {
         promedioGeneral,
         totalMaterias,
         aprobadas,
-        materiasCount: materias.length,
-        totalCalificaciones,
-        cantidadCalificaciones
+        materiasCount: materias.length
     });
     
     // Actualizar DOM
