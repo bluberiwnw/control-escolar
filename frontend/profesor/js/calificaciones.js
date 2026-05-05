@@ -205,8 +205,12 @@ async function cargarAlumnos() {
                             <th>Matrícula</th>
                             <th>Nombre</th>
                             <th>Email</th>
+                            <th>Tareas</th>
+                            <th>Exámenes</th>
+                            <th>Participación</th>
+                            <th>Proyectos</th>
+                            <th>Prácticas</th>
                             <th>Calificación Final</th>
-                            <th>Porcentaje</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -222,8 +226,59 @@ async function cargarAlumnos() {
                     <td>${alumno.matricula}</td>
                     <td>${alumno.nombre}</td>
                     <td>${alumno.email || 'N/A'}</td>
-                    <td><span class="badge badge-${calificacionColor}">${alumno.calificacion_final}</span></td>
-                    <td>${alumno.porcentaje_final}%</td>
+                    <td>
+                        <input type="number" 
+                               class="calificacion-input" 
+                               id="tarea_${alumno.id}" 
+                               value="${alumno.tarea || 0}" 
+                               min="0" 
+                               max="10" 
+                               step="0.1"
+                               onchange="actualizarCalificacion(${alumno.id}, 'tarea', this.value)">
+                    </td>
+                    <td>
+                        <input type="number" 
+                               class="calificacion-input" 
+                               id="examen_${alumno.id}" 
+                               value="${alumno.examen || 0}" 
+                               min="0" 
+                               max="10" 
+                               step="0.1"
+                               onchange="actualizarCalificacion(${alumno.id}, 'examen', this.value)">
+                    </td>
+                    <td>
+                        <input type="number" 
+                               class="calificacion-input" 
+                               id="participacion_${alumno.id}" 
+                               value="${alumno.participacion || 0}" 
+                               min="0" 
+                               max="10" 
+                               step="0.1"
+                               onchange="actualizarCalificacion(${alumno.id}, 'participacion', this.value)">
+                    </td>
+                    <td>
+                        <input type="number" 
+                               class="calificacion-input" 
+                               id="proyecto_${alumno.id}" 
+                               value="${alumno.proyecto || 0}" 
+                               min="0" 
+                               max="10" 
+                               step="0.1"
+                               onchange="actualizarCalificacion(${alumno.id}, 'proyecto', this.value)">
+                    </td>
+                    <td>
+                        <input type="number" 
+                               class="calificacion-input" 
+                               id="practica_${alumno.id}" 
+                               value="${alumno.practica || 0}" 
+                               min="0" 
+                               max="10" 
+                               step="0.1"
+                               onchange="actualizarCalificacion(${alumno.id}, 'practica', this.value)">
+                    </td>
+                    <td>
+                        <span class="badge badge-${calificacionColor}" id="final_${alumno.id}">${alumno.calificacion_final}</span>
+                    </td>
                     <td>
                         <button type="button" class="btn btn-sm btn-secondary" onclick="editarAlumno(${alumno.id})">
                             <i class="fas fa-edit"></i>
@@ -334,6 +389,196 @@ async function eliminarAlumno(alumnoId) {
         await cargarAlumnos();
     } catch (error) {
         mostrarToast(error.message || 'No se pudo eliminar el alumno', 'error');
+    }
+}
+
+// Funciones para manejo de ponderaciones
+function validarPonderaciones() {
+    const tareas = parseFloat(document.getElementById('ponderacionTareas').value) || 0;
+    const examenes = parseFloat(document.getElementById('ponderacionExamenes').value) || 0;
+    const participacion = parseFloat(document.getElementById('ponderacionParticipacion').value) || 0;
+    const proyectos = parseFloat(document.getElementById('ponderacionProyectos').value) || 0;
+    const practicas = parseFloat(document.getElementById('ponderacionPracticas').value) || 0;
+    
+    const total = tareas + examenes + participacion + proyectos + practicas;
+    document.getElementById('totalPonderacion').value = total;
+    
+    const mensajeDiv = document.getElementById('mensajePonderaciones');
+    if (total === 100) {
+        mensajeDiv.innerHTML = '<div class="alert alert-success">✅ Ponderaciones correctas</div>';
+        return true;
+    } else {
+        mensajeDiv.innerHTML = `<div class="alert alert-error">❌ El total debe ser 100%. Actual: ${total}%</div>`;
+        return false;
+    }
+}
+
+async function guardarPonderaciones() {
+    if (!validarPonderaciones()) {
+        mostrarToast('Corrige las ponderaciones antes de guardar', 'error');
+        return;
+    }
+    
+    const materia_id = document.getElementById('materiaSelect').value;
+    if (!materia_id) {
+        mostrarToast('Selecciona una materia primero', 'error');
+        return;
+    }
+    
+    const ponderaciones = {
+        materia_id,
+        tareas: parseFloat(document.getElementById('ponderacionTareas').value) || 0,
+        examenes: parseFloat(document.getElementById('ponderacionExamenes').value) || 0,
+        participacion: parseFloat(document.getElementById('ponderacionParticipacion').value) || 0,
+        proyectos: parseFloat(document.getElementById('ponderacionProyectos').value) || 0,
+        practicas: parseFloat(document.getElementById('ponderacionPracticas').value) || 0
+    };
+    
+    try {
+        mostrarToast('Guardando ponderaciones...', 'info');
+        
+        await apiRequest('/calificaciones/ponderaciones', {
+            method: 'POST',
+            body: JSON.stringify(ponderaciones)
+        });
+        
+        mostrarToast('Ponderaciones guardadas correctamente', 'success');
+    } catch (error) {
+        mostrarToast(error.message || 'Error al guardar ponderaciones', 'error');
+    }
+}
+
+async function cargarPonderaciones() {
+    const materia_id = document.getElementById('materiaSelect').value;
+    if (!materia_id) return;
+    
+    try {
+        const ponderaciones = await apiRequest(`/calificaciones/ponderaciones/${materia_id}`);
+        
+        if (ponderaciones) {
+            document.getElementById('ponderacionTareas').value = ponderaciones.tareas || 20;
+            document.getElementById('ponderacionExamenes').value = ponderaciones.examenes || 30;
+            document.getElementById('ponderacionParticipacion').value = ponderaciones.participacion || 10;
+            document.getElementById('ponderacionProyectos').value = ponderaciones.proyectos || 20;
+            document.getElementById('ponderacionPracticas').value = ponderaciones.practicas || 20;
+            
+            validarPonderaciones();
+        }
+    } catch (error) {
+        // Si no hay ponderaciones guardadas, usar valores por defecto
+        console.log('No hay ponderaciones guardadas, usando valores por defecto');
+        validarPonderaciones();
+    }
+}
+
+async function calcularCalificaciones() {
+    const materia_id = document.getElementById('materiaSelect').value;
+    if (!materia_id) {
+        mostrarToast('Selecciona una materia primero', 'error');
+        return;
+    }
+    
+    if (!validarPonderaciones()) {
+        mostrarToast('Corrige las ponderaciones antes de calcular', 'error');
+        return;
+    }
+    
+    try {
+        mostrarToast('Calculando calificaciones...', 'info');
+        
+        const ponderaciones = {
+            tareas: parseFloat(document.getElementById('ponderacionTareas').value) || 0,
+            examenes: parseFloat(document.getElementById('ponderacionExamenes').value) || 0,
+            participacion: parseFloat(document.getElementById('ponderacionParticipacion').value) || 0,
+            proyectos: parseFloat(document.getElementById('ponderacionProyectos').value) || 0,
+            practicas: parseFloat(document.getElementById('ponderacionPracticas').value) || 0
+        };
+        
+        const resultado = await apiRequest(`/calificaciones/calcular/${materia_id}`, {
+            method: 'POST',
+            body: JSON.stringify(ponderaciones)
+        });
+        
+        mostrarToast(`Calificaciones calculadas para ${resultado.calculados} alumnos`, 'success');
+        
+        // Recargar la lista de alumnos para mostrar las calificaciones actualizadas
+        await cargarAlumnos();
+        
+    } catch (error) {
+        mostrarToast(error.message || 'Error al calcular calificaciones', 'error');
+    }
+}
+
+async function actualizarCalificacion(estudianteId, tipo, valor) {
+    const materia_id = document.getElementById('materiaSelect').value;
+    if (!materia_id) {
+        mostrarToast('Selecciona una materia primero', 'error');
+        return;
+    }
+    
+    try {
+        const data = {
+            estudiante_id: estudianteId,
+            materia_id: materia_id,
+            tipo: tipo,
+            calificacion: parseFloat(valor) || 0
+        };
+        
+        await apiRequest('/calificaciones/actualizar', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+        
+        // Recalcular calificación final automáticamente
+        await recalcularCalificacionFinal(estudianteId, materia_id);
+        
+        mostrarToast('Calificación actualizada', 'success');
+    } catch (error) {
+        mostrarToast(error.message || 'Error al actualizar calificación', 'error');
+        // Revertir el valor en caso de error
+        document.getElementById(`${tipo}_${estudianteId}`).value = valor;
+    }
+}
+
+async function recalcularCalificacionFinal(estudianteId, materia_id) {
+    try {
+        // Obtener las ponderaciones actuales
+        const ponderaciones = await apiRequest(`/calificaciones/ponderaciones/${materia_id}`);
+        
+        // Obtener todas las calificaciones del estudiante
+        const calificaciones = await apiRequest(`/calificaciones/estudiante/${estudianteId}/materia/${materia_id}`);
+        
+        // Calcular promedio ponderado
+        let calificacionFinal = 0;
+        const calificacionesMap = {};
+        
+        calificaciones.forEach(cal => {
+            if (cal.tipo !== 'final') {
+                calificacionesMap[cal.tipo] = cal.calificacion;
+            }
+        });
+        
+        // Aplicar ponderaciones
+        calificacionFinal += (calificacionesMap.tarea || 0) * (ponderaciones.tareas / 100);
+        calificacionFinal += (calificacionesMap.examen || 0) * (ponderaciones.examenes / 100);
+        calificacionFinal += (calificacionesMap.participacion || 0) * (ponderaciones.participacion / 100);
+        calificacionFinal += (calificacionesMap.proyecto || 0) * (ponderaciones.proyectos / 100);
+        calificacionFinal += (calificacionesMap.practica || 0) * (ponderaciones.practicas / 100);
+        
+        // Actualizar la calificación final en la UI
+        const finalElement = document.getElementById(`final_${estudianteId}`);
+        if (finalElement) {
+            finalElement.textContent = calificacionFinal.toFixed(1);
+            
+            // Actualizar el color del badge
+            finalElement.className = 'badge badge-' + (
+                calificacionFinal >= 9 ? 'success' : 
+                calificacionFinal >= 7 ? 'warning' : 'danger'
+            );
+        }
+        
+    } catch (error) {
+        console.error('Error al recalcular calificación final:', error);
     }
 }
 

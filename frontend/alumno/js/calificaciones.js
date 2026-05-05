@@ -48,26 +48,27 @@ function actualizarResumenGeneral(data) {
     
     const materias = data.materias || [];
     
-    // Calcular promedio general como promedio simple de los promedios finales
+    // Calcular promedio general basado en todas las materias (incluyendo las que tienen 0)
     let totalPromedios = 0;
-    let cantidadMaterias = 0;
+    let cantidadMaterias = materias.length;
     
     materias.forEach(materia => {
         const promedio = parseFloat(materia.promedio_final) || 0;
-        if (promedio > 0) {
-            totalPromedios += promedio;
-            cantidadMaterias++;
-        }
+        totalPromedios += promedio;
     });
     
     const promedioGeneral = cantidadMaterias > 0 ? totalPromedios / cantidadMaterias : 0;
     const totalMaterias = data.total_materias || materias.length || 0;
     const aprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) >= 6).length;
+    const reprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) < 6 && (parseFloat(m.promedio_final) || 0) > 0).length;
+    const sinCalificacion = materias.filter(m => (parseFloat(m.promedio_final) || 0) === 0).length;
     
     console.log('Estadísticas calculadas:', {
         promedioGeneral,
         totalMaterias,
         aprobadas,
+        reprobadas,
+        sinCalificacion,
         materiasCount: materias.length,
         totalPromedios,
         cantidadMaterias
@@ -78,10 +79,39 @@ function actualizarResumenGeneral(data) {
     document.getElementById('totalMaterias').textContent = totalMaterias;
     document.getElementById('materiasAprobadas').textContent = aprobadas;
     
+    // Agregar información adicional si existen los elementos
+    const reprobadasElement = document.getElementById('materiasReprobadas');
+    const sinCalificacionElement = document.getElementById('materiasSinCalificacion');
+    
+    if (reprobadasElement) {
+        reprobadasElement.textContent = reprobadas;
+    }
+    if (sinCalificacionElement) {
+        sinCalificacionElement.textContent = sinCalificacion;
+    }
+    
     // Actualizar el círculo de promedio con color dinámico
     const promedioCircle = document.querySelector('.stat-circle');
     if (promedioCircle) {
         promedioCircle.style.background = getPromedioColor(promedioGeneral);
+    }
+    
+    // Agregar mensaje de estado
+    const statusMessage = document.getElementById('statusMessage');
+    if (statusMessage) {
+        if (sinCalificacion === totalMaterias) {
+            statusMessage.textContent = 'Aún no tienes calificaciones registradas';
+            statusMessage.className = 'status-message info';
+        } else if (promedioGeneral >= 8) {
+            statusMessage.textContent = '¡Excelente desempeño académico!';
+            statusMessage.className = 'status-message success';
+        } else if (promedioGeneral >= 6) {
+            statusMessage.textContent = 'Buen desempeño académico';
+            statusMessage.className = 'status-message good';
+        } else {
+            statusMessage.textContent = 'Necesitas mejorar tu desempeño';
+            statusMessage.className = 'status-message warning';
+        }
     }
 }
 
@@ -194,4 +224,40 @@ function formatearTipo(tipo) {
         'final': 'Final'
     };
     return tipos[tipo] || tipo.charAt(0).toUpperCase() + tipo.slice(1);
+}
+
+async function darseDeBaja() {
+    const materiaSelect = document.getElementById('materiaSelect');
+    const materia_id = materiaSelect.value;
+    
+    if (!materia_id) {
+        mostrarToast('Por favor selecciona una materia para darte de baja', 'error');
+        return;
+    }
+    
+    const materia_nombre = materiaSelect.options[materiaSelect.selectedIndex].text;
+    
+    if (!confirm(`¿Estás seguro que deseas darte de baja de la materia "${materia_nombre}"? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+    
+    try {
+        mostrarToast('Procesando solicitud de baja...', 'info');
+        
+        const response = await apiRequest(`/calificaciones/alumno/materia/${materia_id}/baja`, {
+            method: 'DELETE'
+        });
+        
+        mostrarToast(response.message || 'Te has dado de baja correctamente', 'success');
+        
+        // Recargar calificaciones para actualizar la lista
+        await cargarCalificaciones();
+        
+        // Actualizar el select de materias
+        materiaSelect.value = '';
+        
+    } catch (error) {
+        console.error('Error al darse de baja:', error);
+        mostrarToast(error.message || 'Error al darse de baja', 'error');
+    }
 }

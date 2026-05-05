@@ -42,6 +42,44 @@
         </button>
     </div>
     <div class="panel-card" style="margin-top: 20px;">
+        <h3>Configuración de Ponderaciones</h3>
+        <div class="form-grid">
+            <div class="form-group-modern">
+                <label for="ponderacionTareas">Tareas (%)</label>
+                <input type="number" id="ponderacionTareas" min="0" max="100" value="20" step="5" onchange="validarPonderaciones()">
+            </div>
+            <div class="form-group-modern">
+                <label for="ponderacionExamenes">Exámenes (%)</label>
+                <input type="number" id="ponderacionExamenes" min="0" max="100" value="30" step="5" onchange="validarPonderaciones()">
+            </div>
+            <div class="form-group-modern">
+                <label for="ponderacionParticipacion">Participación (%)</label>
+                <input type="number" id="ponderacionParticipacion" min="0" max="100" value="10" step="5" onchange="validarPonderaciones()">
+            </div>
+            <div class="form-group-modern">
+                <label for="ponderacionProyectos">Proyectos (%)</label>
+                <input type="number" id="ponderacionProyectos" min="0" max="100" value="20" step="5" onchange="validarPonderaciones()">
+            </div>
+            <div class="form-group-modern">
+                <label for="ponderacionPracticas">Prácticas (%)</label>
+                <input type="number" id="ponderacionPracticas" min="0" max="100" value="20" step="5" onchange="validarPonderaciones()">
+            </div>
+            <div class="form-group-modern">
+                <label for="totalPonderacion">Total (%)</label>
+                <input type="text" id="totalPonderacion" readonly value="100" style="background: #f8fafc; color: #64748b;">
+            </div>
+        </div>
+        <div class="form-group-modern" style="margin-top: 15px;">
+            <button type="button" class="btn btn-primary" onclick="guardarPonderaciones()">
+                <i class="fas fa-save"></i> Guardar Ponderaciones
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="calcularCalificaciones()">
+                <i class="fas fa-calculator"></i> Calcular Calificaciones
+            </button>
+        </div>
+        <div id="mensajePonderaciones" style="margin-top: 10px;"></div>
+    </div>
+    <div class="panel-card" style="margin-top: 20px;">
         <h3>Gestión de Alumnos</h3>
         <div class="form-group-modern">
             <button type="button" class="btn btn-primary" onclick="abrirModalAlumno()">

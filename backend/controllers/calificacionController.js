@@ -599,14 +599,12 @@ const calificacionController = {
                     m.nombre as materia_nombre, 
                     m.clave as materia_clave,
                     u.nombre as profesor_nombre,
-                    COALESCE(c_final.calificacion, 0) as promedio_final
+                    COALESCE(MAX(CASE WHEN c.tipo = 'final' THEN c.calificacion END), 0) as promedio_final
                 FROM materias m
                 JOIN usuarios u ON m.profesor_id = u.id
-                JOIN calificaciones c ON c.materia_id = m.id
-                LEFT JOIN calificaciones c_final ON c_final.estudiante_id = c.estudiante_id 
-                    AND c_final.materia_id = m.id 
-                    AND c_final.tipo = 'final'
+                JOIN calificaciones c ON c.materia_id = m.id AND c.estudiante_id = $1
                 WHERE c.estudiante_id = $1
+                GROUP BY m.id, m.nombre, m.clave, u.nombre
                 ORDER BY m.nombre
             `, [estudianteId]);
 
@@ -875,6 +873,253 @@ const calificacionController = {
         } catch (error) {
             console.error('Error en deleteAlumno:', error);
             res.status(500).json({ message: 'Error al eliminar alumno', error: error.message });
+        }
+    },
+
+    async guardarPonderaciones(req, res) {
+        try {
+            const { materia_id, tareas, examenes, participacion, proyectos, practicas } = req.body;
+            
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, profesor_id FROM materias WHERE id = $1',
+                [materia_id]
+            );
+            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            // Verificar que el total sea 100
+            const total = tareas + examenes + participacion + proyectos + practicas;
+            if (total !== 100) {
+                return res.status(400).json({ message: 'El total de ponderaciones debe ser 100%' });
+            }
+            
+            // Guardar ponderaciones (usar tabla de configuración o crear una nueva)
+            // Por ahora, guardaremos en una tabla temporal o usaremos la tabla de materias
+            await pool.query(
+                `UPDATE materias 
+                 SET ponderacion_tareas = $1, ponderacion_examenes = $2, 
+                     ponderacion_participacion = $3, ponderacion_proyectos = $4, 
+                     ponderacion_practicas = $5
+                 WHERE id = $6`,
+                [tareas, examenes, participacion, proyectos, practicas, materia_id]
+            );
+            
+            console.log(`Ponderaciones guardadas para materia ${materia_id}`);
+            res.json({ message: 'Ponderaciones guardadas correctamente' });
+        } catch (error) {
+            console.error('Error en guardarPonderaciones:', error);
+            res.status(500).json({ message: 'Error al guardar ponderaciones', error: error.message });
+        }
+    },
+
+    async getPonderaciones(req, res) {
+        try {
+            const { materia_id } = req.params;
+            
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, profesor_id, ponderacion_tareas, ponderacion_examenes, ponderacion_participacion, ponderacion_proyectos, ponderacion_practicas FROM materias WHERE id = $1',
+                [materia_id]
+            );
+            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            const materia = materiaCheck.rows[0];
+            const ponderaciones = {
+                tareas: materia.ponderacion_tareas || 20,
+                examenes: materia.ponderacion_examenes || 30,
+                participacion: materia.ponderacion_participacion || 10,
+                proyectos: materia.ponderacion_proyectos || 20,
+                practicas: materia.ponderacion_practicas || 20
+            };
+            
+            res.json(ponderaciones);
+        } catch (error) {
+            console.error('Error en getPonderaciones:', error);
+            res.status(500).json({ message: 'Error al obtener ponderaciones', error: error.message });
+        }
+    },
+
+    async calcularCalificaciones(req, res) {
+        try {
+            const { materia_id } = req.params;
+            const { tareas, examenes, participacion, proyectos, practicas } = req.body;
+            
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, profesor_id FROM materias WHERE id = $1',
+                [materia_id]
+            );
+            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            // Obtener todos los estudiantes de la materia
+            const estudiantes = await pool.query(
+                `SELECT DISTINCT e.id, e.matricula, e.nombre
+                 FROM estudiantes e
+                 JOIN calificaciones c ON e.id = c.estudiante_id
+                 WHERE c.materia_id = $1
+                 ORDER BY e.nombre`,
+                [materia_id]
+            );
+            
+            let calculados = 0;
+            
+            for (const estudiante of estudiantes.rows) {
+                // Obtener calificaciones del estudiante por tipo
+                const calificacionesTipo = await pool.query(
+                    `SELECT tipo, calificacion
+                     FROM calificaciones 
+                     WHERE estudiante_id = $1 AND materia_id = $2 AND tipo != 'final'`,
+                    [estudiante.id, materia_id]
+                );
+                
+                // Calcular promedio ponderado
+                let calificacionFinal = 0;
+                const calificacionesMap = {};
+                
+                calificacionesTipo.rows.forEach(cal => {
+                    calificacionesMap[cal.tipo] = cal.calificacion;
+                });
+                
+                // Aplicar ponderaciones
+                calificacionFinal += (calificacionesMap.tarea || 0) * (tareas / 100);
+                calificacionFinal += (calificacionesMap.examen || 0) * (examenes / 100);
+                calificacionFinal += (calificacionesMap.participacion || 0) * (participacion / 100);
+                calificacionFinal += (calificacionesMap.proyecto || 0) * (proyectos / 100);
+                calificacionFinal += (calificacionesMap.practica || 0) * (practicas / 100);
+                
+                // Actualizar calificación final
+                await pool.query(
+                    `UPDATE calificaciones 
+                     SET calificacion_final = $1, 
+                         porcentaje_final = $2,
+                         updated_at = NOW()
+                     WHERE estudiante_id = $3 AND materia_id = $4 AND tipo = 'final'`,
+                    [calificacionFinal, 100, estudiante.id, materia_id]
+                );
+                
+                calculados++;
+            }
+            
+            console.log(`Calificaciones calculadas para ${calculados} estudiantes en materia ${materia_id}`);
+            res.json({ message: 'Calificaciones calculadas correctamente', calculados });
+        } catch (error) {
+            console.error('Error en calcularCalificaciones:', error);
+            res.status(500).json({ message: 'Error al calcular calificaciones', error: error.message });
+        }
+    },
+
+    async actualizarCalificacion(req, res) {
+        try {
+            const { estudiante_id, materia_id, tipo, calificacion } = req.body;
+            
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, profesor_id FROM materias WHERE id = $1',
+                [materia_id]
+            );
+            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            // Verificar que el estudiante exista y esté en la materia
+            const estudianteCheck = await pool.query(
+                `SELECT e.id FROM estudiantes e
+                 JOIN calificaciones c ON e.id = c.estudiante_id
+                 WHERE e.id = $1 AND c.materia_id = $2`,
+                [estudiante_id, materia_id]
+            );
+            if (estudianteCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Estudiante no encontrado en esta materia' });
+            }
+            
+            // Actualizar o crear la calificación
+            const existingCal = await pool.query(
+                'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 AND tipo = $3',
+                [estudiante_id, materia_id, tipo]
+            );
+            
+            if (existingCal.rows.length > 0) {
+                // Actualizar calificación existente
+                await pool.query(
+                    `UPDATE calificaciones 
+                     SET calificacion = $1, updated_at = NOW()
+                     WHERE estudiante_id = $2 AND materia_id = $3 AND tipo = $4`,
+                    [calificacion, estudiante_id, materia_id, tipo]
+                );
+            } else {
+                // Crear nueva calificación
+                await pool.query(
+                    `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                     VALUES ($1, $2, $3, $4, NOW())`,
+                    [estudiante_id, materia_id, tipo, calificacion]
+                );
+            }
+            
+            console.log(`Calificación actualizada: estudiante ${estudiante_id}, materia ${materia_id}, tipo ${tipo}, valor ${calificacion}`);
+            res.json({ message: 'Calificación actualizada correctamente' });
+        } catch (error) {
+            console.error('Error en actualizarCalificacion:', error);
+            res.status(500).json({ message: 'Error al actualizar calificación', error: error.message });
+        }
+    },
+
+    async getCalificacionesEstudiante(req, res) {
+        try {
+            const { estudiante_id, materia_id } = req.params;
+            
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, profesor_id FROM materias WHERE id = $1',
+                [materia_id]
+            );
+            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            // Obtener todas las calificaciones del estudiante en la materia
+            const calificaciones = await pool.query(
+                `SELECT tipo, calificacion, created_at
+                 FROM calificaciones 
+                 WHERE estudiante_id = $1 AND materia_id = $2
+                 ORDER BY tipo`,
+                [estudiante_id, materia_id]
+            );
+            
+            res.json(calificaciones.rows);
+        } catch (error) {
+            console.error('Error en getCalificacionesEstudiante:', error);
+            res.status(500).json({ message: 'Error al obtener calificaciones', error: error.message });
         }
     },
 
