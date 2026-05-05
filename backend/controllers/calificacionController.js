@@ -614,22 +614,36 @@ const calificacionController = {
         try {
             const { id } = req.params;
             const { nombre, email } = req.body;
+            
+            console.log('updateAlumno - id:', id, 'datos:', { nombre, email });
 
-            const result = await pool.query(
-                `UPDATE estudiantes 
-                 SET nombre = $1, email = $2, updated_at = NOW()
-                 WHERE id = $3 AND materia_id IN (
-                     SELECT id FROM materias WHERE profesor_id = $4
-                 ) RETURNING *`,
-                [nombre, email, id, req.usuario.id]
-            );
-
-            if (result.rows.length === 0) {
+            // Verificar que el alumno exista y pertenezca a una materia del profesor
+            const alumnoCheck = await pool.query(`
+                SELECT e.id, e.nombre, e.materia_id, m.profesor_id
+                FROM estudiantes e
+                JOIN materias m ON e.materia_id = m.id
+                WHERE e.id = $1
+            `, [id]);
+            
+            if (alumnoCheck.rows.length === 0) {
+                console.log('Alumno no encontrado:', id);
                 return res.status(404).json({ message: 'Alumno no encontrado' });
             }
+            
+            if (alumnoCheck.rows[0].profesor_id !== req.usuario.id) {
+                console.log('Sin permisos para actualizar alumno:', id);
+                return res.status(403).json({ message: 'No tienes permisos para modificar este alumno' });
+            }
 
+            const result = await pool.query(
+                'UPDATE estudiantes SET nombre = COALESCE($1, nombre), email = COALESCE($2, email) WHERE id = $3 RETURNING *',
+                [nombre, email, id]
+            );
+
+            console.log('Alumno actualizado:', result.rows[0]);
             res.json(result.rows[0]);
         } catch (error) {
+            console.error('Error en updateAlumno:', error);
             res.status(500).json({ message: 'Error al actualizar alumno', error: error.message });
         }
     },

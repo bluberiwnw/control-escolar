@@ -42,29 +42,53 @@ class HtmlParserSimple {
         const courseInfo = {};
         
         try {
-            // Extraer nombre del curso del formato BUAP real (buscar en la tabla de Información de Curso)
-            const courseNameMatch = htmlContent.match(/<caption[^>]*class="captiontext"[^>]*>Información de Curso<\/caption>[\s\S]*?<th[^>]*class="ddlabel"[^>]*scope="row"[^>]*>([^<]+)<\/th>/i);
+            console.log('Extrayendo información del curso...');
+            
+            // Extraer nombre del curso del formato BUAP real
+            const courseNameMatch = htmlContent.match(/<th[^>]*class="ddlabel"[^>]*scope="row"[^>]*>([^<]+)<\/th>[\s\S]*?<td[^>]*class="dddefault"[^>]*>([^<]+)<\/td>/i);
             if (courseNameMatch) {
-                const courseText = courseNameMatch[1].trim();
+                const courseText = courseNameMatch[2].trim();
+                console.log('Texto del curso encontrado:', courseText);
+                
                 // Formato: "Visión y Animación por Computadora - ICCS 616 001"
                 const parts = courseText.split(' - ');
-                courseInfo.nombre = parts[0]?.trim() || '';
+                courseInfo.nombre = parts[0]?.trim() || courseText;
                 courseInfo.clave = parts[1]?.trim() || '';
+                
+                console.log('Nombre extraído:', courseInfo.nombre);
+                console.log('Clave extraída:', courseInfo.clave);
             }
             
             // Extraer NRC del formato BUAP real
             const nrcMatch = htmlContent.match(/<acronym[^>]*>NRC:<\/acronym>[\s\S]*?<td[^>]*class="dddefault"[^>]*>([^<]+)<\/td>/i);
             if (nrcMatch) {
                 courseInfo.nrc = nrcMatch[1].trim();
+                console.log('NRC extraído:', courseInfo.nrc);
             }
             
             // Extraer duración del formato BUAP real
             const durationMatch = htmlContent.match(/<th[^>]*class="ddlabel"[^>]*>Duración:<\/th>[\s\S]*?<td[^>]*class="dddefault"[^>]*>([^<]+)<\/td>/i);
             if (durationMatch) {
                 courseInfo.duracion = durationMatch[1].trim();
+                console.log('Duración extraída:', courseInfo.duracion);
             }
+            
+            // Si no se encontró información, usar valores por defecto
+            if (!courseInfo.nombre) {
+                courseInfo.nombre = 'Curso sin nombre';
+                courseInfo.clave = 'SIN-CLAVE';
+                courseInfo.nrc = '00000';
+                courseInfo.duracion = '16 semanas';
+                console.log('Usando valores por defecto para el curso');
+            }
+            
         } catch (error) {
             console.error('Error extracting course info:', error);
+            // Valores por defecto en caso de error
+            courseInfo.nombre = 'Curso sin nombre';
+            courseInfo.clave = 'SIN-CLAVE';
+            courseInfo.nrc = '00000';
+            courseInfo.duracion = '16 semanas';
         }
         
         return courseInfo;

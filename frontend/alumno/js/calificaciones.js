@@ -51,37 +51,146 @@ function mostrarResumenVacio() {
 function actualizarResumenGeneral(data) {
     console.log('Actualizando resumen general con datos:', data);
     
-    // Calcular promedio general correctamente
+    // Calcular estadísticas reales basadas en las calificaciones recibidas
     const materias = data.materias || [];
-    const promedioGeneral = materias.length > 0 
+    
+    // Calcular promedio final real basado en todas las calificaciones
+    let todasLasCalificaciones = [];
+    materias.forEach(materia => {
+        if (materia.calificaciones && materia.calificaciones.length > 0) {
+            materia.calificaciones.forEach(cal => {
+                const valor = parseFloat(cal.calificacion) || 0;
+                if (valor > 0) {
+                    todasLasCalificaciones.push(valor);
+                }
+            });
+        }
+    });
+    
+    // Promedio general basado en todas las calificaciones individuales
+    const promedioGeneralReal = todasLasCalificaciones.length > 0 
+        ? todasLasCalificaciones.reduce((sum, cal) => sum + cal, 0) / todasLasCalificaciones.length 
+        : 0;
+    
+    // También calcular promedio por materias (promedio_final)
+    const promedioPorMaterias = materias.length > 0 
         ? materias.reduce((sum, m) => sum + (parseFloat(m.promedio_final) || 0), 0) / materias.length 
         : 0;
+    
+    // Usar el promedio más representativo
+    const promedioFinal = todasLasCalificaciones.length > 0 ? promedioGeneralReal : promedioPorMaterias;
     
     const totalMaterias = data.total_materias || materias.length || 0;
     const aprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) >= 6).length;
     
+    // Calificar el rendimiento del alumno
+    let nivelRendimiento = 'Sin calificaciones';
+    if (promedioFinal >= 9) nivelRendimiento = 'Excelente';
+    else if (promedioFinal >= 8) nivelRendimiento = 'Muy bueno';
+    else if (promedioFinal >= 7) nivelRendimiento = 'Bueno';
+    else if (promedioFinal >= 6) nivelRendimiento = 'Suficiente';
+    else if (promedioFinal > 0) nivelRendimiento = 'Necesita mejorar';
+    
     console.log('Estadísticas calculadas:', {
-        promedioGeneral,
+        promedioFinal,
+        promedioGeneralReal,
+        promedioPorMaterias,
+        totalCalificaciones: todasLasCalificaciones.length,
         totalMaterias,
         aprobadas,
-        materiasCount: materias.length
+        nivelRendimiento
     });
     
-    // Actualizar DOM
-    document.getElementById('promedioGeneral').textContent = promedioGeneral.toFixed(1);
-    document.getElementById('totalMaterias').textContent = totalMaterias;
-    document.getElementById('materiasAprobadas').textContent = aprobadas;
+    // Actualizar DOM con animación
+    const promedioElement = document.getElementById('promedioGeneral');
+    const totalElement = document.getElementById('totalMaterias');
+    const aprobadasElement = document.getElementById('materiasAprobadas');
+    
+    // Animar cambio de números
+    if (promedioElement) {
+        const currentValue = parseFloat(promedioElement.textContent) || 0;
+        animateValue(promedioElement, currentValue, promedioFinal, 500, 1);
+    }
+    
+    if (totalElement) {
+        totalElement.textContent = totalMaterias;
+    }
+    
+    if (aprobadasElement) {
+        aprobadasElement.textContent = aprobadas;
+    }
     
     // Actualizar el círculo de promedio con color dinámico
     const promedioCircle = document.querySelector('.stat-circle');
     if (promedioCircle) {
-        promedioCircle.style.background = getPromedioColor(promedioGeneral);
+        promedioCircle.style.background = getPromedioColor(promedioFinal);
     }
+    
+    // Actualizar tarjetas de estadísticas con información adicional
+    actualizarTarjetasEstadisticas(promedioFinal, totalMaterias, aprobadas, nivelRendimiento, todasLasCalificaciones.length);
     
     // Actualizar título de estadísticas si existe
     const statsTitle = document.querySelector('.stats-title');
     if (statsTitle) {
         statsTitle.textContent = `Tu Rendimiento Académico (${totalMaterias} ${totalMaterias === 1 ? 'materia' : 'materias'})`;
+    }
+}
+
+function animateValue(element, start, end, duration, decimals) {
+    const range = end - start;
+    const increment = range / (duration / 16);
+    let current = start;
+    
+    const timer = setInterval(() => {
+        current += increment;
+        if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+            current = end;
+            clearInterval(timer);
+        }
+        element.textContent = current.toFixed(decimals);
+    }, 16);
+}
+
+function actualizarTarjetasEstadisticas(promedio, totalMaterias, aprobadas, nivel, totalCalificaciones) {
+    // Actualizar tarjeta de promedio con información adicional
+    const promedioCard = document.querySelector('.stat-card-profesor:first-child');
+    if (promedioCard) {
+        const statInfo = promedioCard.querySelector('.stat-info');
+        if (statInfo) {
+            // Agregar nivel de rendimiento
+            let nivelHtml = statInfo.innerHTML;
+            if (!nivelHtml.includes('rendimiento-nivel')) {
+                nivelHtml += `<div class="rendimiento-nivel" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">${nivel}</div>`;
+                statInfo.innerHTML = nivelHtml;
+            }
+        }
+    }
+    
+    // Actualizar tarjeta de materias aprobadas con porcentaje
+    const aprobadasCard = document.querySelector('.stat-card-profesor:last-child');
+    if (aprobadasCard && totalMaterias > 0) {
+        const statInfo = aprobadasCard.querySelector('.stat-info');
+        if (statInfo) {
+            const porcentaje = Math.round((aprobadas / totalMaterias) * 100);
+            let aprobadasHtml = statInfo.innerHTML;
+            if (!aprobadasHtml.includes('porcentaje-aprobadas')) {
+                aprobadasHtml += `<div class="porcentaje-aprobadas" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">${porcentaje}% de aprobación</div>`;
+                statInfo.innerHTML = aprobadasHtml;
+            }
+        }
+    }
+    
+    // Actualizar tarjeta total con información de calificaciones
+    const totalCard = document.querySelector('.stat-card-profesor:nth-child(2)');
+    if (totalCard && totalCalificaciones > 0) {
+        const statInfo = totalCard.querySelector('.stat-info');
+        if (statInfo) {
+            let totalHtml = statInfo.innerHTML;
+            if (!totalHtml.includes('total-calificaciones')) {
+                totalHtml += `<div class="total-calificaciones" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">${totalCalificaciones} calificación(es)</div>`;
+                statInfo.innerHTML = totalHtml;
+            }
+        }
     }
 }
 
@@ -96,32 +205,100 @@ function getPromedioColor(promedio) {
 function mostrarCalificacionesPorMateria(materias) {
     const container = document.getElementById('calificacionesContainer');
     
+    if (!materias || materias.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state" style="text-align: center; padding: 3rem;">
+                <i class="fas fa-graduation-cap" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
+                <h3 style="color: #64748b; margin-bottom: 0.5rem;">No hay calificaciones registradas</h3>
+                <p style="color: #94a3b8;">Tus calificaciones aparecerán aquí cuando tus profesores las registren.</p>
+            </div>
+        `;
+        return;
+    }
+    
     let html = '';
     materias.forEach(materia => {
-        const promedioColor = getCalificacionColor(materia.promedio_final);
-        const promedioIcon = getCalificacionIcon(materia.promedio_final);
-            
+        const promedioFinal = parseFloat(materia.promedio_final) || 0;
+        const promedioColor = getCalificacionColor(promedioFinal);
+        const promedioIcon = getCalificacionIcon(promedioFinal);
+        
+        // Calcular estadísticas de la materia
+        const totalCalifs = materia.calificaciones.length;
+        const promedioSimple = totalCalifs > 0 
+            ? materia.calificaciones.reduce((sum, cal) => sum + (parseFloat(cal.calificacion) || 0), 0) / totalCalifs 
+            : 0;
+        
         html += `
-            <div class="materia-card">
-                <div class="materia-header">
-                    <div class="materia-info">
-                        <h3>${materia.nombre}</h3>
-                        <p class="materia-clave">${materia.clave}</p>
-                        <p class="materia-profesor">Prof. ${materia.profesor}</p>
-                    </div>
-                    <div class="promedio-circle" style="background: ${promedioColor};">
-                        <span class="promedio-number">${(parseFloat(materia.promedio_final) || 0).toFixed(1)}</span>
-                        <span class="promedio-icon">${promedioIcon}</span>
-                    </div>
-                </div>
-                <div class="materia-calificaciones">
-                    ${materia.calificaciones.length > 0 ? materia.calificaciones.map(cal => `
-                        <div class="calificacion-item">
-                            <span class="calificacion-tipo">${formatearTipo(cal.tipo)}</span>
-                            <span class="calificacion-valor">${(parseFloat(cal.calificacion) || 0).toFixed(1)}</span>
+            <div class="panel-card" style="margin-bottom: 1.5rem;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div>
+                        <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem; font-weight: 600;">${materia.nombre}</h3>
+                        <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                            <span style="color: #64748b; font-size: 0.875rem;">
+                                <i class="fas fa-tag"></i> ${materia.clave || 'N/A'}
+                            </span>
+                            <span style="color: #64748b; font-size: 0.875rem;">
+                                <i class="fas fa-user-tie"></i> Prof. ${materia.profesor || 'N/A'}
+                            </span>
+                            <span style="color: #64748b; font-size: 0.875rem;">
+                                <i class="fas fa-chart-bar"></i> ${totalCalifs} calificación(es)
+                            </span>
                         </div>
-                    `).join('') : '<p class="no-calificaciones">No hay calificaciones detalladas aún</p>'}
+                    </div>
+                    <div class="promedio-badge" style="background: ${promedioColor}; color: white; padding: 0.75rem 1.25rem; border-radius: 2rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; min-width: 80px; justify-content: center;">
+                        <span style="font-size: 1.25rem;">${promedioFinal.toFixed(1)}</span>
+                        <span style="font-size: 1rem;">${promedioIcon}</span>
+                    </div>
                 </div>
+                
+                ${materia.calificaciones.length > 0 ? `
+                    <div class="calificaciones-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        ${materia.calificaciones.map(cal => {
+                            const calValor = parseFloat(cal.calificacion) || 0;
+                            const calColor = getCalificacionColor(calValor);
+                            return `
+                                <div class="calificacion-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid ${calColor}; padding: 1rem; border-radius: 0.5rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                                            <i class="fas fa-clipboard-check"></i> ${formatearTipo(cal.tipo)}
+                                        </span>
+                                        <span style="background: ${calColor}; color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600;">
+                                            ${calValor.toFixed(1)}
+                                        </span>
+                                    </div>
+                                    ${cal.porcentaje_final ? `
+                                        <div style="margin-top: 0.5rem;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                                <span style="color: #94a3b8; font-size: 0.75rem;">Progreso</span>
+                                                <span style="color: #64748b; font-size: 0.75rem; font-weight: 500;">${cal.porcentaje_final}%</span>
+                                            </div>
+                                            <div style="background: #e2e8f0; height: 4px; border-radius: 2px; overflow: hidden;">
+                                                <div style="background: ${calColor}; height: 100%; width: ${cal.porcentaje_final}%; transition: width 0.3s ease;"></div>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #64748b; font-size: 0.875rem;">
+                                <i class="fas fa-calculator"></i> Promedio simple de calificaciones
+                            </span>
+                            <span style="color: #1e293b; font-weight: 600; font-size: 1.125rem;">
+                                ${promedioSimple.toFixed(1)}
+                            </span>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="empty-calificaciones" style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: 0.5rem; border: 1px dashed #cbd5e1;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; color: #94a3b8; margin-bottom: 1rem;"></i>
+                        <p style="color: #64748b; margin: 0;">No hay calificaciones detalladas registradas para esta materia</p>
+                        <p style="color: #94a3b8; font-size: 0.875rem; margin-top: 0.5rem;">Tu profesor aún no ha registrado calificaciones específicas</p>
+                    </div>
+                `}
             </div>
         `;
     });
