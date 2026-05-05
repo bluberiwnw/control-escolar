@@ -51,54 +51,49 @@ function mostrarResumenVacio() {
 function actualizarResumenGeneral(data) {
     console.log('Actualizando resumen general con datos:', data);
     
-    // Calcular estadísticas reales basadas en las calificaciones recibidas
     const materias = data.materias || [];
     
-    // Calcular promedio final real basado en todas las calificaciones
+    // Calcular promedio simple de todas las calificaciones individuales
     let todasLasCalificaciones = [];
     materias.forEach(materia => {
         if (materia.calificaciones && materia.calificaciones.length > 0) {
             materia.calificaciones.forEach(cal => {
                 const valor = parseFloat(cal.calificacion) || 0;
-                if (valor > 0) {
-                    todasLasCalificaciones.push(valor);
-                }
+                // Incluir todas las calificaciones, incluso las de 0 para que coincida con el promedio simple
+                todasLasCalificaciones.push(valor);
             });
         }
     });
     
-    // Promedio general basado en todas las calificaciones individuales
-    const promedioGeneralReal = todasLasCalificaciones.length > 0 
+    // Promedio general = Promedio simple de todas las calificaciones individuales
+    const promedioGeneral = todasLasCalificaciones.length > 0 
         ? todasLasCalificaciones.reduce((sum, cal) => sum + cal, 0) / todasLasCalificaciones.length 
         : 0;
     
-    // También calcular promedio por materias (promedio_final)
+    // Calcular promedio por materias para referencia
     const promedioPorMaterias = materias.length > 0 
         ? materias.reduce((sum, m) => sum + (parseFloat(m.promedio_final) || 0), 0) / materias.length 
         : 0;
-    
-    // Usar el promedio más representativo
-    const promedioFinal = todasLasCalificaciones.length > 0 ? promedioGeneralReal : promedioPorMaterias;
     
     const totalMaterias = data.total_materias || materias.length || 0;
     const aprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) >= 6).length;
     
     // Calificar el rendimiento del alumno
     let nivelRendimiento = 'Sin calificaciones';
-    if (promedioFinal >= 9) nivelRendimiento = 'Excelente';
-    else if (promedioFinal >= 8) nivelRendimiento = 'Muy bueno';
-    else if (promedioFinal >= 7) nivelRendimiento = 'Bueno';
-    else if (promedioFinal >= 6) nivelRendimiento = 'Suficiente';
-    else if (promedioFinal > 0) nivelRendimiento = 'Necesita mejorar';
+    if (promedioGeneral >= 9) nivelRendimiento = 'Excelente';
+    else if (promedioGeneral >= 8) nivelRendimiento = 'Muy bueno';
+    else if (promedioGeneral >= 7) nivelRendimiento = 'Bueno';
+    else if (promedioGeneral >= 6) nivelRendimiento = 'Suficiente';
+    else if (promedioGeneral > 0) nivelRendimiento = 'Necesita mejorar';
     
     console.log('Estadísticas calculadas:', {
-        promedioFinal,
-        promedioGeneralReal,
+        promedioGeneral,
         promedioPorMaterias,
         totalCalificaciones: todasLasCalificaciones.length,
         totalMaterias,
         aprobadas,
-        nivelRendimiento
+        nivelRendimiento,
+        calificacionesIndividuales: todasLasCalificaciones
     });
     
     // Actualizar DOM con animación
@@ -109,7 +104,7 @@ function actualizarResumenGeneral(data) {
     // Animar cambio de números
     if (promedioElement) {
         const currentValue = parseFloat(promedioElement.textContent) || 0;
-        animateValue(promedioElement, currentValue, promedioFinal, 500, 1);
+        animateValue(promedioElement, currentValue, promedioGeneral, 500, 1);
     }
     
     if (totalElement) {
@@ -123,11 +118,11 @@ function actualizarResumenGeneral(data) {
     // Actualizar el círculo de promedio con color dinámico
     const promedioCircle = document.querySelector('.stat-circle');
     if (promedioCircle) {
-        promedioCircle.style.background = getPromedioColor(promedioFinal);
+        promedioCircle.style.background = getPromedioColor(promedioGeneral);
     }
     
     // Actualizar tarjetas de estadísticas con información adicional
-    actualizarTarjetasEstadisticas(promedioFinal, totalMaterias, aprobadas, nivelRendimiento, todasLasCalificaciones.length);
+    actualizarTarjetasEstadisticas(promedioGeneral, totalMaterias, aprobadas, nivelRendimiento, todasLasCalificaciones.length);
     
     // Actualizar título de estadísticas si existe
     const statsTitle = document.querySelector('.stats-title');

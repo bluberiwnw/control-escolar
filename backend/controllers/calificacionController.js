@@ -48,6 +48,42 @@ const upload = multer({
     }
 }).single('archivo');
 
+function createExcelData(students, detailedGrades) {
+    // Agrupar calificaciones por estudiante
+    const gradesByStudent = {};
+    
+    detailedGrades.forEach(grade => {
+        if (!gradesByStudent[grade.matricula]) {
+            gradesByStudent[grade.matricula] = {};
+        }
+        gradesByStudent[grade.matricula][grade.tipo] = grade.calificacion;
+    });
+    
+    // Crear encabezado del Excel
+    const excelData = [
+        ['Matrícula', 'Nombre', 'Email', 'Tarea', 'Examen', 'Participación', 'Proyecto', 'Promedio Final', 'Porcentaje']
+    ];
+    
+    // Agregar datos de cada estudiante
+    students.forEach(student => {
+        const studentGrades = gradesByStudent[student.matricula] || {};
+        
+        excelData.push([
+            student.matricula || '',
+            student.nombre || '',
+            student.email || '',
+            studentGrades.tarea || 0,
+            studentGrades.examen || 0,
+            studentGrades.participacion || 0,
+            studentGrades.proyecto || 0,
+            student.calificacion_final || 0,
+            student.porcentaje_final || 0
+        ]);
+    });
+    
+    return excelData;
+}
+
 const calificacionController = {
     async uploadFile(req, res) {
         upload(req, res, async function(err) {
@@ -416,60 +452,124 @@ const calificacionController = {
 
     async processHtmlFile(filePath, materia_id, profesor_id) {
         try {
-            const htmlContent = fs.readFileSync(filePath, 'utf8');
-            const students = HtmlParser.parseStudentList(htmlContent);
+            console.log(`Iniciando procesamiento HTM para materia_id: ${materia_id}`);
             
-            console.log(`Procesando ${students.length} estudiantes del archivo HTM`);
+            const htmlContent = fs.readFileSync(filePath, 'utf8');
+            console.log('Archivo HTM leído, tamaño:', htmlContent.length, 'bytes');
+            
+            // Extraer información del curso del archivo HTM
+            const courseInfo = HtmlParser.extractCourseInfoSimple(htmlContent);
+            console.log('Información del curso extraída:', courseInfo);
+            
+            const students = HtmlParser.parseStudentList(htmlContent);
+            console.log(`Estudiantes extraídos del HTM: ${students.length}`);
+            
+            if (students.length === 0) {
+                console.log('No se encontraron estudiantes en el archivo HTM');
+                return { procesados: 0, nuevos: 0, actualizados: 0, courseInfo };
+            }
             
             let procesados = 0;
             let nuevos = 0;
             let actualizados = 0;
+            let errores = 0;
 
             for (const student of students) {
                 procesados++;
                 
                 try {
-                    // Buscar si el estudiante ya existe por matrícula (usar el campo ID del BUAP como matrícula)
+                    console.log(`Procesando estudiante ${procesados}/${students.length}: ${student.nombre_completo}`);
+                    
+                    // Validar datos del estudiante
+                    if (!student.id || !student.nombre_completo) {
+                        console.log(`⚠️ Estudiante sin datos completos, omitiendo:`, student);
+                        errores++;
+                        continue;
+                    }
+                    
+                    // Buscar si el estudiante ya existe por matrícula
                     const existingStudent = await pool.query(
-                        'SELECT id FROM estudiantes WHERE matricula = $1',
+                        'SELECT id, materia_id FROM estudiantes WHERE matricula = $1',
                         [student.id]
                     );
 
                     let estudianteId;
                     if (existingStudent.rows.length > 0) {
                         estudianteId = existingStudent.rows[0].id;
+                        
+                        // Actualizar materia_id si es diferente
+                        if (existingStudent.rows[0].materia_id !== materia_id) {
+                            await pool.query(
+                                'UPDATE estudiantes SET materia_id = $1 WHERE id = $2',
+                                [materia_id, estudianteId]
+                            );
+                            console.log(`🔄 Estudiante reasignado a materia ${materia_id}: ${student.nombre_completo} (${student.id})`);
+                        } else {
+                            console.log(`✅ Estudiante ya existe en materia: ${student.nombre_completo} (${student.id})`);
+                        }
+                        
                         actualizados++;
-                        console.log(`Estudiante actualizado: ${student.nombre_completo} (${student.id})`);
                     } else {
-                        // Crear nuevo estudiante
+                        // Crear nuevo estudiante con toda la información
                         const newStudent = await pool.query(
-                            `INSERT INTO estudiantes (matricula, nombre, email, materia_id, created_at)
-                             VALUES ($1, $2, $3, $4, NOW()) RETURNING id`,
-                            [student.id, student.nombre_completo, student.email, materia_id]
+                            `INSERT INTO estudiantes (matricula, nombre, email, materia_id, password, rol, created_at)
+                             VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id`,
+                            [
+                                student.id, 
+                                student.nombre_completo, 
+                                student.email || `${student.id}@buap.mx`, 
+                                materia_id, 
+                                'temp123', 
+                                'alumno'
+                            ]
                         );
                         estudianteId = newStudent.rows[0].id;
                         nuevos++;
-                        console.log(`Nuevo estudiante creado: ${student.nombre_completo} (${student.id})`);
+                        console.log(`➕ Nuevo estudiante creado: ${student.nombre_completo} (${student.id})`);
                     }
 
-                    // Crear calificación inicial para el estudiante
+                    // Crear calificaciones iniciales para el estudiante
+                    const tiposCalificacion = ['tarea', 'examen', 'participacion', 'proyecto'];
+                    
+                    for (const tipo of tiposCalificacion) {
+                        await pool.query(
+                            `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                             VALUES ($1, $2, $3, 0, NOW())
+                             ON CONFLICT (estudiante_id, materia_id, tipo) DO NOTHING`,
+                            [estudianteId, materia_id, tipo]
+                        );
+                    }
+                    
+                    // Crear calificación final
                     await pool.query(
-                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
-                         VALUES ($1, $2, 'general', 0, NOW())
+                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, calificacion_final, created_at)
+                         VALUES ($1, $2, 'final', 0, 0, NOW())
                          ON CONFLICT (estudiante_id, materia_id, tipo) DO NOTHING`,
                         [estudianteId, materia_id]
                     );
+                    
+                    console.log(`📊 Calificaciones iniciales creadas para: ${student.nombre_completo}`);
+                    
                 } catch (studentError) {
-                    console.error(`Error procesando estudiante ${student.nombre_completo}:`, studentError);
-                    // Continuar con el siguiente estudiante
+                    console.error(`❌ Error procesando estudiante ${student.nombre_completo}:`, studentError);
+                    errores++;
                     continue;
                 }
             }
 
-            console.log(`Procesamiento completado: ${procesados} procesados, ${nuevos} nuevos, ${actualizados} actualizados`);
-            return { procesados, nuevos, actualizados };
+            const resultado = { 
+                procesados, 
+                nuevos, 
+                actualizados, 
+                errores,
+                courseInfo,
+                totalStudents: students.length
+            };
+            
+            console.log(`🎉 Procesamiento completado:`, resultado);
+            return resultado;
         } catch (error) {
-            console.error('Error procesando archivo HTM:', error);
+            console.error('❌ Error procesando archivo HTM:', error);
             throw error;
         }
     },
@@ -686,14 +786,25 @@ const calificacionController = {
 
             console.log('Materia encontrada para exportación:', materiaCheck.rows[0].nombre);
 
+            // Obtener todos los estudiantes con sus calificaciones detalladas
             const students = await pool.query(
                 `SELECT e.matricula, e.nombre, e.email,
                         COALESCE(c.calificacion_final, 0) as calificacion_final,
                         COALESCE(c.porcentaje_final, 0) as porcentaje_final
                  FROM estudiantes e
-                 LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1
+                 LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1 AND c.tipo = 'final'
                  WHERE e.materia_id = $1
                  ORDER BY e.nombre`,
+                [materia_id]
+            );
+
+            // Obtener calificaciones detalladas por tipo
+            const detailedGrades = await pool.query(
+                `SELECT e.matricula, e.nombre, c.tipo, c.calificacion
+                 FROM estudiantes e
+                 JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1
+                 WHERE e.materia_id = $1 AND c.tipo != 'final'
+                 ORDER BY e.nombre, c.tipo`,
                 [materia_id]
             );
 
@@ -705,8 +816,8 @@ const calificacionController = {
                 fs.mkdirSync(uploadsDir, { recursive: true });
             }
 
-            // Convertir datos a formato Excel
-            const excelData = HtmlParser.convertToExcelFormat(students.rows);
+            // Crear datos completos para Excel con calificaciones detalladas
+            const excelData = createExcelData(students.rows, detailedGrades.rows);
             console.log('Datos convertidos a formato Excel:', excelData.length, 'filas');
             
             const ws = XLSX.utils.aoa_to_sheet(excelData);
