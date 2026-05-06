@@ -7,11 +7,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function cargarCalificaciones() {
     try {
+        console.log('🔄 Iniciando carga de calificaciones...');
+        console.log('🔐 Verificando token:', localStorage.getItem('token') ? 'Token presente' : 'Token ausente');
+        
         mostrarToast('Cargando calificaciones...', 'info');
         
+        console.log('📡 Haciendo petición a /calificaciones/alumno/todas...');
         const data = await apiRequest('/calificaciones/alumno/todas');
         
+        console.log('📋 Datos recibidos:', data);
+        console.log('📊 Materias recibidas:', data.materias?.length || 0);
+        
         if (!data.materias || data.materias.length === 0) {
+            console.log('⚠️ No hay materias en la respuesta');
             mostrarResumenVacio();
             document.getElementById('calificacionesContainer').innerHTML = `
                 <div class="empty-state">
@@ -23,6 +31,8 @@ async function cargarCalificaciones() {
             return;
         }
 
+        console.log('✅ Materias encontradas, procesando datos...');
+        
         // Actualizar resumen general
         actualizarResumenGeneral(data);
         
@@ -32,9 +42,11 @@ async function cargarCalificaciones() {
         // Mostrar calificaciones por materia
         mostrarCalificacionesPorMateria(data.materias);
         
+        console.log('🎉 Calificaciones cargadas exitosamente');
         mostrarToast('Calificaciones cargadas correctamente', 'success');
     } catch (error) {
-        console.error('Error al cargar calificaciones:', error);
+        console.error('❌ Error al cargar calificaciones:', error);
+        console.error('🔍 Detalles del error:', error.message);
         mostrarToast('Error al cargar calificaciones', 'error');
         mostrarResumenVacio();
     }

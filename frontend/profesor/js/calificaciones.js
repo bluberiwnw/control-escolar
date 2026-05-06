@@ -594,30 +594,65 @@ async function previsualizarArchivo(input) {
     const file = input.files[0];
     if (!file) return;
 
-    // Validar extensión
-    const validExt = ['.htm', '.html'];
-    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (!validExt.includes(ext)) {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos HTM (.htm, .html).</div>';
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        mostrarToast('Procesando archivo...', 'info');
+        const result = await apiRequest('/calificaciones/upload', {
+            method: 'POST',
+            body: formData,
+            headers: {} // No Content-Type para FormData
+        });
+
+        mostrarPreview(result);
+        mostrarToast('Archivo procesado correctamente', 'success');
+        
+        // Mostrar controles del proceso HTM
+        document.getElementById('procesoHTMControls').style.display = 'block';
+        
+        // Guardar referencia al resultado para poder procesarlo después
+        window.currentHTMData = result;
+        
+    } catch (error) {
+        mostrarToast(error.message || 'Error al procesar archivo', 'error');
+        document.getElementById('previewTable').innerHTML = '';
+        document.getElementById('resultadoUpload').innerHTML = '';
+        document.getElementById('procesoHTMControls').style.display = 'none';
+    }
+}
+
+async function confirmarSubida() {
+    if (!window.tempFile) {
+        mostrarToast('No hay archivo seleccionado', 'error');
         return;
     }
 
-    window.tempFile = file;
-    
-    if (ext === '.htm' || ext === '.html') {
-        document.getElementById('previewTable').innerHTML = `
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i>
-                <strong>Archivo HTM de lista de clase BUAP listo para procesar.</strong><br>
-                El sistema extraerá automáticamente: Nombre completo, matrícula, email, y toda la información del curso.
-            </div>
-            <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="confirmarSubida()">
-                    <i class="fas fa-upload"></i> Procesar Archivo HTM
-                </button>
-            </div>
-        `;
-        return;
+    try {
+        const formData = new FormData();
+        formData.append('file', window.tempFile);
+
+        mostrarToast('Procesando archivo HTM...', 'info');
+        const result = await apiRequest('/calificaciones/upload', {
+            method: 'POST',
+            body: formData,
+            headers: {} // No Content-Type para FormData
+        });
+
+        mostrarPreview(result);
+        mostrarToast('Archivo HTM procesado correctamente', 'success');
+        
+        // Mostrar controles del proceso HTM
+        document.getElementById('procesoHTMControls').style.display = 'block';
+        
+        // Guardar referencia al resultado para poder procesarlo después
+        window.currentHTMData = result;
+        
+    } catch (error) {
+        mostrarToast(error.message || 'Error al procesar archivo HTM', 'error');
+        document.getElementById('previewTable').innerHTML = '';
+        document.getElementById('resultadoUpload').innerHTML = '';
+        document.getElementById('procesoHTMControls').style.display = 'none';
     }
 }
 
