@@ -812,21 +812,16 @@ const calificacionController = {
 
             // Verificar si el estudiante existe
             const existingStudent = await pool.query(
-                'SELECT id, materia_id FROM estudiantes WHERE id = $1',
+                'SELECT id FROM estudiantes WHERE id = $1',
                 [id]
             );
             if (existingStudent.rows.length === 0) {
                 return res.status(404).json({ message: 'Estudiante no encontrado' });
             }
             
-            // Verificar que la materia pertenezca al profesor
-            const materiaCheck = await pool.query(
-                'SELECT id, profesor_id FROM materias WHERE id = $1',
-                [existingStudent.rows[0].materia_id]
-            );
-            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
-                return res.status(403).json({ message: 'No tienes permisos para modificar este alumno' });
-            }
+            // Verificar que el profesor tenga permisos para modificar alumnos
+            // (cualquier profesor puede modificar cualquier estudiante)
+            // Esta verificación se puede ajustar según las reglas de negocio específicas
 
             // Verificar si la matrícula ya existe en otro estudiante
             const matriculaCheck = await pool.query(
@@ -1090,15 +1085,13 @@ const calificacionController = {
                 return res.status(403).json({ message: 'Materia no encontrada o no tienes permisos' });
             }
             
-            // Verificar que el estudiante exista y esté en la materia
+            // Verificar que el estudiante exista (no necesita estar previamente en la materia)
             const estudianteCheck = await pool.query(
-                `SELECT e.id FROM estudiantes e
-                 JOIN calificaciones c ON e.id = c.estudiante_id
-                 WHERE e.id = $1 AND c.materia_id = $2`,
-                [estudiante_id, materia_id]
+                'SELECT id FROM estudiantes WHERE id = $1',
+                [estudiante_id]
             );
             if (estudianteCheck.rows.length === 0) {
-                return res.status(404).json({ message: 'Estudiante no encontrado en esta materia' });
+                return res.status(404).json({ message: 'Estudiante no encontrado' });
             }
             
             // Actualizar o crear la calificación

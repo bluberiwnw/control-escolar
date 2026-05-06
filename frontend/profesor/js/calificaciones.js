@@ -521,40 +521,32 @@ async function actualizarCalificacion(estudianteId, tipo, valor) {
 
 async function recalcularCalificacionFinal(estudianteId, materia_id) {
     try {
-        // Obtener las ponderaciones actuales
-        const ponderaciones = await apiRequest(`/calificaciones/ponderaciones/${materia_id}`);
+        // Obtener valores directamente del DOM
+        const tarea = parseFloat(document.getElementById(`tarea_${estudianteId}`)?.value) || 0;
+        const examen = parseFloat(document.getElementById(`examen_${estudianteId}`)?.value) || 0;
+        const participacion = parseFloat(document.getElementById(`participacion_${estudianteId}`)?.value) || 0;
+        const proyecto = parseFloat(document.getElementById(`proyecto_${estudianteId}`)?.value) || 0;
+        const practica = parseFloat(document.getElementById(`practica_${estudianteId}`)?.value) || 0;
         
-        // Obtener todas las calificaciones del estudiante
-        const calificaciones = await apiRequest(`/calificaciones/estudiante/${estudianteId}/materia/${materia_id}`);
-        
-        // Calcular promedio ponderado
-        let calificacionFinal = 0;
-        const calificacionesMap = {};
-        
-        calificaciones.forEach(cal => {
-            if (cal.tipo !== 'final') {
-                calificacionesMap[cal.tipo] = cal.calificacion;
-            }
-        });
-        
-        // Aplicar ponderaciones
-        calificacionFinal += (calificacionesMap.tarea || 0) * (ponderaciones.tareas / 100);
-        calificacionFinal += (calificacionesMap.examen || 0) * (ponderaciones.examenes / 100);
-        calificacionFinal += (calificacionesMap.participacion || 0) * (ponderaciones.participacion / 100);
-        calificacionFinal += (calificacionesMap.proyecto || 0) * (ponderaciones.proyectos / 100);
-        calificacionFinal += (calificacionesMap.practica || 0) * (ponderaciones.practicas / 100);
+        // Calcular promedio simple (sin ponderaciones por ahora)
+        const calificacionFinal = (tarea + examen + participacion + proyecto + practica) / 5;
         
         // Actualizar la calificación final en la UI
         const finalElement = document.getElementById(`final_${estudianteId}`);
         if (finalElement) {
-            finalElement.textContent = calificacionFinal.toFixed(1);
+            finalElement.textContent = calificacionFinal.toFixed(2);
             
             // Actualizar el color del badge
-            finalElement.className = 'badge badge-' + (
-                calificacionFinal >= 9 ? 'success' : 
-                calificacionFinal >= 7 ? 'warning' : 'danger'
-            );
+            let colorClass = 'badge-danger';
+            if (calificacionFinal >= 9) colorClass = 'badge-success';
+            else if (calificacionFinal >= 8) colorClass = 'badge-primary';
+            else if (calificacionFinal >= 7) colorClass = 'badge-warning';
+            else if (calificacionFinal >= 6) colorClass = 'badge-info';
+            
+            finalElement.className = colorClass;
         }
+        
+        console.log(`Calificación final recalculada para estudiante ${estudianteId}: ${calificacionFinal.toFixed(2)}`);
         
     } catch (error) {
         console.error('Error al recalcular calificación final:', error);

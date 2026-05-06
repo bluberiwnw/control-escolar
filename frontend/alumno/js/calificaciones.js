@@ -85,17 +85,11 @@ function actualizarResumenGeneral(data) {
     
     const materias = data.materias || [];
     
-    // Calcular promedio general basado en todas las materias (incluyendo las que tienen 0)
-    let totalPromedios = 0;
-    let cantidadMaterias = materias.length;
-    
-    materias.forEach(materia => {
-        const promedio = parseFloat(materia.promedio_final) || 0;
-        totalPromedios += promedio;
-    });
-    
-    const promedioGeneral = cantidadMaterias > 0 ? totalPromedios / cantidadMaterias : 0;
+    // Usar los datos del backend directamente (ya están calculados)
+    const promedioGeneral = parseFloat(data.promedio_general) || 0;
     const totalMaterias = data.total_materias || materias.length || 0;
+    
+    // Calcular aprobadas/reprobadas basado en las calificaciones reales
     const aprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) >= 6).length;
     const reprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) < 6 && (parseFloat(m.promedio_final) || 0) > 0).length;
     const sinCalificacion = materias.filter(m => (parseFloat(m.promedio_final) || 0) === 0).length;
@@ -106,13 +100,11 @@ function actualizarResumenGeneral(data) {
         aprobadas,
         reprobadas,
         sinCalificacion,
-        materiasCount: materias.length,
-        totalPromedios,
-        cantidadMaterias
+        materiasCount: materias.length
     });
     
     // Actualizar DOM
-    document.getElementById('promedioGeneral').textContent = promedioGeneral.toFixed(1);
+    document.getElementById('promedioGeneral').textContent = promedioGeneral.toFixed(2);
     document.getElementById('totalMaterias').textContent = totalMaterias;
     document.getElementById('materiasAprobadas').textContent = aprobadas;
     
