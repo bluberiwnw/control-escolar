@@ -595,8 +595,18 @@ async function previsualizarArchivo(input) {
     if (!file) return;
 
     try {
+        // Obtener materia seleccionada
+        const materiaSelect = document.getElementById('materiaSelect');
+        const materia_id = materiaSelect ? materiaSelect.value : null;
+        
+        if (!materia_id) {
+            mostrarToast('Selecciona una materia antes de subir el archivo', 'error');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('materia_id', materia_id);
 
         mostrarToast('Procesando archivo...', 'info');
         const result = await apiRequest('/calificaciones/upload', {
@@ -629,8 +639,18 @@ async function confirmarSubida() {
     }
 
     try {
+        // Obtener materia seleccionada
+        const materiaSelect = document.getElementById('materiaSelect');
+        const materia_id = materiaSelect ? materiaSelect.value : null;
+        
+        if (!materia_id) {
+            mostrarToast('Selecciona una materia antes de subir el archivo', 'error');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('file', window.tempFile);
+        formData.append('materia_id', materia_id);
 
         mostrarToast('Procesando archivo HTM...', 'info');
         const result = await apiRequest('/calificaciones/upload', {
@@ -656,10 +676,375 @@ async function confirmarSubida() {
     }
 }
 
+function mostrarPreview(resultado) {
+    console.log('📋 Mostrando preview del resultado:', resultado);
+    
+    const previewTable = document.getElementById('previewTable');
+    const resultadoUpload = document.getElementById('resultadoUpload');
+    
+    if (!resultado || !resultado.resultado) {
+        previewTable.innerHTML = '<div class="alert alert-error">No se pudo procesar el archivo HTM</div>';
+        resultadoUpload.innerHTML = '';
+        return;
+    }
+    
+    const { resultado: data, fileName } = resultado;
+    
+    // Mostrar información general
+    resultadoUpload.innerHTML = `
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <strong>Archivo procesado correctamente:</strong> ${fileName}<br>
+            <strong>Estudiantes procesados:</strong> ${data.procesados}<br>
+            <strong>Nuevos:</strong> ${data.nuevos}<br>
+            <strong>Actualizados:</strong> ${data.actualizados}
+        </div>
+    `;
+    
+    // Si hay información del curso, mostrarla
+    if (data.courseInfo) {
+        let courseHtml = '<div class="panel-card" style="margin-top: 15px;"><h3>Información del Curso</h3><table class="datadisplaytable">';
+        
+        Object.entries(data.courseInfo).forEach(([key, value]) => {
+            courseHtml += `<tr><td class="dddefault"><strong>${key}:</strong></td><td class="dddefault">${value}</td></tr>`;
+        });
+        
+        courseHtml += '</table></div>';
+        resultadoUpload.innerHTML += courseHtml;
+    }
+    
+    // Mostrar tabla de estudiantes procesados
+    if (data.students && data.students.length > 0) {
+        let studentsHtml = `
+            <div class="panel-card" style="margin-top: 15px;">
+                <h3>Estudiantes Procesados (${data.students.length})</h3>
+                <div style="overflow-x: auto;">
+                    <table class="datadisplaytable" style="min-width: 800px;">
+                        <thead>
+                            <tr>
+                                <th class="ddheader">#</th>
+                                <th class="ddheader">Nombre Completo</th>
+                                <th class="ddheader">Matrícula</th>
+                                <th class="ddheader">Email</th>
+                                <th class="ddheader">Tareas</th>
+                                <th class="ddheader">Exámenes</th>
+                                <th class="ddheader">Proyectos</th>
+                                <th class="ddheader">Prácticas</th>
+                                <th class="ddheader">Calificación Final</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        data.students.forEach((student, index) => {
+            const tareas = student.tareas || 0;
+            const examenes = student.examenes || 0;
+            const proyectos = student.proyectos || 0;
+            const practicas = student.practicas || 0;
+            const calificacionFinal = student.calificacion_final || 0;
+            
+            // Color según calificación
+            let colorClass = '';
+            if (calificacionFinal >= 9) colorClass = 'style="color: #22c55e; font-weight: bold;"';
+            else if (calificacionFinal >= 8) colorClass = 'style="color: #3b82f6; font-weight: bold;"';
+            else if (calificacionFinal >= 7) colorClass = 'style="color: #f59e0b; font-weight: bold;"';
+            else if (calificacionFinal >= 6) colorClass = 'style="color: #f97316; font-weight: bold;"';
+            else colorClass = 'style="color: #ef4444; font-weight: bold;"';
+            
+            studentsHtml += `
+                <tr>
+                    <td class="dddefault">${index + 1}</td>
+                    <td class="dddefault">${student.nombre_completo || 'N/A'}</td>
+                    <td class="dddefault">${student.numero_registro || 'N/A'}</td>
+                    <td class="dddefault">${student.email || 'N/A'}</td>
+                    <td class="dddefault">${tareas}</td>
+                    <td class="dddefault">${examenes}</td>
+                    <td class="dddefault">${proyectos}</td>
+                    <td class="dddefault">${practicas}</td>
+                    <td class="dddefault" ${colorClass}>${calificacionFinal.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+        
+        studentsHtml += '</tbody></table></div></div>';
+        previewTable.innerHTML = studentsHtml;
+        
+        // Actualizar la tabla de alumnos editable
+        cargarAlumnosDesdeHTM(data.students);
+        
+    } else {
+        previewTable.innerHTML = '<div class="alert alert-warning">No se encontraron estudiantes en el archivo HTM</div>';
+    }
+}
+
+function cargarAlumnosDesdeHTM(estudiantes) {
+    console.log('🔄 Cargando alumnos desde HTM:', estudiantes.length);
+    
+    const alumnosTable = document.getElementById('alumnosTable');
+    if (!alumnosTable) return;
+    
+    let html = `
+        <div class="panel-card">
+            <h3>Alumnos Procesados (Edición Habilitada)</h3>
+            <div style="overflow-x: auto;">
+                <table class="datadisplaytable" style="min-width: 1000px;">
+                    <thead>
+                        <tr>
+                            <th class="ddheader">Matrícula</th>
+                            <th class="ddheader">Nombre</th>
+                            <th class="ddheader">Email</th>
+                            <th class="ddheader">Tareas</th>
+                            <th class="ddheader">Exámenes</th>
+                            <th class="ddheader">Proyectos</th>
+                            <th class="ddheader">Prácticas</th>
+                            <th class="ddheader">Final</th>
+                            <th class="ddheader">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    estudiantes.forEach((estudiante, index) => {
+        const matricula = estudiante.numero_registro || '';
+        const nombre = estudiante.nombre_completo || '';
+        const email = estudiante.email || '';
+        const tareas = estudiante.tareas || 0;
+        const examenes = estudiante.examenes || 0;
+        const proyectos = estudiante.proyectos || 0;
+        const practicas = estudiante.practicas || 0;
+        const calificacionFinal = estudiante.calificacion_final || 0;
+        
+        html += `
+            <tr>
+                <td class="dddefault">${matricula}</td>
+                <td class="dddefault">${nombre}</td>
+                <td class="dddefault">${email}</td>
+                <td class="dddefault">
+                    <input type="number" 
+                           id="tarea_${index}" 
+                           value="${tareas}" 
+                           min="0" max="10" 
+                           step="0.1"
+                           style="width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;"
+                           onchange="recalcularFinal(${index})">
+                </td>
+                <td class="dddefault">
+                    <input type="number" 
+                           id="examen_${index}" 
+                           value="${examenes}" 
+                           min="0" max="10" 
+                           step="0.1"
+                           style="width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;"
+                           onchange="recalcularFinal(${index})">
+                </td>
+                <td class="dddefault">
+                    <input type="number" 
+                           id="proyecto_${index}" 
+                           value="${proyectos}" 
+                           min="0" max="10" 
+                           step="0.1"
+                           style="width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;"
+                           onchange="recalcularFinal(${index})">
+                </td>
+                <td class="dddefault">
+                    <input type="number" 
+                           id="practica_${index}" 
+                           value="${practicas}" 
+                           min="0" max="10" 
+                           step="0.1"
+                           style="width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;"
+                           onchange="recalcularFinal(${index})">
+                </td>
+                <td class="dddefault">
+                    <span id="final_${index}" style="font-weight: bold; color: #2563eb;">
+                        ${calificacionFinal.toFixed(2)}
+                    </span>
+                </td>
+                <td class="dddefault">
+                    <button type="button" 
+                            class="btn btn-sm btn-primary" 
+                            onclick="guardarCambiosAlumno(${index})"
+                            style="padding: 4px 8px; font-size: 12px;">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table></div></div>';
+    alumnosTable.innerHTML = html;
+    
+    // Guardar referencia a los estudiantes para poder usarlos después
+    window.estudiantesHTM = estudiantes;
+}
+
+function recalcularFinal(index) {
+    if (!window.estudiantesHTM || !window.estudiantesHTM[index]) return;
+    
+    const tareas = parseFloat(document.getElementById(`tarea_${index}`).value) || 0;
+    const examenes = parseFloat(document.getElementById(`examen_${index}`).value) || 0;
+    const proyectos = parseFloat(document.getElementById(`proyecto_${index}`).value) || 0;
+    const practicas = parseFloat(document.getElementById(`practica_${index}`).value) || 0;
+    
+    // Calcular promedio simple sin redondeo
+    const calificacionFinal = (tareas + examenes + proyectos + practicas) / 4;
+    
+    // Actualizar display
+    const finalElement = document.getElementById(`final_${index}`);
+    if (finalElement) {
+        finalElement.textContent = calificacionFinal.toFixed(2);
+        
+        // Color según calificación
+        if (calificacionFinal >= 9) finalElement.style.color = '#22c55e';
+        else if (calificacionFinal >= 8) finalElement.style.color = '#3b82f6';
+        else if (calificacionFinal >= 7) finalElement.style.color = '#f59e0b';
+        else if (calificacionFinal >= 6) finalElement.style.color = '#f97316';
+        else finalElement.style.color = '#ef4444';
+    }
+}
+
+async function guardarCambiosAlumno(index) {
+    if (!window.estudiantesHTM || !window.estudiantesHTM[index]) {
+        mostrarToast('Error: no se encontró el estudiante', 'error');
+        return;
+    }
+    
+    const estudiante = window.estudiantesHTM[index];
+    const tareas = parseFloat(document.getElementById(`tarea_${index}`).value) || 0;
+    const examenes = parseFloat(document.getElementById(`examen_${index}`).value) || 0;
+    const proyectos = parseFloat(document.getElementById(`proyecto_${index}`).value) || 0;
+    const practicas = parseFloat(document.getElementById(`practica_${index}`).value) || 0;
+    const calificacionFinal = (tareas + examenes + proyectos + practicas) / 4;
+    
+    try {
+        await apiRequest('/calificaciones/actualizar', {
+            method: 'PUT',
+            body: JSON.stringify({
+                estudiante_id: estudiante.id || estudiante.numero_registro,
+                materia_id: document.getElementById('materiaSelect').value,
+                tipo: 'tarea',
+                calificacion: tareas
+            })
+        });
+        
+        await apiRequest('/calificaciones/actualizar', {
+            method: 'PUT',
+            body: JSON.stringify({
+                estudiante_id: estudiante.id || estudiante.numero_registro,
+                materia_id: document.getElementById('materiaSelect').value,
+                tipo: 'examen',
+                calificacion: examenes
+            })
+        });
+        
+        await apiRequest('/calificaciones/actualizar', {
+            method: 'PUT',
+            body: JSON.stringify({
+                estudiante_id: estudiante.id || estudiante.numero_registro,
+                materia_id: document.getElementById('materiaSelect').value,
+                tipo: 'proyecto',
+                calificacion: proyectos
+            })
+        });
+        
+        await apiRequest('/calificaciones/actualizar', {
+            method: 'PUT',
+            body: JSON.stringify({
+                estudiante_id: estudiante.id || estudiante.numero_registro,
+                materia_id: document.getElementById('materiaSelect').value,
+                tipo: 'practica',
+                calificacion: practicas
+            })
+        });
+        
+        mostrarToast('Calificaciones guardadas correctamente', 'success');
+        
+    } catch (error) {
+        mostrarToast('Error al guardar calificaciones: ' + error.message, 'error');
+    }
+}
+
 // Actualizar cuando se cambia la materia
 document.getElementById('materiaSelect')?.addEventListener('change', async () => {
     await cargarAlumnos();
 });
+
+// Funciones para controlar el proceso HTM
+function cancelarProcesoHTM() {
+    if (!confirm('¿Estás seguro de cancelar el proceso? Se perderán todos los cambios no guardados.')) {
+        return;
+    }
+    
+    // Limpiar todo
+    document.getElementById('previewTable').innerHTML = '';
+    document.getElementById('resultadoUpload').innerHTML = '';
+    document.getElementById('alumnosTable').innerHTML = '';
+    document.getElementById('procesoHTMControls').style.display = 'none';
+    
+    // Limpiar archivo temporal
+    window.tempFile = null;
+    window.currentHTMData = null;
+    window.estudiantesHTM = null;
+    
+    // Limpiar input de archivo
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    
+    mostrarToast('Proceso cancelado', 'info');
+}
+
+async function subirDefinitivamenteHTM() {
+    if (!window.currentHTMData || !window.currentHTMData.resultado) {
+        mostrarToast('No hay datos procesados para subir', 'error');
+        return;
+    }
+    
+    if (!confirm('¿Estás seguro de subir definitivamente estas calificaciones? Esta acción enviará la información al administrador y no podrá deshacerse.')) {
+        return;
+    }
+    
+    try {
+        const materia_id = document.getElementById('materiaSelect').value;
+        const datos = window.currentHTMData.resultado;
+        
+        mostrarToast('Subiendo calificaciones definitivamente...', 'info');
+        
+        const result = await apiRequest('/calificaciones/procesar-definitivo', {
+            method: 'POST',
+            body: JSON.stringify({
+                materia_id: materia_id,
+                datos: datos
+            })
+        });
+        
+        mostrarToast(`Calificaciones subidas correctamente: ${result.procesados} procesados, ${result.errores} errores`, 'success');
+        
+        // Limpiar todo después de subir
+        document.getElementById('previewTable').innerHTML = '';
+        document.getElementById('resultadoUpload').innerHTML = '';
+        document.getElementById('alumnosTable').innerHTML = '';
+        document.getElementById('procesoHTMControls').style.display = 'none';
+        
+        window.tempFile = null;
+        window.currentHTMData = null;
+        window.estudiantesHTM = null;
+        
+        // Limpiar input de archivo
+        const fileInput = document.querySelector('input[type="file"]');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        // Recargar alumnos para mostrar los cambios
+        await cargarAlumnos();
+        
+    } catch (error) {
+        mostrarToast('Error al subir calificaciones: ' + error.message, 'error');
+    }
+}
 
 // Exportar funciones al scope global
 window.eliminarArchivo = eliminarArchivo;
@@ -671,3 +1056,9 @@ window.cerrarModalAlumno = cerrarModalAlumno;
 window.exportarExcel = exportarExcel;
 window.cargarAlumnos = cargarAlumnos;
 window.descargarPlantilla = descargarPlantilla;
+window.cancelarProcesoHTM = cancelarProcesoHTM;
+window.subirDefinitivamenteHTM = subirDefinitivamenteHTM;
+window.previsualizarArchivo = previsualizarArchivo;
+window.confirmarSubida = confirmarSubida;
+window.recalcularFinal = recalcularFinal;
+window.guardarCambiosAlumno = guardarCambiosAlumno;

@@ -864,36 +864,64 @@ const calificacionController = {
             
             // Verificar si el estudiante existe
             const existingStudent = await pool.query(
-                'SELECT id, materia_id FROM estudiantes WHERE id = $1',
+                'SELECT id FROM estudiantes WHERE id = $1',
                 [id]
             );
             if (existingStudent.rows.length === 0) {
                 return res.status(404).json({ message: 'Estudiante no encontrado' });
             }
             
-            // Verificar que la materia pertenezca al profesor
-            const materiaCheck = await pool.query(
-                'SELECT id, profesor_id FROM materias WHERE id = $1',
-                [existingStudent.rows[0].materia_id]
+            // Verificar que el profesor tenga permisos para eliminar este estudiante
+            // Verificando si el estudiante tiene calificaciones en alguna materia del profesor
+            const materiasProfesorQuery = await pool.query(
+                'SELECT id FROM materias WHERE profesor_id = $1',
+                [req.usuario.id]
             );
-            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
-                return res.status(403).json({ message: 'No tienes permisos para eliminar este alumno' });
+            
+            if (materiasProfesorQuery.rows.length === 0) {
+                return res.status(403).json({ message: 'No tienes materias asignadas' });
+            }
+            
+            const materiasIds = materiasProfesorQuery.rows.map(m => m.id);
+            
+            // Verificar si el estudiante tiene calificaciones en alguna materia del profesor
+            const calificacionCheck = await pool.query(
+                'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = ANY($2)',
+                [id, materiasIds]
+            );
+            
+            if (calificacionCheck.rows.length === 0) {
+                return res.status(403).json({ message: 'Este estudiante no está en tus materias' });
             }
 
-            // Eliminar calificaciones del estudiante
-            await pool.query(
-                'DELETE FROM calificaciones WHERE estudiante_id = $1',
-                [id]
+            // Eliminar calificaciones del estudiante en las materias del profesor
+            const deleteCalificacionesResult = await pool.query(
+                'DELETE FROM calificaciones WHERE estudiante_id = $1 AND materia_id = ANY($2)',
+                [id, materiasIds]
             );
 
-            // Eliminar estudiante
-            const result = await pool.query(
-                'DELETE FROM estudiantes WHERE id = $1',
+            // Verificar si el estudiante tiene calificaciones en otras materias
+            const otrasCalificacionesQuery = await pool.query(
+                'SELECT COUNT(*) as count FROM calificaciones WHERE estudiante_id = $1',
                 [id]
             );
+            
+            // Si no tiene más calificaciones, eliminar el estudiante
+            if (parseInt(otrasCalificacionesQuery.rows[0].count) === 0) {
+                await pool.query(
+                    'DELETE FROM estudiantes WHERE id = $1',
+                    [id]
+                );
+                console.log('Estudiante eliminado completamente:', id);
+            } else {
+                console.log('Calificaciones eliminadas, estudiante conservado:', id);
+            }
 
-            console.log('Estudiante eliminado:', result.rowCount);
-            res.json({ message: 'Estudiante eliminado correctamente' });
+            console.log('Calificaciones eliminadas:', deleteCalificacionesResult.rowCount);
+            res.json({ 
+                message: 'Estudiante eliminado correctamente',
+                calificacionesEliminadas: deleteCalificacionesResult.rowCount
+            });
         } catch (error) {
             console.error('Error en deleteAlumno:', error);
             res.status(500).json({ message: 'Error al eliminar alumno', error: error.message });
