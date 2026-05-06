@@ -30,6 +30,9 @@ router.post('/calcular/:materia_id', verificarRol(['profesor', 'administrador'])
 router.put('/actualizar', verificarRol(['profesor', 'administrador']), calificacionController.actualizarCalificacion);
 router.get('/estudiante/:estudiante_id/materia/:materia_id', verificarRol(['profesor', 'administrador']), calificacionController.getCalificacionesEstudiante);
 
+// Rutas para procesamiento definitivo HTM
+router.post('/procesar-definitivo', verificarRol(['profesor', 'administrador']), calificacionController.procesarDefinitivo);
+
 // Rutas para alumnos (separadas para no tener conflicto de roles)
 router.get('/alumno/todas', verificarRol(['alumno']), calificacionController.getAllCalificacionesAlumno);
 router.delete('/alumno/materia/:materia_id/baja', verificarRol(['alumno']), calificacionController.darseDeBajaMateria);

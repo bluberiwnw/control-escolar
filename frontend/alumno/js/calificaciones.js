@@ -26,6 +26,9 @@ async function cargarCalificaciones() {
         // Actualizar resumen general
         actualizarResumenGeneral(data);
         
+        // Llenar select de materias para darse de baja
+        llenarSelectMaterias(data.materias);
+        
         // Mostrar calificaciones por materia
         mostrarCalificacionesPorMateria(data.materias);
         
@@ -37,10 +40,32 @@ async function cargarCalificaciones() {
     }
 }
 
+function llenarSelectMaterias(materias) {
+    const materiaSelect = document.getElementById('materiaSelect');
+    if (!materiaSelect) return;
+    
+    // Limpiar opciones existentes
+    materiaSelect.innerHTML = '<option value="">Selecciona una materia...</option>';
+    
+    // Agregar materias
+    materias.forEach(materia => {
+        const option = document.createElement('option');
+        option.value = materia.materia_id;
+        option.textContent = `${materia.nombre} (${materia.clave || 'N/A'})`;
+        materiaSelect.appendChild(option);
+    });
+}
+
 function mostrarResumenVacio() {
     document.getElementById('promedioGeneral').textContent = '0.0';
     document.getElementById('totalMaterias').textContent = '0';
     document.getElementById('materiasAprobadas').textContent = '0';
+    
+    // Limpiar select de materias
+    const materiaSelect = document.getElementById('materiaSelect');
+    if (materiaSelect) {
+        materiaSelect.innerHTML = '<option value="">Selecciona una materia...</option>';
+    }
 }
 
 function actualizarResumenGeneral(data) {

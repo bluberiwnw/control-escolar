@@ -1141,9 +1141,9 @@ const calificacionController = {
     async darseDeBajaMateria(req, res) {
         try {
             const { materia_id } = req.params;
-            const estudianteId = req.usuario.id;
+            const estudiante_id = req.usuario.id;
             
-            console.log('darseDeBajaMateria - estudiante_id:', estudianteId, 'materia_id:', materia_id);
+            console.log('darseDeBajaMateria - estudiante_id:', estudiante_id, 'materia_id:', materia_id);
             
             // Verificar que el usuario exista y sea alumno
             if (!req.usuario || req.usuario.rol !== 'alumno') {
@@ -1162,7 +1162,7 @@ const calificacionController = {
             // Verificar que el estudiante esté inscrito en la materia
             const inscripcionCheck = await pool.query(
                 'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 LIMIT 1',
-                [estudianteId, materia_id]
+                [estudiante_id, materia_id]
             );
             if (inscripcionCheck.rows.length === 0) {
                 return res.status(404).json({ message: 'No estás inscrito en esta materia' });
@@ -1171,10 +1171,10 @@ const calificacionController = {
             // Eliminar todas las calificaciones del estudiante en esa materia
             const deleteResult = await pool.query(
                 'DELETE FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2',
-                [estudianteId, materia_id]
+                [estudiante_id, materia_id]
             );
             
-            console.log(`Estudiante ${estudianteId} dado de baja de materia ${materia_id}, ${deleteResult.rowCount} calificaciones eliminadas`);
+            console.log(`Estudiante ${estudiante_id} se dio de baja de materia ${materia_id}. Calificaciones eliminadas: ${deleteResult.rowCount}`);
             
             res.json({ 
                 message: `Te has dado de baja correctamente de la materia ${materiaCheck.rows[0].nombre}`,
@@ -1182,9 +1182,111 @@ const calificacionController = {
             });
         } catch (error) {
             console.error('Error en darseDeBajaMateria:', error);
-            res.status(500).json({ message: 'Error al darse de baja de la materia', error: error.message });
+            res.status(500).json({ message: 'Error al darse de baja', error: error.message });
         }
-    }
+    },
+
+    async procesarDefinitivo(req, res) {
+        try {
+            const { materia_id, datos } = req.body;
+            
+            // Verificar que el usuario exista y sea profesor
+            if (!req.usuario || req.usuario.rol !== 'profesor') {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre, profesor_id FROM materias WHERE id = $1',
+                [materia_id]
+            );
+            
+            if (materiaCheck.rows.length === 0 || materiaCheck.rows[0].profesor_id !== req.usuario.id) {
+                return res.status(403).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            // Procesar los datos del HTM y guardar definitivamente
+            const estudiantes = datos.estudiantes || [];
+            let procesados = 0;
+            let errores = 0;
+            
+            for (const estudiante of estudiantes) {
+                try {
+                    // Verificar si el estudiante ya existe
+                    const estudianteExistente = await pool.query(
+                        'SELECT id FROM estudiantes WHERE matricula = $1',
+                        [estudiante.numero_registro]
+                    );
+                    
+                    let estudiante_id;
+                    if (estudianteExistente.rows.length > 0) {
+                        estudiante_id = estudianteExistente.rows[0].id;
+                    } else {
+                        // Crear nuevo estudiante
+                        const nuevoEstudiante = await pool.query(
+                            `INSERT INTO estudiantes (matricula, nombre, email, rol, materia_id, created_at)
+                             VALUES ($1, $2, $3, $4, $5, NOW())
+                             RETURNING id`,
+                            [estudiante.numero_registro, estudiante.nombre_completo, estudiante.email || '', 'alumno', materia_id]
+                        );
+                        estudiante_id = nuevoEstudiante.rows[0].id;
+                    }
+                    
+                    // Guardar calificaciones individuales
+                    await pool.query(
+                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                         VALUES ($1, $2, 'tarea', $3, NOW())
+                         ON CONFLICT (estudiante_id, materia_id, tipo) 
+                         DO UPDATE SET calificacion = EXCLUDED.calificacion`,
+                        [estudiante_id, materia_id, estudiante.tareas || 0]
+                    );
+                    
+                    await pool.query(
+                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                         VALUES ($1, $2, 'examen', $3, NOW())
+                         ON CONFLICT (estudiante_id, materia_id, tipo) 
+                         DO UPDATE SET calificacion = EXCLUDED.calificacion`,
+                        [estudiante_id, materia_id, estudiante.examenes || 0]
+                    );
+                    
+                    await pool.query(
+                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                         VALUES ($1, $2, 'proyecto', $3, NOW())
+                         ON CONFLICT (estudiante_id, materia_id, tipo) 
+                         DO UPDATE SET calificacion = EXCLUDED.calificacion`,
+                        [estudiante_id, materia_id, estudiante.proyectos || 0]
+                    );
+                    
+                    // Guardar calificación final
+                    await pool.query(
+                        `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, calificacion_final, created_at)
+                         VALUES ($1, $2, 'examen', $3, $3, NOW())
+                         ON CONFLICT (estudiante_id, materia_id, tipo) 
+                         DO UPDATE SET calificacion = EXCLUDED.calificacion, calificacion_final = EXCLUDED.calificacion_final`,
+                        [estudiante_id, materia_id, estudiante.calificacion_final || 0]
+                    );
+                    
+                    procesados++;
+                } catch (error) {
+                    console.error(`Error procesando estudiante ${estudiante.nombre_completo}:`, error);
+                    errores++;
+                }
+            }
+            
+            console.log(`Procesamiento definitivo completado: ${procesados} exitosos, ${errores} errores`);
+            
+            res.json({
+                message: 'Calificaciones procesadas definitivamente y disponibles para el administrador',
+                procesados: procesados,
+                errores: errores,
+                materia: materiaCheck.rows[0].nombre
+            });
+            
+        } catch (error) {
+            console.error('Error en procesarDefinitivo:', error);
+            res.status(500).json({ message: 'Error al procesar calificaciones definitivamente', error: error.message });
+        }
+    },
 };
 
 module.exports = calificacionController;

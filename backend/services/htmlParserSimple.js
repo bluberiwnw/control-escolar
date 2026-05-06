@@ -268,19 +268,16 @@ class HtmlParserSimple {
     }
     
     static calculateGrade(participaciones, tareas, actividades, examenes) {
-        // Convertir de 100 puntos a escala de 10 puntos
+        // Convertir de 100 puntos a escala de 10 puntos sin redondear
         const total = participaciones + tareas + actividades + examenes;
         let calificacion = total / 10;
         
-        // Aplicar redondeo: si es .5 o más, asciende a la siguiente calificación
-        if (calificacion % 1 >= 0.5) {
-            calificacion = Math.ceil(calificacion);
-        } else {
-            calificacion = Math.floor(calificacion);
-        }
-        
-        // Asegurar que esté en el rango de 5 a 10
+        // NO aplicar redondeo - mantener el valor exacto con decimales
+        // Solo asegurar que esté en el rango de 5 a 10
         calificacion = Math.max(5, Math.min(10, calificacion));
+        
+        // Redondear a 2 decimales para precisión pero sin redondeo tradicional
+        calificacion = Math.round(calificacion * 100) / 100;
         
         return calificacion;
     }

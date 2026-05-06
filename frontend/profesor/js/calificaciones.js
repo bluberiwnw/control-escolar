@@ -426,44 +426,23 @@ async function guardarPonderaciones() {
     }
     
     const ponderaciones = {
-        materia_id,
-        tareas: parseFloat(document.getElementById('ponderacionTareas').value) || 0,
-        examenes: parseFloat(document.getElementById('ponderacionExamenes').value) || 0,
-        participacion: parseFloat(document.getElementById('ponderacionParticipacion').value) || 0,
-        proyectos: parseFloat(document.getElementById('ponderacionProyectos').value) || 0,
-        practicas: parseFloat(document.getElementById('ponderacionPracticas').value) || 0
+        tareas: parseFloat(document.getElementById('ponderacionTareas').value) || 20,
+        examenes: parseFloat(document.getElementById('ponderacionExamenes').value) || 30,
+        participacion: parseFloat(document.getElementById('ponderacionParticipacion').value) || 10,
+        proyectos: parseFloat(document.getElementById('ponderacionProyectos').value) || 20,
+        practicas: parseFloat(document.getElementById('ponderacionPracticas').value) || 20
     };
     
     try {
-        mostrarToast('Guardando ponderaciones...', 'info');
-        
         await apiRequest('/calificaciones/ponderaciones', {
             method: 'POST',
-            body: JSON.stringify(ponderaciones)
+            body: JSON.stringify({
+                materia_id: materia_id,
+                ...ponderaciones
+            })
         });
         
         mostrarToast('Ponderaciones guardadas correctamente', 'success');
-    } catch (error) {
-        mostrarToast(error.message || 'Error al guardar ponderaciones', 'error');
-    }
-}
-
-async function cargarPonderaciones() {
-    const materia_id = document.getElementById('materiaSelect').value;
-    if (!materia_id) return;
-    
-    try {
-        const ponderaciones = await apiRequest(`/calificaciones/ponderaciones/${materia_id}`);
-        
-        if (ponderaciones) {
-            document.getElementById('ponderacionTareas').value = ponderaciones.tareas || 20;
-            document.getElementById('ponderacionExamenes').value = ponderaciones.examenes || 30;
-            document.getElementById('ponderacionParticipacion').value = ponderaciones.participacion || 10;
-            document.getElementById('ponderacionProyectos').value = ponderaciones.proyectos || 20;
-            document.getElementById('ponderacionPracticas').value = ponderaciones.practicas || 20;
-            
-            validarPonderaciones();
-        }
     } catch (error) {
         // Si no hay ponderaciones guardadas, usar valores por defecto
         console.log('No hay ponderaciones guardadas, usando valores por defecto');
