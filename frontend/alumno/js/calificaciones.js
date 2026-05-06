@@ -244,15 +244,16 @@ function getCalificacionIcon(calificacion) {
 
 function formatearTipo(tipo) {
     const tipos = {
-        'tarea': 'Tareas',
-        'examen': 'Exámenes',
-        'participacion': 'Participación',
-        'proyecto': 'Proyectos',
-        'actividad': 'Actividades',
-        'general': 'General',
-        'final': 'Final'
+        'tarea': '📝 Tareas',
+        'examen': '📋 Exámenes',
+        'participacion': '👥 Participación',
+        'proyecto': '🚀 Proyectos',
+        'practica': '💻 Prácticas',
+        'actividad': '📚 Actividades',
+        'general': '📊 General',
+        'final': '🎯 Calificación Final'
     };
-    return tipos[tipo] || tipo.charAt(0).toUpperCase() + tipo.slice(1);
+    return tipos[tipo] || `📌 ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
 }
 
 async function darseDeBaja() {

@@ -192,113 +192,139 @@ async function cargarAlumnos() {
 
     try {
         const alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
-        if (alumnos.length === 0) {
-            document.getElementById('alumnosTable').innerHTML = '<div class="empty-state">No hay alumnos registrados en esta materia.</div>';
-            return;
-        }
-
+        
+        // Mostrar siempre la tabla, incluso si está vacía
         let html = `
-            <div class="table-responsive-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Matrícula</th>
-                            <th>Nombre</th>
-                            <th>Email</th>
-                            <th>Tareas</th>
-                            <th>Exámenes</th>
-                            <th>Participación</th>
-                            <th>Proyectos</th>
-                            <th>Prácticas</th>
-                            <th>Calificación Final</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <div class="panel-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>Alumnos de la Materia</h3>
+                    <button type="button" class="btn btn-primary" onclick="abrirModalAlumno()">
+                        <i class="fas fa-plus"></i> Agregar Alumno
+                    </button>
+                </div>
+                
+                ${alumnos.length === 0 ? `
+                    <div class="alert alert-info" style="margin-bottom: 1rem;">
+                        <i class="fas fa-info-circle"></i>
+                        No hay alumnos registrados en esta materia. Puedes agregar alumnos manualmente o subir un archivo HTM con las calificaciones.
+                    </div>
+                ` : ''}
+                
+                <div class="table-responsive-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Tareas</th>
+                                <th>Exámenes</th>
+                                <th>Participación</th>
+                                <th>Proyectos</th>
+                                <th>Prácticas</th>
+                                <th>Calificación Final</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
         `;
 
-        alumnos.forEach(alumno => {
-            const calificacionColor = alumno.calificacion_final >= 9 ? 'success' : 
-                                    alumno.calificacion_final >= 7 ? 'warning' : 'danger';
-            
+        if (alumnos.length === 0) {
+            // Mostrar una fila vacía para demostrar que se pueden agregar alumnos
             html += `
                 <tr>
-                    <td>${alumno.matricula}</td>
-                    <td>${alumno.nombre}</td>
-                    <td>${alumno.email || 'N/A'}</td>
-                    <td>
-                        <input type="number" 
-                               class="calificacion-input" 
-                               id="tarea_${alumno.id}" 
-                               value="${alumno.tarea || 0}" 
-                               min="0" 
-                               max="10" 
-                               step="0.1"
-                               onchange="actualizarCalificacion(${alumno.id}, 'tarea', this.value)">
-                    </td>
-                    <td>
-                        <input type="number" 
-                               class="calificacion-input" 
-                               id="examen_${alumno.id}" 
-                               value="${alumno.examen || 0}" 
-                               min="0" 
-                               max="10" 
-                               step="0.1"
-                               onchange="actualizarCalificacion(${alumno.id}, 'examen', this.value)">
-                    </td>
-                    <td>
-                        <input type="number" 
-                               class="calificacion-input" 
-                               id="participacion_${alumno.id}" 
-                               value="${alumno.participacion || 0}" 
-                               min="0" 
-                               max="10" 
-                               step="0.1"
-                               onchange="actualizarCalificacion(${alumno.id}, 'participacion', this.value)">
-                    </td>
-                    <td>
-                        <input type="number" 
-                               class="calificacion-input" 
-                               id="proyecto_${alumno.id}" 
-                               value="${alumno.proyecto || 0}" 
-                               min="0" 
-                               max="10" 
-                               step="0.1"
-                               onchange="actualizarCalificacion(${alumno.id}, 'proyecto', this.value)">
-                    </td>
-                    <td>
-                        <input type="number" 
-                               class="calificacion-input" 
-                               id="practica_${alumno.id}" 
-                               value="${alumno.practica || 0}" 
-                               min="0" 
-                               max="10" 
-                               step="0.1"
-                               onchange="actualizarCalificacion(${alumno.id}, 'practica', this.value)">
-                    </td>
-                    <td>
-                        <span class="badge badge-${calificacionColor}" id="final_${alumno.id}">${alumno.calificacion_final}</span>
-                    </td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="editarAlumno(${alumno.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-danger" onclick="eliminarAlumno(${alumno.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                    <td colspan="10" style="text-align: center; padding: 2rem; color: #64748b;">
+                        <i class="fas fa-user-plus" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                        <div>Usa el botón "Agregar Alumno" para comenzar a registrar calificaciones</div>
                     </td>
                 </tr>
             `;
-        });
+        } else {
+            alumnos.forEach(alumno => {
+                const calificacionColor = alumno.calificacion_final >= 9 ? 'success' : 
+                                        alumno.calificacion_final >= 7 ? 'warning' : 'danger';
+                
+                html += `
+                    <tr>
+                        <td>${alumno.matricula}</td>
+                        <td>${alumno.nombre}</td>
+                        <td>${alumno.email || 'N/A'}</td>
+                        <td>
+                            <input type="number" 
+                                   class="calificacion-input" 
+                                   id="tarea_${alumno.id}" 
+                                   value="${alumno.tarea || 0}" 
+                                   min="0" 
+                                   max="10" 
+                                   step="0.1"
+                                   onchange="actualizarCalificacion(${alumno.id}, 'tarea', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" 
+                                   class="calificacion-input" 
+                                   id="examen_${alumno.id}" 
+                                   value="${alumno.examen || 0}" 
+                                   min="0" 
+                                   max="10" 
+                                   step="0.1"
+                                   onchange="actualizarCalificacion(${alumno.id}, 'examen', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" 
+                                   class="calificacion-input" 
+                                   id="participacion_${alumno.id}" 
+                                   value="${alumno.participacion || 0}" 
+                                   min="0" 
+                                   max="10" 
+                                   step="0.1"
+                                   onchange="actualizarCalificacion(${alumno.id}, 'participacion', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" 
+                                   class="calificacion-input" 
+                                   id="proyecto_${alumno.id}" 
+                                   value="${alumno.proyecto || 0}" 
+                                   min="0" 
+                                   max="10" 
+                                   step="0.1"
+                                   onchange="actualizarCalificacion(${alumno.id}, 'proyecto', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" 
+                                   class="calificacion-input" 
+                                   id="practica_${alumno.id}" 
+                                   value="${alumno.practica || 0}" 
+                                   min="0" 
+                                   max="10" 
+                                   step="0.1"
+                                   onchange="actualizarCalificacion(${alumno.id}, 'practica', this.value)">
+                        </td>
+                        <td>
+                            <span class="badge badge-${calificacionColor}" id="final_${alumno.id}">${alumno.calificacion_final || 0}</span>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="editarAlumno(${alumno.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="eliminarAlumno(${alumno.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
 
         html += `
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
 
         document.getElementById('alumnosTable').innerHTML = html;
     } catch (error) {
+        console.error('Error al cargar alumnos:', error);
         document.getElementById('alumnosTable').innerHTML = '<div class="alert alert-error">Error al cargar alumnos.</div>';
     }
 }
