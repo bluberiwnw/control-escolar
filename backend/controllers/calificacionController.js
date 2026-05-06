@@ -76,27 +76,53 @@ const upload = multer({
 
 const calificacionController = {
     async uploadFile(req, res) {
+        console.log('📡 uploadFile - Inicio del endpoint');
+        console.log('📡 Headers:', req.headers);
+        
         upload(req, res, async function(err) {
             if (err) {
                 console.error('❌ Error en upload middleware:', err);
+                console.error('🔍 Detalles del error:', {
+                    name: err.name,
+                    message: err.message,
+                    code: err.code,
+                    limit: err.limit,
+                    fileSize: err.size
+                });
                 return res.status(400).json({ message: err.message });
             }
+            
             if (!req.file) {
                 console.error('❌ No se proporcionó archivo');
                 return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
             }
             
             try {
-                console.log('📡 uploadFile - Datos recibidos:', {
-                    materia_id: req.body.materia_id,
+                console.log('📡 uploadFile - Archivo recibido:', {
                     filename: req.file.filename,
                     originalname: req.file.originalname,
                     path: req.file.path,
                     mimetype: req.file.mimetype,
                     size: req.file.size,
-                    usuario: req.usuario?.id,
-                    rol: req.usuario?.rol
+                    encoding: req.file.encoding,
+                    fieldname: req.file.fieldname
                 });
+                
+                console.log('📡 uploadFile - Body recibido:', req.body);
+                console.log('📡 uploadFile - Usuario en request:', req.usuario);
+                
+                // Verificar que req.body exista
+                if (!req.body) {
+                    console.log('❌ req.body es undefined o null');
+                    if (req.file && fs.existsSync(req.file.path)) {
+                        fs.unlinkSync(req.file.path);
+                    }
+                    return res.status(400).json({ 
+                        message: 'No se recibieron datos en el request body',
+                        headers: req.headers,
+                        contentType: req.headers['content-type']
+                    });
+                }
                 
                 // Verificar que el usuario exista y sea profesor
                 if (!req.usuario || req.usuario.rol !== 'profesor') {
@@ -108,6 +134,8 @@ const calificacionController = {
                 }
                 
                 const { materia_id } = req.body;
+                console.log('📡 uploadFile - materia_id parseado:', materia_id, typeof materia_id);
+                
                 if (!materia_id) {
                     console.log('❌ Materia ID faltante');
                     if (req.file && fs.existsSync(req.file.path)) {
@@ -131,6 +159,8 @@ const calificacionController = {
                         received: { materia_id }
                     });
                 }
+                
+                console.log('✅ Validaciones básicas pasadas, consultando base de datos...');
                 
                 const materiaCheck = await pool.query(
                     'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
@@ -162,6 +192,7 @@ const calificacionController = {
                     });
                 }
 
+                console.log('✅ Validaciones de archivo pasadas, procesando HTML...');
                 const resultado = await calificacionController.processHtmlFile(req.file.path, materiaIdNum, req.usuario.id);
                 
                 console.log('✅ Archivo procesado exitosamente:', resultado);
@@ -177,7 +208,19 @@ const calificacionController = {
                 
             } catch (error) {
                 console.error('❌ Error en uploadFile:', error);
-                console.error('🔍 Stack trace:', error.stack);
+                console.error('🔍 Stack trace completo:', error.stack);
+                console.error('🔍 Detalles del error:', {
+                    name: error.name,
+                    message: error.message,
+                    code: error.code,
+                    severity: error.severity,
+                    detail: error.detail,
+                    hint: error.hint,
+                    where: error.where,
+                    file: error.file,
+                    line: error.line,
+                    routine: error.routine
+                });
                 if (req.file && fs.existsSync(req.file.path)) {
                     try {
                         fs.unlinkSync(req.file.path);
@@ -861,16 +904,30 @@ const calificacionController = {
 
     async updateAlumno(req, res) {
         try {
+            console.log('📡 updateAlumno - Inicio del endpoint');
+            console.log('📡 Headers:', req.headers);
+            console.log('📡 Body completo:', req.body);
+            console.log('📡 Usuario en request:', req.usuario);
+            
+            // Validar que req.body exista
+            if (!req.body) {
+                console.log('❌ req.body es undefined o null');
+                return res.status(400).json({ 
+                    message: 'No se recibieron datos en el request body',
+                    headers: req.headers,
+                    contentType: req.headers['content-type']
+                });
+            }
+            
             const { id } = req.params;
             const { matricula, nombre, email } = req.body;
             
-            console.log('📡 updateAlumno - Datos recibidos:', {
+            console.log('📡 updateAlumno - Datos parseados:', {
                 id,
                 matricula,
                 nombre,
                 email,
-                usuario: req.usuario?.id,
-                rol: req.usuario?.rol
+                tipos: typeof id, typeof matricula, typeof nombre, typeof email
             });
             
             // Validación de parámetros requeridos
@@ -891,19 +948,32 @@ const calificacionController = {
                 });
             }
             
+            // Validar tipos de datos
+            const idNum = parseInt(id);
+            if (isNaN(idNum)) {
+                console.log('❌ ID inválido:', id);
+                return res.status(400).json({ 
+                    message: 'ID de estudiante inválido',
+                    received: id,
+                    expected: 'number'
+                });
+            }
+            
             // Verificar que el usuario exista y sea profesor
             if (!req.usuario || req.usuario.rol !== 'profesor') {
                 console.log('❌ Usuario no autorizado:', req.usuario?.rol);
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
-
+            
+            console.log('✅ Validaciones básicas pasadas, consultando base de datos...');
+            
             // Verificar si el estudiante existe
             const existingStudent = await pool.query(
                 'SELECT id, matricula, nombre FROM estudiantes WHERE id = $1',
-                [id]
+                [idNum]
             );
             if (existingStudent.rows.length === 0) {
-                console.log('❌ Estudiante no encontrado:', id);
+                console.log('❌ Estudiante no encontrado:', idNum);
                 return res.status(404).json({ message: 'Estudiante no encontrado' });
             }
             
@@ -912,7 +982,7 @@ const calificacionController = {
             // Verificar si la matrícula ya existe en otro estudiante
             const matriculaCheck = await pool.query(
                 'SELECT id, matricula FROM estudiantes WHERE matricula = $1 AND id != $2',
-                [matricula.trim(), id]
+                [matricula.trim(), idNum]
             );
             if (matriculaCheck.rows.length > 0) {
                 console.log('❌ Matrícula duplicada:', matricula);
@@ -923,19 +993,33 @@ const calificacionController = {
                 });
             }
 
+            console.log('✅ Verificaciones de base de datos pasadas, actualizando estudiante...');
+            
             // Actualizar estudiante
             const result = await pool.query(
                 `UPDATE estudiantes 
                  SET matricula = $1, nombre = $2, email = $3, updated_at = NOW()
                  WHERE id = $4 RETURNING *`,
-                [matricula.trim(), nombre.trim(), email?.trim() || null, id]
+                [matricula.trim(), nombre.trim(), email?.trim() || null, idNum]
             );
 
             console.log('✅ Estudiante actualizado:', result.rows[0]);
             res.json(result.rows[0]);
         } catch (error) {
             console.error('❌ Error en updateAlumno:', error);
-            console.error('🔍 Stack trace:', error.stack);
+            console.error('🔍 Stack trace completo:', error.stack);
+            console.error('🔍 Detalles del error:', {
+                name: error.name,
+                message: error.message,
+                code: error.code,
+                severity: error.severity,
+                detail: error.detail,
+                hint: error.hint,
+                where: error.where,
+                file: error.file,
+                line: error.line,
+                routine: error.routine
+            });
             res.status(500).json({ 
                 message: 'Error al actualizar alumno', 
                 error: error.message,
@@ -1165,15 +1249,29 @@ const calificacionController = {
 
     async actualizarCalificacion(req, res) {
         try {
+            console.log('📡 actualizarCalificacion - Inicio del endpoint');
+            console.log('📡 Headers:', req.headers);
+            console.log('📡 Body completo:', req.body);
+            console.log('📡 Usuario en request:', req.usuario);
+            
+            // Validar que req.body exista
+            if (!req.body) {
+                console.log('❌ req.body es undefined o null');
+                return res.status(400).json({ 
+                    message: 'No se recibieron datos en el request body',
+                    headers: req.headers,
+                    contentType: req.headers['content-type']
+                });
+            }
+            
             const { estudiante_id, materia_id, tipo, calificacion } = req.body;
             
-            console.log('📡 actualizarCalificacion - Datos recibidos:', {
+            console.log('📡 actualizarCalificacion - Datos parseados:', {
                 estudiante_id,
                 materia_id,
                 tipo,
                 calificacion,
-                usuario: req.usuario?.id,
-                rol: req.usuario?.rol
+                tipos: typeof estudiante_id, typeof materia_id, typeof tipo, typeof calificacion
             });
             
             // Validación de parámetros requeridos
@@ -1186,13 +1284,40 @@ const calificacionController = {
                 });
             }
             
-            // Validar que la calificación sea un número válido
+            // Validar tipos de datos
+            const estudianteIdNum = parseInt(estudiante_id);
+            const materiaIdNum = parseInt(materia_id);
             const calificacionNum = parseFloat(calificacion);
-            if (isNaN(calificacionNum) || calificacionNum < 0 || calificacionNum > 10) {
-                console.log('❌ Calificación inválida:', calificacion);
+            
+            if (isNaN(estudianteIdNum) || isNaN(materiaIdNum) || isNaN(calificacionNum)) {
+                console.log('❌ Tipos de datos inválidos:', {
+                    estudiante_id: `${estudiante_id} (${typeof estudiante_id})`,
+                    materia_id: `${materia_id} (${typeof materia_id})`,
+                    calificacion: `${calificacion} (${typeof calificacion})`
+                });
+                return res.status(400).json({ 
+                    message: 'Tipos de datos inválidos',
+                    expected: {
+                        estudiante_id: 'number',
+                        materia_id: 'number',
+                        tipo: 'string',
+                        calificacion: 'number'
+                    },
+                    received: {
+                        estudiante_id: typeof estudiante_id,
+                        materia_id: typeof materia_id,
+                        tipo: typeof tipo,
+                        calificacion: typeof calificacion
+                    }
+                });
+            }
+            
+            // Validar rangos
+            if (calificacionNum < 0 || calificacionNum > 10) {
+                console.log('❌ Calificación fuera de rango:', calificacionNum);
                 return res.status(400).json({ 
                     message: 'La calificación debe ser un número entre 0 y 10',
-                    received: calificacion
+                    received: calificacionNum
                 });
             }
             
@@ -1202,13 +1327,15 @@ const calificacionController = {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
             
+            console.log('✅ Validaciones básicas pasadas, consultando base de datos...');
+            
             // Verificar que la materia exista y pertenezca al profesor
             const materiaCheck = await pool.query(
                 'SELECT id, profesor_id FROM materias WHERE id = $1',
-                [materia_id]
+                [materiaIdNum]
             );
             if (materiaCheck.rows.length === 0) {
-                console.log('❌ Materia no encontrada:', materia_id);
+                console.log('❌ Materia no encontrada:', materiaIdNum);
                 return res.status(404).json({ message: 'Materia no encontrada' });
             }
             
@@ -1223,17 +1350,19 @@ const calificacionController = {
             // Verificar que el estudiante exista
             const estudianteCheck = await pool.query(
                 'SELECT id FROM estudiantes WHERE id = $1',
-                [estudiante_id]
+                [estudianteIdNum]
             );
             if (estudianteCheck.rows.length === 0) {
-                console.log('❌ Estudiante no encontrado:', estudiante_id);
+                console.log('❌ Estudiante no encontrado:', estudianteIdNum);
                 return res.status(404).json({ message: 'Estudiante no encontrado' });
             }
+            
+            console.log('✅ Verificaciones de base de datos pasadas, actualizando calificación...');
             
             // Actualizar o crear la calificación
             const existingCal = await pool.query(
                 'SELECT id FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 AND tipo = $3',
-                [estudiante_id, materia_id, tipo]
+                [estudianteIdNum, materiaIdNum, tipo]
             );
             
             if (existingCal.rows.length > 0) {
@@ -1242,7 +1371,7 @@ const calificacionController = {
                     `UPDATE calificaciones 
                      SET calificacion = $1, updated_at = NOW()
                      WHERE estudiante_id = $2 AND materia_id = $3 AND tipo = $4`,
-                    [calificacionNum, estudiante_id, materia_id, tipo]
+                    [calificacionNum, estudianteIdNum, materiaIdNum, tipo]
                 );
                 console.log('✅ Calificación actualizada correctamente');
             } else {
@@ -1250,16 +1379,28 @@ const calificacionController = {
                 await pool.query(
                     `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                      VALUES ($1, $2, $3, $4, NOW())`,
-                    [estudiante_id, materia_id, tipo, calificacionNum]
+                    [estudianteIdNum, materiaIdNum, tipo, calificacionNum]
                 );
                 console.log('✅ Calificación creada correctamente');
             }
             
-            console.log(`📊 Calificación guardada: estudiante ${estudiante_id}, materia ${materia_id}, tipo ${tipo}, valor ${calificacionNum}`);
+            console.log(`📊 Calificación guardada: estudiante ${estudianteIdNum}, materia ${materiaIdNum}, tipo ${tipo}, valor ${calificacionNum}`);
             res.json({ message: 'Calificación actualizada correctamente' });
         } catch (error) {
             console.error('❌ Error en actualizarCalificacion:', error);
-            console.error('🔍 Stack trace:', error.stack);
+            console.error('🔍 Stack trace completo:', error.stack);
+            console.error('🔍 Detalles del error:', {
+                name: error.name,
+                message: error.message,
+                code: error.code,
+                severity: error.severity,
+                detail: error.detail,
+                hint: error.hint,
+                where: error.where,
+                file: error.file,
+                line: error.line,
+                routine: error.routine
+            });
             res.status(500).json({ 
                 message: 'Error al actualizar calificación', 
                 error: error.message,
