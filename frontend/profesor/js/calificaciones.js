@@ -92,10 +92,10 @@ async function previsualizarArchivo(input) {
     if (!file) return;
 
     // Validar extensión
-    const validExt = ['.xlsx', '.xls', '.pdf'];
+    const validExt = ['.htm', '.html'];
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!validExt.includes(ext)) {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos Excel (.xlsx, .xls) o PDF.</div>';
+        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos HTM/HTML (.htm, .html).</div>';
         return;
     }
     window.tempFile = file;

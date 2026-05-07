@@ -21,8 +21,15 @@ async function cargarCalificaciones() {
         console.log('📋 Datos recibidos:', data);
         console.log('📊 Materias recibidas:', data.materias?.length || 0);
         
-        if (!data.materias || data.materias.length === 0) {
-            console.log('⚠️ No hay materias en la respuesta');
+        // Verificar si hay datos de calificaciones (materias o calificaciones individuales)
+        const tieneMaterias = data.materias && data.materias.length > 0;
+        const tieneCalificaciones = data.materias && data.materias.some(m => 
+            m.calificaciones && m.calificaciones.length > 0 || 
+            (m.tareas || m.examenes || m.participacion || m.proyectos || m.practicas)
+        );
+        
+        if (!tieneMaterias && !tieneCalificaciones) {
+            console.log('⚠️ No hay materias ni calificaciones en la respuesta');
             mostrarResumenVacio();
             document.getElementById('calificacionesContainer').innerHTML = `
                 <div class="empty-state">
@@ -92,10 +99,28 @@ function actualizarResumenGeneral(data) {
     const promedioGeneral = parseFloat(data.promedio_general) || 0;
     const totalMaterias = data.total_materias || materias.length || 0;
     
-    // Calcular aprobadas/reprobadas basado en las calificaciones reales
-    const aprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) >= 6).length;
-    const reprobadas = materias.filter(m => (parseFloat(m.promedio_final) || 0) < 6 && (parseFloat(m.promedio_final) || 0) > 0).length;
-    const sinCalificacion = materias.filter(m => (parseFloat(m.promedio_final) || 0) === 0).length;
+    // Calcular aprobadas/reprobadas basado en las calificaciones reales (misma lógica que dashboard)
+    const aprobadas = materias.filter(m => {
+        const final = parseFloat(m.promedio_final) || 0;
+        return final >= 6 && final > 0; // Solo cuenta si tiene calificación y está aprobada
+    }).length;
+    const reprobadas = materias.filter(m => {
+        const final = parseFloat(m.promedio_final) || 0;
+        return final < 6 && final > 0; // Solo cuenta si tiene calificación y está reprobada
+    }).length;
+    const sinCalificacion = materias.filter(m => {
+        const final = parseFloat(m.promedio_final) || 0;
+        return final === 0; // Sin calificación registrada
+    }).length;
+    
+    console.log('📊 Estadísticas recalculadas localmente:', {
+        promedioGeneral,
+        totalMaterias,
+        aprobadas,
+        reprobadas,
+        sinCalificacion,
+        materiasConCalificacion: materias.filter(m => (parseFloat(m.promedio_final) || 0) > 0).length
+    });
     
     console.log('Estadísticas calculadas:', {
         promedioGeneral,
