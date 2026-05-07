@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const cheerio = require('cheerio');
 const pool = require('../database/connection');
 
 // Configuración de multer para subida de archivos
@@ -638,25 +639,49 @@ const calificacionController = {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
-            // Obtener alumnos de la materia
+            // Obtener alumnos de la materia con todas sus calificaciones
             const alumnosQuery = await pool.query(`
-                SELECT e.id, e.matricula, e.nombre, e.email,
-                       COALESCE(c.calificacion, 0) as calificacion_final
+                SELECT DISTINCT e.id, e.matricula, e.nombre, e.email
                 FROM estudiantes e
-                LEFT JOIN (
-                    SELECT estudiante_id, AVG(calificacion) as calificacion
-                    FROM calificaciones 
-                    WHERE materia_id = $1
-                    GROUP BY estudiante_id
-                ) c ON e.id = c.estudiante_id
                 WHERE EXISTS (
                     SELECT 1 FROM calificaciones 
                     WHERE estudiante_id = e.id AND materia_id = $1
                 )
                 ORDER BY e.nombre
             `, [materia_id]);
+            
+            // Obtener calificaciones para cada alumno
+            const alumnosConCalificaciones = await Promise.all(
+                alumnosQuery.rows.map(async (alumno) => {
+                    const calificacionesQuery = await pool.query(`
+                        SELECT tipo, calificacion, fecha_registro
+                        FROM calificaciones 
+                        WHERE estudiante_id = $1 AND materia_id = $2
+                        ORDER BY tipo
+                    `, [alumno.id, materia_id]);
+                    
+                    // Calcular promedio final
+                    const calificaciones = calificacionesQuery.rows;
+                    const promedioFinal = calificaciones.length > 0 
+                        ? calificaciones.reduce((sum, c) => sum + parseFloat(c.calificacion), 0) / calificaciones.length
+                        : 0;
+                    
+                    // Construir objeto con todas las calificaciones
+                    const calificacionesObj = {};
+                    calificaciones.forEach(c => {
+                        calificacionesObj[c.tipo] = parseFloat(c.calificacion);
+                    });
+                    
+                    return {
+                        ...alumno,
+                        ...calificacionesObj,
+                        calificacion_final: promedioFinal,
+                        calificaciones_detalle: calificaciones
+                    };
+                })
+            );
 
-            res.json(alumnosQuery.rows);
+            res.json(alumnosConCalificaciones);
             
         } catch (error) {
             console.error('❌ Error en getAlumnosByMateria:', error);
@@ -914,17 +939,47 @@ const calificacionController = {
                         [alumno_id, materia.id]
                     );
                     
+                    // Calcular calificación final con la misma fórmula que usa el profesor
+                    const calificaciones = calificacionesQuery.rows;
+                    let tareas = 0, examenes = 0, participacion = 0, proyectos = 0, practicas = 0;
+                    
+                    calificaciones.forEach(cal => {
+                        switch(cal.tipo) {
+                            case 'tarea': tareas = parseFloat(cal.calificacion); break;
+                            case 'examen': examenes = parseFloat(cal.calificacion); break;
+                            case 'participacion': participacion = parseFloat(cal.calificacion); break;
+                            case 'proyecto': proyectos = parseFloat(cal.calificacion); break;
+                            case 'practica': practicas = parseFloat(cal.calificacion); break;
+                        }
+                    });
+                    
+                    const calificacionFinal = (
+                        proyectos * 0.30 +
+                        examenes * 0.30 +
+                        participacion * 0.10 +
+                        tareas * 0.20 +
+                        practicas * 0.10
+                    );
+                    
+                    const calificacionFinalAjustada = Math.max(0, Math.min(10, calificacionFinal));
+                    
                     return {
                         ...materia,
-                        calificaciones: calificacionesQuery.rows
+                        calificaciones: calificacionesQuery.rows,
+                        tareas,
+                        examenes,
+                        participacion,
+                        proyectos,
+                        practicas,
+                        calificacion_final: calificacionFinalAjustada
                     };
                 })
             );
 
-            // Calcular estadísticas generales
-            const promedioGeneral = materiasQuery.rows.reduce((sum, m) => sum + parseFloat(m.promedio_final || 0), 0) / materiasQuery.rows.length;
-            const totalMaterias = materiasQuery.rows.length;
-            const aprobadas = materiasQuery.rows.filter(m => parseFloat(m.promedio_final || 0) >= 6).length;
+            // Calcular estadísticas generales usando los datos procesados
+            const promedioGeneral = materiasConCalificaciones.reduce((sum, m) => sum + parseFloat(m.calificacion_final || 0), 0) / materiasConCalificaciones.length;
+            const totalMaterias = materiasConCalificaciones.length;
+            const aprobadas = materiasConCalificaciones.filter(m => parseFloat(m.calificacion_final || 0) >= 6).length;
 
             res.json({
                 materias: materiasConCalificaciones,
@@ -976,14 +1031,189 @@ const calificacionController = {
         }
     },
 
-    // Función processHtmlFile (necesita implementación completa)
+    // Función para procesar archivos HTML con Cheerio
     async processHtmlFile(filePath, materiaId, profesorId) {
-        return {
-            procesados: 0,
-            nuevos: 0,
-            actualizados: 0,
-            estudiantes: []
-        };
+        try {
+            console.log('📄 Procesando archivo HTML:', filePath);
+            
+            // Leer el archivo HTML
+            const htmlContent = fs.readFileSync(filePath, 'utf8');
+            const $ = cheerio.load(htmlContent);
+            
+            let procesados = 0;
+            let nuevos = 0;
+            let actualizados = 0;
+            const estudiantes = [];
+            
+            // Buscar tablas en el HTML
+            $('table').each((tableIndex, table) => {
+                console.log(`📊 Procesando tabla ${tableIndex + 1}`);
+                
+                // Buscar filas de datos (saltar encabezados)
+                $(table).find('tr').each((rowIndex, row) => {
+                    // Saltar la primera fila (encabezados)
+                    if (rowIndex === 0) return;
+                    
+                    const cells = $(row).find('td, th');
+                    if (cells.length < 3) return; // Mínimo 3 columnas
+                    
+                    // Extraer datos de las celdas
+                    const rowData = [];
+                    cells.each((cellIndex, cell) => {
+                        rowData.push($(cell).text().trim());
+                    });
+                    
+                    // Intentar identificar las columnas
+                    let matricula = '';
+                    let nombre = '';
+                    let email = '';
+                    let tareas = 0;
+                    let examenes = 0;
+                    let participacion = 0;
+                    let proyectos = 0;
+                    let practicas = 0;
+                    
+                    // Heurística para identificar columnas
+                    if (rowData.length >= 3) {
+                        // Primera columna suele ser matrícula o nombre
+                        if (/^\d+$/.test(rowData[0])) {
+                            matricula = rowData[0];
+                            nombre = rowData[1] || '';
+                            email = rowData[2] || '';
+                        } else {
+                            nombre = rowData[0];
+                            matricula = rowData[1] || '';
+                            email = rowData[2] || '';
+                        }
+                        
+                        // Buscar valores numéricos en las columnas restantes
+                        for (let i = 3; i < rowData.length; i++) {
+                            const value = parseFloat(rowData[i]);
+                            if (!isNaN(value) && value >= 0 && value <= 10) {
+                                // Asignar según el orden o patrones
+                                if (rowData[i].toLowerCase().includes('tarea') || i === 3) {
+                                    tareas = value;
+                                } else if (rowData[i].toLowerCase().includes('examen') || i === 4) {
+                                    examenes = value;
+                                } else if (rowData[i].toLowerCase().includes('particip') || i === 5) {
+                                    participacion = value;
+                                } else if (rowData[i].toLowerCase().includes('proyecto') || i === 6) {
+                                    proyectos = value;
+                                } else if (rowData[i].toLowerCase().includes('pract') || i === 7) {
+                                    practicas = value;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Solo procesar si tenemos datos básicos
+                    if (nombre || matricula) {
+                        estudiantes.push({
+                            matricula: matricula || `AUTO_${Date.now()}_${procesados}`,
+                            nombre: nombre || 'Sin nombre',
+                            email: email || '',
+                            tareas,
+                            examenes,
+                            participacion,
+                            proyectos,
+                            practicas,
+                            calificacion_final: this.calcularFinal({
+                                tareas,
+                                examenes,
+                                participacion,
+                                proyectos,
+                                practicas
+                            })
+                        });
+                        
+                        procesados++;
+                    }
+                });
+            });
+            
+            console.log(`✅ Archivo HTML procesado: ${procesados} estudiantes encontrados`);
+            
+            // Guardar en base de datos
+            for (const estudiante of estudiantes) {
+                try {
+                    // Buscar si el estudiante ya existe
+                    const existingEstudiante = await pool.query(
+                        'SELECT id FROM estudiantes WHERE matricula = $1',
+                        [estudiante.matricula]
+                    );
+                    
+                    let estudianteId;
+                    if (existingEstudiante.rows.length > 0) {
+                        estudianteId = existingEstudiante.rows[0].id;
+                        actualizados++;
+                    } else {
+                        // Crear nuevo estudiante
+                        const newEstudiante = await pool.query(
+                            `INSERT INTO estudiantes (matricula, nombre, email, created_at)
+                             VALUES ($1, $2, $3, NOW()) RETURNING id`,
+                            [estudiante.matricula, estudiante.nombre, estudiante.email]
+                        );
+                        estudianteId = newEstudiante.rows[0].id;
+                        nuevos++;
+                    }
+                    
+                    // Guardar calificaciones
+                    const calificaciones = [
+                        { tipo: 'tarea', calificacion: estudiante.tareas },
+                        { tipo: 'examen', calificacion: estudiante.examenes },
+                        { tipo: 'participacion', calificacion: estudiante.participacion },
+                        { tipo: 'proyecto', calificacion: estudiante.proyectos },
+                        { tipo: 'practica', calificacion: estudiante.practicas }
+                    ];
+                    
+                    for (const cal of calificaciones) {
+                        if (cal.calificacion > 0) {
+                            await pool.query(`
+                                INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                                VALUES ($1, $2, $3, $4, NOW())
+                                ON CONFLICT (estudiante_id, materia_id, tipo) 
+                                DO UPDATE SET calificacion = $4, updated_at = NOW()
+                            `, [estudianteId, materiaId, cal.tipo, cal.calificacion]);
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error(`❌ Error procesando estudiante ${estudiante.matricula}:`, error.message);
+                }
+            }
+            
+            return {
+                procesados,
+                nuevos,
+                actualizados,
+                estudiantes
+            };
+            
+        } catch (error) {
+            console.error('❌ Error al procesar archivo HTML:', error);
+            throw error;
+        }
+    },
+    
+    // Función auxiliar para calcular calificación final
+    calcularFinal(calificaciones) {
+        const {
+            tareas = 0,
+            examenes = 0,
+            participacion = 0,
+            proyectos = 0,
+            practicas = 0
+        } = calificaciones;
+        
+        const final = (
+            (proyectos * 0.30) +
+            (examenes * 0.30) +
+            (participacion * 0.10) +
+            (tareas * 0.20) +
+            (practicas * 0.10)
+        );
+        
+        return Math.max(0, Math.min(10, final));
     }
 };
 

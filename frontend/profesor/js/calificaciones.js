@@ -561,31 +561,35 @@ async function recalcularCalificacionFinal(estudianteId, materia_id) {
         const proyecto = (proyectoElement && proyectoElement.value) ? parseFloat(proyectoElement.value) || 0 : 0;
         const practica = (practicaElement && practicaElement.value) ? parseFloat(practicaElement.value) || 0 : 0;
         
-        // Calcular con pesos específicos: 30% proyectos, 30% exámenes, 10% participaciones, 20% tareas, 10% prácticas
+        // Calcular con pesos específicos manteniendo escala 0-10
+        // Los pesos suman 100% pero el resultado debe mantenerse en escala 0-10
         const calificacionFinal = (
-            proyecto * 0.30 +      // 30% proyectos
-            examen * 0.30 +        // 30% exámenes
-            participacion * 0.10 +   // 10% participaciones
-            tarea * 0.20 +          // 20% tareas
-            practica * 0.10          // 10% prácticas
+            (proyecto * 0.30) +      // 30% proyectos
+            (examen * 0.30) +        // 30% exámenes
+            (participacion * 0.10) +   // 10% participaciones
+            (tarea * 0.20) +          // 20% tareas
+            (practica * 0.10)          // 10% prácticas
         );
+        
+        // Asegurar que la calificación final esté en el rango 0-10
+        const calificacionFinalAjustada = Math.max(0, Math.min(10, calificacionFinal));
         
         // Actualizar la calificación final en la UI
         const finalElement = document.getElementById(`final_${estudianteId}`);
         if (finalElement) {
-            finalElement.textContent = calificacionFinal.toFixed(2);
+            finalElement.textContent = calificacionFinalAjustada.toFixed(2);
             
             // Actualizar el color del badge
             let colorClass = 'badge-danger';
-            if (calificacionFinal >= 9) colorClass = 'badge-success';
-            else if (calificacionFinal >= 8) colorClass = 'badge-primary';
-            else if (calificacionFinal >= 7) colorClass = 'badge-warning';
-            else if (calificacionFinal >= 6) colorClass = 'badge-info';
+            if (calificacionFinalAjustada >= 9) colorClass = 'badge-success';
+            else if (calificacionFinalAjustada >= 8) colorClass = 'badge-primary';
+            else if (calificacionFinalAjustada >= 7) colorClass = 'badge-warning';
+            else if (calificacionFinalAjustada >= 6) colorClass = 'badge-info';
             
             finalElement.className = `badge ${colorClass}`;
         }
         
-        console.log(`Calificación final recalculada para estudiante ${estudianteId}: ${calificacionFinal.toFixed(2)}`);
+        console.log(`Calificación final recalculada para estudiante ${estudianteId}: ${calificacionFinalAjustada.toFixed(2)}`);
         console.log(`Componentes: Tarea(${tarea}*0.20) + Examen(${examen}*0.30) + Participación(${participacion}*0.10) + Proyecto(${proyecto}*0.30) + Práctica(${practica}*0.10)`);
         
     } catch (error) {
@@ -596,6 +600,30 @@ async function recalcularCalificacionFinal(estudianteId, materia_id) {
 
 function cerrarModalAlumno() {
     document.getElementById('modalAlumno').style.display = 'none';
+}
+
+async function cancelarCambios() {
+    const materia_id = document.getElementById('materiaSelect').value;
+    if (!materia_id) {
+        mostrarToast('Selecciona una materia', 'error');
+        return;
+    }
+
+    if (!confirm('¿Estás seguro de cancelar todos los cambios no guardados? Se recargarán los datos desde el servidor.')) {
+        return;
+    }
+
+    try {
+        mostrarToast('Recargando datos...', 'info');
+        
+        // Recargar la lista de alumnos desde el servidor
+        await cargarAlumnos();
+        
+        mostrarToast('Cambios cancelados. Datos recargados desde el servidor.', 'success');
+        
+    } catch (error) {
+        mostrarToast(error.message || 'Error al cancelar cambios', 'error');
+    }
 }
 
 async function exportarExcel() {
@@ -1041,6 +1069,7 @@ window.editarAlumno = editarAlumno;
 window.guardarAlumno = guardarAlumno;
 window.eliminarAlumno = eliminarAlumno;
 window.cerrarModalAlumno = cerrarModalAlumno;
+window.cancelarCambios = cancelarCambios;
 window.exportarExcel = exportarExcel;
 window.cargarAlumnos = cargarAlumnos;
 window.descargarPlantilla = descargarPlantilla;

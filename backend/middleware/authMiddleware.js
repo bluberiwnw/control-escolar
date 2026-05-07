@@ -17,18 +17,18 @@ const authMiddleware = async (req, res, next) => {
 
         let usuario = null;
 
-        if (tipo === 'profesor') {
+        if (tipo === 'profesor' || rol === 'profesor') {
             const result = await pool.query(
                 'SELECT id, nombre, email, avatar, rol, activo FROM usuarios WHERE id = $1 AND email = $2',
                 [id, email]
             );
             if (result.rows.length > 0) {
                 usuario = result.rows[0];
-                if (usuario.rol !== rol) {
-                    return res.status(401).json({ message: 'Rol inválido en token' });
-                }
+                // Asegurar que el rol sea consistente
+                usuario.rol = 'profesor';
+                usuario.tipo = 'profesor';
             }
-        } else if (tipo === 'alumno') {
+        } else if (tipo === 'alumno' || rol === 'alumno') {
             const result = await pool.query(
                 'SELECT id, nombre, email, matricula, activo FROM estudiantes WHERE id = $1 AND email = $2',
                 [id, email]
@@ -36,6 +36,17 @@ const authMiddleware = async (req, res, next) => {
             if (result.rows.length > 0) {
                 usuario = result.rows[0];
                 usuario.rol = 'alumno';
+                usuario.tipo = 'alumno';
+            }
+        } else if (rol === 'administrador') {
+            const result = await pool.query(
+                'SELECT id, nombre, email, avatar, rol, activo FROM usuarios WHERE id = $1 AND email = $2',
+                [id, email]
+            );
+            if (result.rows.length > 0) {
+                usuario = result.rows[0];
+                usuario.rol = 'administrador';
+                usuario.tipo = 'profesor'; // Los administradores se manejan como tipo profesor
             }
         } else {
             return res.status(401).json({ message: 'Tipo de usuario no válido' });
