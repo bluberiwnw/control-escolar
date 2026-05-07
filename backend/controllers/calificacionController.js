@@ -84,8 +84,8 @@ const calificacionController = {
                     });
                 }
                 
-                // Verificar que el usuario exista y sea profesor
-                if (!req.usuario || req.usuario.rol !== 'profesor') {
+                // Verificar que el usuario exista y tenga permisos
+                if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
                     console.log('❌ Usuario no autorizado:', req.usuario?.rol);
                     if (req.file && fs.existsSync(req.file.path)) {
                         fs.unlinkSync(req.file.path);
@@ -263,8 +263,8 @@ const calificacionController = {
                 });
             }
             
-            // Verificar que el usuario exista y sea profesor
-            if (!req.usuario || req.usuario.rol !== 'profesor') {
+            // Verificar que el usuario exista y tenga permisos
+            if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
                 console.log('❌ Usuario no autorizado:', req.usuario?.rol);
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
@@ -896,8 +896,54 @@ const calificacionController = {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
-            // Por ahora, retornar éxito simulado
-            res.json({ message: 'Procesamiento definitivo completado correctamente' });
+            const { materia_id, timestamp } = req.body;
+            
+            if (!materia_id) {
+                return res.status(400).json({ message: 'ID de materia requerido' });
+            }
+            
+            // Validar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materia_id, req.usuario.id]
+            );
+            
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada o sin permisos' });
+            }
+            
+            // Marcar la materia como definitiva (bloquear ediciones)
+            await pool.query(`
+                UPDATE materias 
+                SET definitiva = true, definitiva_fecha = NOW(), definitiva_usuario_id = $1
+                WHERE id = $2
+            `, [req.usuario.id, materia_id]);
+            
+            // Opcional: Notificar a administradores
+            const adminUsers = await pool.query(
+                'SELECT id, email FROM usuarios WHERE rol = $1 AND activo = true',
+                ['administrador']
+            );
+            
+            for (const admin of adminUsers.rows) {
+                await pool.query(`
+                    INSERT INTO notificaciones (usuario_id, tipo, titulo, mensaje, created_at)
+                    VALUES ($1, $2, $3, $4, NOW())
+                `, [
+                    admin.id,
+                    'calificaciones_definitivas',
+                    `Calificaciones Definitivas - ${materiaCheck.rows[0].nombre}`,
+                    `El profesor ${req.usuario.nombre} ha enviado las calificaciones definitivamente para la materia ${materiaCheck.rows[0].nombre}.`
+                ]);
+            }
+            
+            console.log('✅ Procesamiento definitivo completado para materia:', materia_id);
+            res.json({ 
+                message: 'Calificaciones enviadas definitivamente. Las ediciones han sido bloqueadas.',
+                materia_id,
+                materia_nombre: materiaCheck.rows[0].nombre,
+                timestamp: new Date().toISOString()
+            });
             
         } catch (error) {
             console.error('❌ Error en procesarDefinitivo:', error);
@@ -977,9 +1023,15 @@ const calificacionController = {
             );
 
             // Calcular estadísticas generales usando los datos procesados
-            const promedioGeneral = materiasConCalificaciones.reduce((sum, m) => sum + parseFloat(m.calificacion_final || 0), 0) / materiasConCalificaciones.length;
+            const materiasConCalificacionesValidas = materiasConCalificaciones.filter(m => 
+                m.calificacion_final !== null && m.calificacion_final !== undefined && m.calificacion_final > 0
+            );
+            
+            const promedioGeneral = materiasConCalificacionesValidas.length > 0 
+                ? materiasConCalificacionesValidas.reduce((sum, m) => sum + parseFloat(m.calificacion_final || 0), 0) / materiasConCalificacionesValidas.length
+                : 0;
             const totalMaterias = materiasConCalificaciones.length;
-            const aprobadas = materiasConCalificaciones.filter(m => parseFloat(m.calificacion_final || 0) >= 6).length;
+            const aprobadas = materiasConCalificacionesValidas.filter(m => parseFloat(m.calificacion_final || 0) >= 6).length;
 
             res.json({
                 materias: materiasConCalificaciones,
@@ -1192,6 +1244,105 @@ const calificacionController = {
         } catch (error) {
             console.error('❌ Error al procesar archivo HTML:', error);
             throw error;
+        }
+    },
+    
+    // Función para guardar calificaciones de un alumno
+    async guardarCalificacionesAlumno(req, res) {
+        try {
+            console.log('📡 guardarCalificacionesAlumno - Guardando calificaciones de alumno');
+            
+            // Verificar que el usuario exista y tenga permisos
+            if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+
+            const { estudiante_id, materia_id, tareas, examenes, participacion, proyectos, practicas } = req.body;
+            
+            // Validación de parámetros requeridos
+            if (!estudiante_id || !materia_id) {
+                return res.status(400).json({ 
+                    message: 'ID de estudiante y materia son obligatorios',
+                    required: ['estudiante_id', 'materia_id'],
+                    received: { estudiante_id, materia_id }
+                });
+            }
+            
+            // Validar tipos de datos
+            const estudianteIdNum = parseInt(estudiante_id);
+            const materiaIdNum = parseInt(materia_id);
+            
+            if (isNaN(estudianteIdNum) || isNaN(materiaIdNum)) {
+                return res.status(400).json({ 
+                    message: 'IDs inválidos',
+                    received: { estudiante_id, materia_id }
+                });
+            }
+            
+            // Verificar que el estudiante exista
+            const estudianteCheck = await pool.query(
+                'SELECT id, nombre FROM estudiantes WHERE id = $1',
+                [estudianteIdNum]
+            );
+            if (estudianteCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Estudiante no encontrado' });
+            }
+            
+            // Verificar que la materia exista y el profesor tenga permisos
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1',
+                [materiaIdNum]
+            );
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+            
+            // Calificaciones a guardar
+            const calificaciones = [
+                { tipo: 'tarea', calificacion: parseFloat(tareas) || 0 },
+                { tipo: 'examen', calificacion: parseFloat(examenes) || 0 },
+                { tipo: 'participacion', calificacion: parseFloat(participacion) || 0 },
+                { tipo: 'proyecto', calificacion: parseFloat(proyectos) || 0 },
+                { tipo: 'practica', calificacion: parseFloat(practicas) || 0 }
+            ];
+            
+            // Guardar cada calificación
+            for (const cal of calificaciones) {
+                if (cal.calificacion >= 0 && cal.calificacion <= 10) {
+                    await pool.query(`
+                        INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                        VALUES ($1, $2, $3, $4, NOW())
+                        ON CONFLICT (estudiante_id, materia_id, tipo) 
+                        DO UPDATE SET calificacion = $4, updated_at = NOW()
+                    `, [estudianteIdNum, materiaIdNum, cal.tipo, cal.calificacion]);
+                }
+            }
+            
+            // Calcular y guardar calificación final
+            const calificacionFinal = this.calcularFinal({
+                tareas: parseFloat(tareas) || 0,
+                examenes: parseFloat(examenes) || 0,
+                participacion: parseFloat(participacion) || 0,
+                proyectos: parseFloat(proyectos) || 0,
+                practicas: parseFloat(practicas) || 0
+            });
+            
+            await pool.query(`
+                INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                VALUES ($1, $2, 'final', $3, NOW())
+                ON CONFLICT (estudiante_id, materia_id, tipo) 
+                DO UPDATE SET calificacion = $3, updated_at = NOW()
+            `, [estudianteIdNum, materiaIdNum, calificacionFinal]);
+            
+            console.log('✅ Calificaciones guardadas para estudiante:', estudianteIdNum);
+            res.json({ 
+                message: 'Calificaciones guardadas correctamente',
+                calificacion_final: calificacionFinal
+            });
+            
+        } catch (error) {
+            console.error('❌ Error en guardarCalificacionesAlumno:', error);
+            res.status(500).json({ message: 'Error al guardar calificaciones', error: error.message });
         }
     },
     

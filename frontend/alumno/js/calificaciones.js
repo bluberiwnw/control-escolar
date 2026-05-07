@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await cargarCalificaciones();
 });
 
+// Exportar funciones al scope global
+window.darseDeBaja = darseDeBaja;
+
 async function cargarCalificaciones() {
     try {
         console.log('🔄 Iniciando carga de calificaciones...');
@@ -184,31 +187,101 @@ function mostrarCalificacionesPorMateria(materias) {
                     </div>
                 </div>
                 
-                ${materia.calificaciones && materia.calificaciones.length > 0 ? `
+                ${(materia.calificaciones && materia.calificaciones.length > 0) || (materia.tareas || materia.examenes || materia.participacion || materia.proyectos || materia.practicas) ? `
                     <div class="calificaciones-list">
-                        ${materia.calificaciones.map(cal => `
+                        <h4 style="margin: 0 0 1rem 0; color: #374151; font-size: 1rem; font-weight: 600;">Calificaciones Detalladas</h4>
+                        
+                        ${materia.tareas !== undefined ? `
                             <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
                                 <div>
                                     <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                                        <i class="fas fa-clipboard-check"></i> ${formatearTipo(cal.tipo)}
+                                        <i class="fas fa-clipboard-check"></i> 📝 Tareas
                                     </span>
-                                    ${cal.fecha_registro ? `
-                                        <span style="color: #94a3b8; font-size: 0.75rem; margin-left: 0.5rem;">
-                                            (${new Date(cal.fecha_registro).toLocaleDateString()})
-                                        </span>
-                                    ` : ''}
                                 </div>
                                 <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
-                                    ${(parseFloat(cal.calificacion) || 0).toFixed(1)}
+                                    ${(parseFloat(materia.tareas) || 0).toFixed(1)}
                                 </span>
                             </div>
-                        `).join('')}
+                        ` : ''}
+                        
+                        ${materia.examenes !== undefined ? `
+                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                                <div>
+                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                                        <i class="fas fa-clipboard-check"></i> 📋 Exámenes
+                                    </span>
+                                </div>
+                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
+                                    ${(parseFloat(materia.examenes) || 0).toFixed(1)}
+                                </span>
+                            </div>
+                        ` : ''}
+                        
+                        ${materia.participacion !== undefined ? `
+                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                                <div>
+                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                                        <i class="fas fa-clipboard-check"></i> 👥 Participación
+                                    </span>
+                                </div>
+                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
+                                    ${(parseFloat(materia.participacion) || 0).toFixed(1)}
+                                </span>
+                            </div>
+                        ` : ''}
+                        
+                        ${materia.proyectos !== undefined ? `
+                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                                <div>
+                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                                        <i class="fas fa-clipboard-check"></i> 🚀 Proyectos
+                                    </span>
+                                </div>
+                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
+                                    ${(parseFloat(materia.proyectos) || 0).toFixed(1)}
+                                </span>
+                            </div>
+                        ` : ''}
+                        
+                        ${materia.practicas !== undefined ? `
+                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                                <div>
+                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                                        <i class="fas fa-clipboard-check"></i> 💻 Prácticas
+                                    </span>
+                                </div>
+                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
+                                    ${(parseFloat(materia.practicas) || 0).toFixed(1)}
+                                </span>
+                            </div>
+                        ` : ''}
+                        
+                        ${materia.calificaciones && materia.calificaciones.length > 0 ? `
+                            <h4 style="margin: 1rem 0 1rem 0; color: #374151; font-size: 1rem; font-weight: 600;">Otras Calificaciones</h4>
+                            ${materia.calificaciones.map(cal => `
+                                <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                                    <div>
+                                        <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                                            <i class="fas fa-clipboard-check"></i> ${formatearTipo(cal.tipo)}
+                                        </span>
+                                        ${cal.fecha_registro ? `
+                                            <span style="color: #94a3b8; font-size: 0.75rem; margin-left: 0.5rem;">
+                                                (${new Date(cal.fecha_registro).toLocaleDateString()})
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
+                                        ${(parseFloat(cal.calificacion) || 0).toFixed(1)}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        ` : ''}
                     </div>
                 ` : `
                     <div class="empty-calificaciones" style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: 0.5rem; border: 1px dashed #cbd5e1;">
                         <i class="fas fa-inbox" style="font-size: 2rem; color: #94a3b8; margin-bottom: 1rem;"></i>
-                        <p style="color: #64748b; margin: 0;">No hay calificaciones detalladas registradas para esta materia</p>
-                        <p style="color: #94a3b8; font-size: 0.875rem; margin-top: 0.5rem;">Tu profesor aún no ha registrado calificaciones específicas</p>
+                        <p style="color: #64748b; margin: 0;">No hay calificaciones registradas para esta materia</p>
+                        <p style="color: #94a3b8; font-size: 0.875rem; margin-top: 0.5rem;">Tu profesor aún no ha registrado calificaciones</p>
                     </div>
                 `}
             </div>
