@@ -547,15 +547,28 @@ async function actualizarCalificacion(estudianteId, tipo, valor) {
 
 async function recalcularCalificacionFinal(estudianteId, materia_id) {
     try {
-        // Obtener valores directamente del DOM
-        const tarea = parseFloat(document.getElementById(`tarea_${estudianteId}`)?.value) || 0;
-        const examen = parseFloat(document.getElementById(`examen_${estudianteId}`)?.value) || 0;
-        const participacion = parseFloat(document.getElementById(`participacion_${estudianteId}`)?.value) || 0;
-        const proyecto = parseFloat(document.getElementById(`proyecto_${estudianteId}`)?.value) || 0;
-        const practica = parseFloat(document.getElementById(`practica_${estudianteId}`)?.value) || 0;
+        // Obtener valores directamente del DOM con validación robusta
+        const tareaElement = document.getElementById(`tarea_${estudianteId}`);
+        const examenElement = document.getElementById(`examen_${estudianteId}`);
+        const participacionElement = document.getElementById(`participacion_${estudianteId}`);
+        const proyectoElement = document.getElementById(`proyecto_${estudianteId}`);
+        const practicaElement = document.getElementById(`practica_${estudianteId}`);
         
-        // Calcular promedio simple (sin ponderaciones por ahora)
-        const calificacionFinal = (tarea + examen + participacion + proyecto + practica) / 5;
+        // Validar que los elementos existan antes de acceder a sus propiedades
+        const tarea = (tareaElement && tareaElement.value) ? parseFloat(tareaElement.value) || 0 : 0;
+        const examen = (examenElement && examenElement.value) ? parseFloat(examenElement.value) || 0 : 0;
+        const participacion = (participacionElement && participacionElement.value) ? parseFloat(participacionElement.value) || 0 : 0;
+        const proyecto = (proyectoElement && proyectoElement.value) ? parseFloat(proyectoElement.value) || 0 : 0;
+        const practica = (practicaElement && practicaElement.value) ? parseFloat(practicaElement.value) || 0 : 0;
+        
+        // Calcular con pesos específicos: 30% proyectos, 30% exámenes, 10% participaciones, 20% tareas, 10% prácticas
+        const calificacionFinal = (
+            proyecto * 0.30 +      // 30% proyectos
+            examen * 0.30 +        // 30% exámenes
+            participacion * 0.10 +   // 10% participaciones
+            tarea * 0.20 +          // 20% tareas
+            practica * 0.10          // 10% prácticas
+        );
         
         // Actualizar la calificación final en la UI
         const finalElement = document.getElementById(`final_${estudianteId}`);
@@ -569,13 +582,15 @@ async function recalcularCalificacionFinal(estudianteId, materia_id) {
             else if (calificacionFinal >= 7) colorClass = 'badge-warning';
             else if (calificacionFinal >= 6) colorClass = 'badge-info';
             
-            finalElement.className = colorClass;
+            finalElement.className = `badge ${colorClass}`;
         }
         
         console.log(`Calificación final recalculada para estudiante ${estudianteId}: ${calificacionFinal.toFixed(2)}`);
+        console.log(`Componentes: Tarea(${tarea}*0.20) + Examen(${examen}*0.30) + Participación(${participacion}*0.10) + Proyecto(${proyecto}*0.30) + Práctica(${practica}*0.10)`);
         
     } catch (error) {
         console.error('Error al recalcular calificación final:', error);
+        console.error('Stack trace:', error.stack);
     }
 }
 
@@ -595,58 +610,13 @@ async function exportarExcel() {
         
         // Crear un enlace temporal para descargar el archivo
         const link = document.createElement('a');
-        link.href = `${window.API_URL}${result.downloadUrl}`;
-        link.download = result.fileName;
-        document.body.appendChild(link);
+        link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result);
+        link.download = 'calificaciones.csv';
         link.click();
-        document.body.removeChild(link);
         
-        mostrarToast('Excel exportado correctamente', 'success');
+        mostrarToast('Archivo exportado correctamente', 'success');
     } catch (error) {
-        mostrarToast(error.message || 'Error al exportar a Excel', 'error');
-    }
-}
-
-// Función de previsualización para archivos HTM
-async function previsualizarArchivo(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    try {
-        // Obtener materia seleccionada
-        const materiaSelect = document.getElementById('materiaSelect');
-        const materia_id = materiaSelect ? materiaSelect.value : null;
-        
-        if (!materia_id) {
-            mostrarToast('Selecciona una materia antes de subir el archivo', 'error');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('materia_id', materia_id);
-
-        mostrarToast('Procesando archivo...', 'info');
-        const result = await apiRequest('/calificaciones/upload', {
-            method: 'POST',
-            body: formData,
-            headers: {} // No Content-Type para FormData
-        });
-
-        mostrarPreview(result);
-        mostrarToast('Archivo procesado correctamente', 'success');
-        
-        // Mostrar controles del proceso HTM
-        document.getElementById('procesoHTMControls').style.display = 'block';
-        
-        // Guardar referencia al resultado para poder procesarlo después
-        window.currentHTMData = result;
-        
-    } catch (error) {
-        mostrarToast(error.message || 'Error al procesar archivo', 'error');
-        document.getElementById('previewTable').innerHTML = '';
-        document.getElementById('resultadoUpload').innerHTML = '';
-        document.getElementById('procesoHTMControls').style.display = 'none';
+        mostrarToast(error.message || 'Error al exportar', 'error');
     }
 }
 
