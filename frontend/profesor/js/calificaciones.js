@@ -106,44 +106,81 @@ async function previsualizarArchivo(input) {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet);
-        if (rows.length === 0) {
-            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">El archivo está vacío.</div>';
+        const content = e.target.result;
+        
+        // Parsear HTML con DOMParser
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(content, 'text/html');
+        
+        // Buscar tablas
+        const tables = doc.querySelectorAll('table');
+        if (tables.length === 0) {
+            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se encontraron tablas en el archivo HTML.</div>';
             return;
         }
-
-        // Validar columnas requeridas (exactamente esos nombres)
-        const requiredCols = ['Materia', 'Nombre', 'Calificacion'];
-        const firstRow = rows[0];
-        const missing = requiredCols.filter(col => !firstRow.hasOwnProperty(col));
-        if (missing.length) {
-            document.getElementById('previewTable').innerHTML = `<div class="alert alert-error">Error: Faltan columnas: ${missing.join(', ')}. Asegúrate de que los encabezados sean exactamente "Materia", "Nombre", "Calificacion".</div>`;
+        
+        // Extraer datos de la primera tabla
+        const table = tables[0];
+        const rows = table.querySelectorAll('tr');
+        
+        if (rows.length <= 1) {
+            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">La tabla no contiene datos.</div>';
             return;
         }
-
+        
+        // Extraer encabezados
+        const headerRow = rows[0];
+        const headers = Array.from(headerRow.querySelectorAll('th, td')).map(cell => cell.textContent.trim());
+        
+        // Extraer datos de las filas
+        const dataRows = [];
+        for (let i = 1; i < rows.length; i++) {
+            const cells = Array.from(rows[i].querySelectorAll('td, th')).map(cell => cell.textContent.trim());
+            if (cells.length >= 2) { // Mínimo 2 columnas
+                const rowData = {};
+                headers.forEach((header, index) => {
+                    rowData[header] = cells[index] || '';
+                });
+                dataRows.push(rowData);
+            }
+        }
+        
+        if (dataRows.length === 0) {
+            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se encontraron datos válidos en la tabla.</div>';
+            return;
+        }
+        
         // Mostrar previsualización (primeras 10 filas)
         let html = `<h4>Vista previa (primeros 10 registros)</h4>
                     <table class="asistencia-tabla">
-                        <thead><tr>${requiredCols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+                        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
                         <tbody>`;
-        rows.slice(0, 10).forEach(row => {
-            html += `<tr>
-                        <td>${row.Materia}</td>
-                        <td>${row.Nombre}</td>
-                        <td>${row.Calificacion}</td>
-                     </tr>`;
+        
+        dataRows.slice(0, 10).forEach(row => {
+            html += '<tr>';
+            headers.forEach(header => {
+                html += `<td>${row[header] || ''}</td>`;
+            });
+            html += '</tr>';
         });
+        
         html += `</tbody></table>
-                 <button class="btn-login-buap" onclick="confirmarSubida()">Confirmar subida</button>`;
+                   <div class="alert alert-info">
+                       <strong>Se encontraron ${dataRows.length} estudiantes en el archivo.</strong><br>
+                       Se procesarán todas las columnas disponibles: ${headers.join(', ')}
+                   </div>`;
+        
+        // Guardar datos procesados para subir
+        window.processedData = {
+            headers: headers,
+            rows: dataRows
+        };
+        
         document.getElementById('previewTable').innerHTML = html;
-
-        // Guardar archivo temporalmente para subir después
-        window.tempFile = file;
+        console.log('📊 Datos procesados:', window.processedData);
     };
-    reader.readAsArrayBuffer(file);
+    
+    reader.readAsText(file);
 }
 
 async function confirmarSubida() {
@@ -634,17 +671,80 @@ async function exportarExcel() {
     }
 
     try {
-        const result = await apiRequest(`/calificaciones/materia/${materia_id}/exportar`);
+        // Obtener datos de los estudiantes procesados o de la base de datos
+        let data;
+        if (window.processedData && window.processedData.rows && window.processedData.rows.length > 0) {
+            // Usar datos procesados del archivo HTM
+            data = window.processedData.rows;
+            console.log('📊 Exportando datos procesados del archivo HTM:', data.length, 'estudiantes');
+        } else {
+            // Obtener datos de la base de datos
+            const result = await apiRequest(`/calificaciones/materia/${materia_id}/exportar`);
+            data = result.students || result;
+            console.log('📊 Exportando datos de la base de datos:', data.length, 'estudiantes');
+        }
+
+        if (!data || data.length === 0) {
+            mostrarToast('No hay datos para exportar', 'error');
+            return;
+        }
+
+        // Crear contenido Excel con todas las columnas
+        let csvContent = '\ufeff'; // BOM para UTF-8
         
-        // Crear un enlace temporal para descargar el archivo
+        // Determinar encabezados dinámicamente
+        const headers = new Set();
+        data.forEach(row => {
+            Object.keys(row).forEach(key => headers.add(key));
+        });
+        
+        const headerArray = Array.from(headers);
+        
+        // Agregar encabezados
+        csvContent += headerArray.map(header => {
+            // Formatear encabezados para mejor legibilidad
+            const formattedHeader = header
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, l => l.toUpperCase());
+            return `"${formattedHeader}"`;
+        }).join(',') + '\n';
+        
+        // Agregar datos de cada estudiante
+        data.forEach(row => {
+            const rowData = headerArray.map(header => {
+                const value = row[header] || '';
+                // Formatear valores numéricos
+                if (typeof value === 'number') {
+                    return value.toFixed(1);
+                }
+                // Escapar comillas y envolver en comillas si contiene comas o comillas
+                const stringValue = String(value).replace(/"/g, '""');
+                return stringValue.includes(',') || stringValue.includes('"') ? `"${stringValue}"` : stringValue;
+            });
+            csvContent += rowData.join(',') + '\n';
+        });
+
+        // Crear blob y descargar
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result);
-        link.download = 'calificaciones.csv';
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `calificaciones_materia_${materia_id}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+
+        mostrarToast(`Archivo exportado correctamente: ${data.length} estudiantes`, 'success');
+        console.log('✅ Exportación completada:', {
+            estudiantes: data.length,
+            columnas: headerArray.length,
+            archivo: `calificaciones_materia_${materia_id}_${new Date().toISOString().split('T')[0]}.csv`
+        });
         
-        mostrarToast('Archivo exportado correctamente', 'success');
     } catch (error) {
-        mostrarToast(error.message || 'Error al exportar', 'error');
+        console.error('❌ Error al exportar Excel:', error);
+        mostrarToast(error.message || 'Error al exportar archivo', 'error');
     }
 }
 

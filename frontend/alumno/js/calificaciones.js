@@ -24,9 +24,21 @@ async function cargarCalificaciones() {
         // Verificar si hay datos de calificaciones (materias o calificaciones individuales)
         const tieneMaterias = data.materias && data.materias.length > 0;
         const tieneCalificaciones = data.materias && data.materias.some(m => 
-            m.calificaciones && m.calificaciones.length > 0 || 
-            (m.tareas || m.examenes || m.participacion || m.proyectos || m.practicas)
+            (m.calificaciones && m.calificaciones.length > 0) || 
+            (m.tareas !== undefined || m.examenes !== undefined || m.participacion !== undefined || 
+             m.proyectos !== undefined || m.practicas !== undefined || m.calificacion_final !== undefined)
         );
+        
+        console.log('🔍 Verificación de datos:', {
+            tieneMaterias,
+            tieneCalificaciones,
+            totalMaterias: data.materias?.length || 0,
+            materiasConCalificaciones: data.materias?.filter(m => 
+                (m.calificaciones && m.calificaciones.length > 0) || 
+                (m.tareas !== undefined || m.examenes !== undefined || m.participacion !== undefined || 
+                 m.proyectos !== undefined || m.practicas !== undefined || m.calificacion_final !== undefined)
+            ).length || 0
+        });
         
         if (!tieneMaterias && !tieneCalificaciones) {
             console.log('⚠️ No hay materias ni calificaciones en la respuesta');
