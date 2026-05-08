@@ -299,7 +299,7 @@ const calificacionController = {
 
             console.log('✅ Verificaciones de base de datos pasadas, actualizando estudiante...');
             
-            // Actualizar estudiante
+            // Actualizar estudiante - excluir la matrícula actual de la verificación de duplicados
             const result = await pool.query(
                 `UPDATE estudiantes 
                  SET matricula = $1, nombre = $2, email = $3, updated_at = NOW()
@@ -720,9 +720,9 @@ const calificacionController = {
 
             // Crear nuevo alumno
             const result = await pool.query(
-                `INSERT INTO estudiantes (matricula, nombre, email, created_at)
-                 VALUES ($1, $2, $3, NOW()) RETURNING id, matricula, nombre, email, created_at`,
-                [matricula.trim(), nombre.trim(), email?.trim() || null]
+                `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id, matricula, nombre, email, created_at`,
+                [matricula.trim(), nombre.trim(), email?.trim() || null, 'temporal123', 'alumno', true]
             );
 
             console.log('✅ Alumno creado:', result.rows[0]);

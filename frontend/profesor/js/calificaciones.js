@@ -130,26 +130,36 @@ async function previsualizarArchivo(input) {
         
         // Extraer encabezados - limpiar y normalizar
         const headerRow = rows[0];
-        const headers = Array.from(headerRow.querySelectorAll('th, td')).map(cell => {
+        const headers = Array.from(headerRow.querySelectorAll('th, td')).map((cell, index) => {
             let header = cell.textContent.trim();
+            console.log(`🔍 Procesando encabezado ${index}: "${header}"`);
+            
+            // Si está vacío, intentar extraer de atributos o contenido
+            if (!header) {
+                header = cell.getAttribute('data-label') || cell.getAttribute('title') || `Columna ${index + 1}`;
+            }
+            
             // Normalizar encabezados para identificar columnas estándar
-            header = header.toLowerCase()
+            const normalizedHeader = header.toLowerCase()
                 .replace(/[^\w\s]/g, '') // Eliminar caracteres especiales
                 .replace(/\s+/g, ' ') // Normalizar espacios
                 .trim();
             
-            // Mapear a nombres estándar
-            if (header.includes('matricula') || header.includes('matrícula')) return 'Matrícula';
-            if (header.includes('nombre') || header.includes('name')) return 'Nombre';
-            if (header.includes('email') || header.includes('correo')) return 'Email';
-            if (header.includes('tarea') || header.includes('task')) return 'Tareas';
-            if (header.includes('examen') || header.includes('exam')) return 'Exámenes';
-            if (header.includes('participacion') || header.includes('participación')) return 'Participación';
-            if (header.includes('proyecto') || header.includes('project')) return 'Proyectos';
-            if (header.includes('practica') || header.includes('práctica') || header.includes('practice')) return 'Prácticas';
-            if (header.includes('final') || header.includes('calificacion')) return 'Calificación Final';
+            console.log(`🔍 Encabezado normalizado: "${normalizedHeader}"`);
             
-            return header; // Mantener original si no coincide
+            // Mapear a nombres estándar
+            if (normalizedHeader.includes('matricula') || normalizedHeader.includes('matrícula')) return 'Matrícula';
+            if (normalizedHeader.includes('nombre') || normalizedHeader.includes('name')) return 'Nombre';
+            if (normalizedHeader.includes('email') || normalizedHeader.includes('correo')) return 'Email';
+            if (normalizedHeader.includes('tarea') || normalizedHeader.includes('task')) return 'Tareas';
+            if (normalizedHeader.includes('examen') || normalizedHeader.includes('exam')) return 'Exámenes';
+            if (normalizedHeader.includes('participacion') || normalizedHeader.includes('participación')) return 'Participación';
+            if (normalizedHeader.includes('proyecto') || normalizedHeader.includes('project')) return 'Proyectos';
+            if (normalizedHeader.includes('practica') || normalizedHeader.includes('práctica') || normalizedHeader.includes('practice')) return 'Prácticas';
+            if (normalizedHeader.includes('final') || normalizedHeader.includes('calificacion')) return 'Calificación Final';
+            
+            // Si no coincide con estándar, usar el original limpio
+            return header || `Columna ${index + 1}`;
         });
         
         console.log('📋 Encabezados detectados:', headers);
