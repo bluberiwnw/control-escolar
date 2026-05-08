@@ -128,9 +128,29 @@ async function previsualizarArchivo(input) {
             return;
         }
         
-        // Extraer encabezados
+        // Extraer encabezados - limpiar y normalizar
         const headerRow = rows[0];
-        const headers = Array.from(headerRow.querySelectorAll('th, td')).map(cell => cell.textContent.trim());
+        const headers = Array.from(headerRow.querySelectorAll('th, td')).map(cell => {
+            let header = cell.textContent.trim();
+            // Normalizar encabezados para identificar columnas estándar
+            header = header.toLowerCase()
+                .replace(/[^\w\s]/g, '') // Eliminar caracteres especiales
+                .replace(/\s+/g, ' ') // Normalizar espacios
+                .trim();
+            
+            // Mapear a nombres estándar
+            if (header.includes('matricula') || header.includes('matrícula')) return 'Matrícula';
+            if (header.includes('nombre') || header.includes('name')) return 'Nombre';
+            if (header.includes('email') || header.includes('correo')) return 'Email';
+            if (header.includes('tarea') || header.includes('task')) return 'Tareas';
+            if (header.includes('examen') || header.includes('exam')) return 'Exámenes';
+            if (header.includes('participacion') || header.includes('participación')) return 'Participación';
+            if (header.includes('proyecto') || header.includes('project')) return 'Proyectos';
+            if (header.includes('practica') || header.includes('práctica') || header.includes('practice')) return 'Prácticas';
+            if (header.includes('final') || header.includes('calificacion')) return 'Calificación Final';
+            
+            return header; // Mantener original si no coincide
+        });
         
         // Extraer datos de las filas
         const dataRows = [];
@@ -139,9 +159,20 @@ async function previsualizarArchivo(input) {
             if (cells.length >= 2) { // Mínimo 2 columnas
                 const rowData = {};
                 headers.forEach((header, index) => {
-                    rowData[header] = cells[index] || '';
+                    const value = cells[index] || '';
+                    // Limpiar valores numéricos
+                    if (['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas', 'Calificación Final'].includes(header)) {
+                        const numValue = parseFloat(value);
+                        rowData[header] = isNaN(numValue) ? 0 : numValue;
+                    } else {
+                        rowData[header] = value;
+                    }
                 });
-                dataRows.push(rowData);
+                
+                // Validar que tenga datos mínimos (matrícula o nombre)
+                if (rowData['Matrícula'] || rowData['Nombre']) {
+                    dataRows.push(rowData);
+                }
             }
         }
         
@@ -167,7 +198,15 @@ async function previsualizarArchivo(input) {
         html += `</tbody></table>
                    <div class="alert alert-info">
                        <strong>Se encontraron ${dataRows.length} estudiantes en el archivo.</strong><br>
-                       Se procesarán todas las columnas disponibles: ${headers.join(', ')}
+                       Se procesarán todas las columnas disponibles: ${headers.filter(h => h).join(', ')}
+                   </div>
+                   <div style="margin-top: 15px; display: flex; gap: 10px;">
+                       <button class="btn-login-buap" onclick="confirmarSubida()">
+                           <i class="fas fa-upload"></i> Procesar Archivo
+                       </button>
+                       <button class="btn-secondary" onclick="cancelarProcesoHTM()">
+                           <i class="fas fa-times"></i> Cancelar
+                       </button>
                    </div>`;
         
         // Guardar datos procesados para subir
@@ -367,6 +406,8 @@ async function cargarAlumnos() {
 }
 
 function abrirModalAlumno(alumnoId = null) {
+    console.log('🔓 Abriendo modal alumno:', alumnoId);
+    
     if (alumnoId) {
         // Editar alumno existente
         editarAlumno(alumnoId);
@@ -374,8 +415,11 @@ function abrirModalAlumno(alumnoId = null) {
         // Agregar nuevo alumno
         document.getElementById('modalAlumnoTitulo').textContent = 'Agregar Alumno';
         document.getElementById('alumnoIdEdit').value = '';
-        document.getElementById('formAlumno').reset();
+        document.getElementById('alumnoMatricula').value = '';
+        document.getElementById('alumnoNombre').value = '';
+        document.getElementById('alumnoEmail').value = '';
         document.getElementById('modalAlumno').style.display = 'flex';
+        console.log('✅ Modal para agregar alumno abierto');
     }
 }
 
