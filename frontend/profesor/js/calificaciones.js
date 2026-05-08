@@ -152,29 +152,47 @@ async function previsualizarArchivo(input) {
             return header; // Mantener original si no coincide
         });
         
+        console.log('📋 Encabezados detectados:', headers);
+        
         // Extraer datos de las filas
         const dataRows = [];
         for (let i = 1; i < rows.length; i++) {
             const cells = Array.from(rows[i].querySelectorAll('td, th')).map(cell => cell.textContent.trim());
-            if (cells.length >= 2) { // Mínimo 2 columnas
-                const rowData = {};
-                headers.forEach((header, index) => {
-                    const value = cells[index] || '';
-                    // Limpiar valores numéricos
-                    if (['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas', 'Calificación Final'].includes(header)) {
-                        const numValue = parseFloat(value);
-                        rowData[header] = isNaN(numValue) ? 0 : numValue;
-                    } else {
-                        rowData[header] = value;
-                    }
-                });
-                
-                // Validar que tenga datos mínimos (matrícula o nombre)
-                if (rowData['Matrícula'] || rowData['Nombre']) {
-                    dataRows.push(rowData);
+            
+            // Si la fila está vacía o tiene muy pocas celdas, saltarla
+            if (cells.length < 2) {
+                console.log(`⚠️ Fila ${i} ignorada: muy pocas celdas (${cells.length})`);
+                continue;
+            }
+            
+            // Si todas las celdas están vacías, saltar la fila
+            if (cells.every(cell => !cell)) {
+                console.log(`⚠️ Fila ${i} ignorada: todas las celdas vacías`);
+                continue;
+            }
+            
+            const rowData = {};
+            headers.forEach((header, index) => {
+                const value = cells[index] || '';
+                // Limpiar valores numéricos
+                if (['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas', 'Calificación Final'].includes(header)) {
+                    const numValue = parseFloat(value);
+                    rowData[header] = isNaN(numValue) ? 0 : numValue;
+                } else {
+                    rowData[header] = value;
                 }
+            });
+            
+            // Validar que tenga datos mínimos (matrícula o nombre)
+            if (rowData['Matrícula'] || rowData['Nombre']) {
+                dataRows.push(rowData);
+                console.log(`✅ Fila ${i} procesada:`, rowData);
+            } else {
+                console.log(`⚠️ Fila ${i} ignorada: no tiene matrícula ni nombre válidos`);
             }
         }
+        
+        console.log(`📊 Total de filas procesadas: ${dataRows.length} de ${rows.length - 1} filas de datos`);
         
         if (dataRows.length === 0) {
             document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se encontraron datos válidos en la tabla.</div>';

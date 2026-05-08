@@ -303,7 +303,7 @@ const calificacionController = {
             const result = await pool.query(
                 `UPDATE estudiantes 
                  SET matricula = $1, nombre = $2, email = $3, updated_at = NOW()
-                 WHERE id = $4 RETURNING *`,
+                 WHERE id = $4 RETURNING id, matricula, nombre, email, updated_at`,
                 [matricula.trim(), nombre.trim(), email?.trim() || null, idNum]
             );
 
@@ -721,7 +721,7 @@ const calificacionController = {
             // Crear nuevo alumno
             const result = await pool.query(
                 `INSERT INTO estudiantes (matricula, nombre, email, created_at)
-                 VALUES ($1, $2, $3, NOW()) RETURNING *`,
+                 VALUES ($1, $2, $3, NOW()) RETURNING id, matricula, nombre, email, created_at`,
                 [matricula.trim(), nombre.trim(), email?.trim() || null]
             );
 
