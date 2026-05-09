@@ -283,11 +283,11 @@ const calificacionController = {
 
             console.log('✅ Verificaciones de base de datos pasadas, actualizando estudiante...');
             
-            // Actualizar estudiante - excluir la matrícula actual de la verificación de duplicados
+            // Actualizar estudiante
             const result = await pool.query(
                 `UPDATE estudiantes 
-                 SET matricula = $1, nombre = $2, email = $3, updated_at = NOW()
-                 WHERE id = $4 RETURNING id, matricula, nombre, email, updated_at`,
+                 SET matricula = $1, nombre = $2, email = $3
+                 WHERE id = $4 RETURNING id, matricula, nombre, email`,
                 [matricula.trim(), nombre.trim(), email?.trim() || null, idNum]
             );
 

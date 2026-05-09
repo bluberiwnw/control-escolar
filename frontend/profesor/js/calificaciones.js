@@ -153,25 +153,37 @@ async function previsualizarArchivo(input) {
             return;
         }
         
-        // Extraer encabezados - específico para formato BUAP
+        // Extraer encabezados - mejorado para formato BUAP completo
         const headerRow = rows[0];
         const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
         
-        // Mapeo específico para formato BUAP
+        // Mapeo completo para formato BUAP
         const headers = headerCells.map((cell, index) => {
             let header = cell.textContent.trim();
             console.log(`🔍 Procesando encabezado ${index}: "${header}"`);
             
-            // Mapeo específico para formato BUAP
-            const mappedHeader = 
-                header.includes('Número de Registro') || header.includes('Registro') ? 'Matrícula' :
-                header.includes('Nombre de Alumno') || header.includes('Nombre') ? 'Nombre' :
-                header.includes('ID') || header.includes('Identificación') ? 'ID' :
-                header.includes('Status de Inscripción') || header.includes('Status') ? 'Status' :
-                header.includes('Nivel') ? 'Nivel' :
-                header.includes('Créditos') ? 'Créditos' :
-                header.includes('Detalle de Calificaciones') || header.includes('Calificaciones') ? 'Email' : // En BUAP, el email está en esta columna
-                header || `Columna ${index + 1}`;
+            // Mapeo específico completo para formato BUAP
+            let mappedHeader = '';
+            
+            if (header.includes('Número de Registro') || header.includes('Número de<br>Registro') || header.includes('Registro')) {
+                mappedHeader = 'Número de Registro';
+            } else if (header.includes('Nombre de Alumno') || header.includes('Nombre')) {
+                mappedHeader = 'Nombre de Alumno';
+            } else if (header.includes('ID') || header.includes('Identificación')) {
+                mappedHeader = 'ID';
+            } else if (header.includes('Status de Inscripción') || header.includes('Status')) {
+                mappedHeader = 'Status de Inscripción';
+            } else if (header.includes('Nivel')) {
+                mappedHeader = 'Nivel';
+            } else if (header.includes('Créditos')) {
+                mappedHeader = 'Créditos';
+            } else if (header.includes('Detalle de Calificaciones') || header.includes('Calificaciones')) {
+                mappedHeader = 'Email'; // En BUAP, el email está en esta columna
+            } else if (header && header.trim()) {
+                mappedHeader = header.trim(); // Mantener encabezados adicionales
+            } else {
+                mappedHeader = `Columna ${index + 1}`;
+            }
             
             console.log(`🔍 Encabezado mapeado: "${header}" -> "${mappedHeader}"`);
             return mappedHeader;
@@ -179,55 +191,74 @@ async function previsualizarArchivo(input) {
         
         console.log('📋 Encabezados detectados:', headers);
         
-        // Extraer datos de las filas - específico para formato BUAP
+        // Extraer datos de las filas - mejorado para formato BUAP real
         const dataRows = [];
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const cells = Array.from(row.querySelectorAll('td'));
             
             // Si la fila está vacía o tiene muy pocas celdas, saltarla
-            if (cells.length < 2) {
+            if (cells.length < 7) {
                 console.log(`⚠️ Fila ${i} ignorada: muy pocas celdas (${cells.length})`);
                 continue;
             }
             
-            // Extraer información específica del formato BUAP
+            // Extraer información específica del formato BUAP real
             const rowData = {};
             
-            // Extraer número de registro (primera celda)
+            // 1. Extraer número de registro (primera celda)
             const numeroRegistro = cells[0]?.textContent.trim() || '';
             rowData['Número de Registro'] = numeroRegistro;
             
-            // Extraer nombre del alumno (segunda celda)
-            const nombreAlumno = cells[1]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[1]?.textContent.trim() || '';
+            // 2. Extraer nombre del alumno (segunda celda)
+            const nombreCell = cells[1];
+            const nombreSpan = nombreCell?.querySelector('.fieldmediumtext');
+            const nombreAlumno = nombreSpan?.textContent.trim() || nombreCell?.textContent.trim() || '';
             rowData['Nombre de Alumno'] = nombreAlumno;
             
-            // Extraer ID/matrícula (tercera celda)
-            const idAlumno = cells[2]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[2]?.textContent.trim() || '';
+            // 3. Extraer ID/matrícula (tercera celda)
+            const idCell = cells[2];
+            const idSpan = idCell?.querySelector('.fieldmediumtext');
+            const idAlumno = idSpan?.textContent.trim() || idCell?.textContent.trim() || '';
             rowData['ID'] = idAlumno;
             
-            // Extraer status de inscripción (cuarta celda)
-            const statusInscripcion = cells[3]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[3]?.textContent.trim() || '';
+            // 4. Extraer status de inscripción (cuarta celda)
+            const statusCell = cells[3];
+            const statusSpan = statusCell?.querySelector('.fieldmediumtext');
+            const statusInscripcion = statusSpan?.textContent.trim() || statusCell?.textContent.trim() || '';
             rowData['Status de Inscripción'] = statusInscripcion;
             
-            // Extraer nivel (quinta celda)
-            const nivel = cells[4]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[4]?.textContent.trim() || '';
+            // 5. Extraer nivel (quinta celda)
+            const nivelCell = cells[4];
+            const nivelSpan = nivelCell?.querySelector('.fieldmediumtext');
+            const nivel = nivelSpan?.textContent.trim() || nivelCell?.textContent.trim() || '';
             rowData['Nivel'] = nivel;
             
-            // Extraer créditos (sexta celda)
-            const creditos = cells[5]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[5]?.textContent.trim() || '';
+            // 6. Extraer créditos (sexta celda)
+            const creditosCell = cells[5];
+            const creditosSpan = creditosCell?.querySelector('.fieldmediumtext');
+            const creditos = creditosSpan?.textContent.trim() || creditosCell?.textContent.trim() || '';
             rowData['Créditos'] = creditos;
             
-            // Extraer email de la última celda (buscando enlace de correo)
-            const emailCell = cells[cells.length - 1];
-            const emailLink = emailCell?.querySelector('a[href^="mailto:"]');
-            const email = emailLink ? emailLink.getAttribute('href').replace('mailto:', '') : '';
+            // 7. Extraer email de la última celda (buscando enlace de correo)
+            let email = '';
+            // Buscar en todas las celdas restantes por un enlace mailto
+            for (let j = 6; j < cells.length; j++) {
+                const emailCell = cells[j];
+                const emailLink = emailCell?.querySelector('a[href^="mailto:"]');
+                if (emailLink) {
+                    email = emailLink.getAttribute('href').replace('mailto:', '');
+                    break;
+                }
+            }
             rowData['Email'] = email;
             
             // Agregar campos adicionales para compatibilidad con el sistema
             rowData['Matrícula'] = idAlumno;
             rowData['Nombre'] = nombreAlumno;
-            rowData['Tareas'] = 0;  // Valores por defecto para calificaciones
+            
+            // Inicializar campos de calificación con valores por defecto
+            rowData['Tareas'] = 0;
             rowData['Exámenes'] = 0;
             rowData['Participación'] = 0;
             rowData['Proyectos'] = 0;
