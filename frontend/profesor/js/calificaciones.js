@@ -39,14 +39,27 @@ async function subirArchivo(input) {
 
 async function descargarPlantilla() {
     try {
-        const data = await apiRequest('/calificaciones/plantilla');
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${window.API_URL}/calificaciones/plantilla`, {
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${token}`
+            }
+        });
         
+        if (!res.ok) {
+            throw new Error('Error al descargar plantilla');
+        }
+        
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = `${window.API_URL}${data.archivo_url}`;
-        link.download = data.nombre;
+        link.href = url;
+        link.download = 'plantilla_calificaciones.htm';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
         
         mostrarToast('Plantilla HTM descargada correctamente', 'success');
     } catch (error) {
@@ -341,7 +354,10 @@ async function confirmarSubida() {
     const token = localStorage.getItem('token');
     const res = await fetch(`${window.API_URL}/calificaciones/upload`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { 
+            'Authorization': `Bearer ${token}`
+            // No especificar Content-Type para FormData, el navegador lo establece automáticamente
+        },
         body: formData
     });
     const data = await res.json();
