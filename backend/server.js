@@ -17,25 +17,45 @@ app.use(cors({
 }));
 app.options('*', cors());
 
-// NOTA: Aplicar body parsers para rutas que no usan multer
-// Las rutas que usan multer (como /calificaciones/upload) manejarán su propio parsing
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 // Servir archivos estáticos del frontend (sin autenticación)
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Las rutas de API aplican su propia autenticación en cada archivo de ruta
+// Rutas que necesitan body parser JSON (login, CRUD, etc.)
+app.use('/auth', express.json());
+app.use('/auth', express.urlencoded({ extended: true }));
 app.use('/auth', require('./routes/auth'));
+
+app.use('/profesor', express.json());
+app.use('/profesor', express.urlencoded({ extended: true }));
 app.use('/profesor', require('./routes/profesores'));
+
+app.use('/materias', express.json());
+app.use('/materias', express.urlencoded({ extended: true }));
 app.use('/materias', require('./routes/materias'));
+
+app.use('/actividades', express.json());
+app.use('/actividades', express.urlencoded({ extended: true }));
 app.use('/actividades', require('./routes/actividades'));
+
+app.use('/asistencia', express.json());
+app.use('/asistencia', express.urlencoded({ extended: true }));
 app.use('/asistencia', require('./routes/asistencia'));
-app.use('/calificaciones', require('./routes/calificaciones'));
+
+app.use('/admin', express.json());
+app.use('/admin', express.urlencoded({ extended: true }));
 app.use('/admin', require('./routes/admin'));
+
+app.use('/alumno', express.json());
+app.use('/alumno', express.urlencoded({ extended: true }));
 app.use('/alumno', require('./routes/alumno'));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use('/qr', express.json());
+app.use('/qr', express.urlencoded({ extended: true }));
 app.use('/qr', require('./routes/qr'));
+
+// Rutas que usan multer (sin body parser global)
+app.use('/calificaciones', require('./routes/calificaciones'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 console.log('✅ Rutas API cargadas correctamente');
 

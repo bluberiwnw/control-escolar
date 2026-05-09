@@ -36,6 +36,20 @@ const upload = multer({
 // Middleware de autenticación para todas las rutas
 router.use(authMiddleware);
 
+// Body parser solo para rutas que no usan multer
+router.use('/alumnos', express.json());
+router.use('/alumnos', express.urlencoded({ extended: true }));
+router.use('/ponderaciones', express.json());
+router.use('/ponderaciones', express.urlencoded({ extended: true }));
+router.use('/actualizar', express.json());
+router.use('/actualizar', express.urlencoded({ extended: true }));
+router.use('/calcular', express.json());
+router.use('/calcular', express.urlencoded({ extended: true }));
+router.use('/exportar', express.json());
+router.use('/exportar', express.urlencoded({ extended: true }));
+router.use('/guardar-calificaciones-alumno', express.json());
+router.use('/guardar-calificaciones-alumno', express.urlencoded({ extended: true }));
+
 // Rutas para profesores y administradores (solo funciones que existen)
 router.post('/upload', verificarRol(['profesor', 'administrador']), upload.single('archivo'), calificacionController.uploadFile);
 router.get('/plantilla', verificarRol(['profesor', 'administrador']), calificacionController.getPlantilla);
