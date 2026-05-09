@@ -17,8 +17,10 @@ app.use(cors({
 }));
 app.options('*', cors());
 
-// NOTA: express.json() y express.urlencoded() se aplican DESPUÉS de las rutas que usan multer
-// para evitar conflictos con multipart/form-data
+// NOTA: Aplicar body parsers para rutas que no usan multer
+// Las rutas que usan multer (como /calificaciones/upload) manejarán su propio parsing
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Servir archivos estáticos del frontend (sin autenticación)
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -34,10 +36,6 @@ app.use('/admin', require('./routes/admin'));
 app.use('/alumno', require('./routes/alumno'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/qr', require('./routes/qr'));
-
-// Middlewares para parsear body (después de las rutas que usan multer)
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 console.log('✅ Rutas API cargadas correctamente');
 
