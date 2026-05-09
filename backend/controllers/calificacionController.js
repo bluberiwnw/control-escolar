@@ -280,21 +280,6 @@ const calificacionController = {
                 console.log('❌ Estudiante no encontrado:', idNum);
                 return res.status(404).json({ message: 'Estudiante no encontrado' });
             }
-            
-            console.log('✅ Estudiante encontrado:', existingStudent.rows[0]);
-            
-            // Verificar si la matrícula ya existe en otro estudiante
-            const matriculaCheck = await pool.query(
-                'SELECT id, matricula FROM estudiantes WHERE matricula = $1 AND id != $2',
-                [matricula.trim(), idNum]
-            );
-            if (matriculaCheck.rows.length > 0) {
-                console.log('❌ Matrícula duplicada:', matricula);
-                return res.status(400).json({ 
-                    message: 'La matrícula ya existe en el sistema',
-                    existing_id: matriculaCheck.rows[0].id,
-                    existing_matricula: matriculaCheck.rows[0].matricula
-                });
             }
 
             console.log('✅ Verificaciones de base de datos pasadas, actualizando estudiante...');
@@ -721,7 +706,7 @@ const calificacionController = {
             // Crear nuevo alumno
             const result = await pool.query(
                 `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id, matricula, nombre, email, created_at`,
+                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, matricula, nombre, email, created_at`,
                 [matricula.trim(), nombre.trim(), email?.trim() || null, 'temporal123', 'alumno', true]
             );
 

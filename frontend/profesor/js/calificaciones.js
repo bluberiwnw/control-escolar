@@ -112,15 +112,40 @@ async function previsualizarArchivo(input) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(content, 'text/html');
         
-        // Buscar tablas
+        // Buscar tablas en el HTML - buscar específicamente la tabla de resumen de lista de clase
         const tables = doc.querySelectorAll('table');
         if (tables.length === 0) {
             document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se encontraron tablas en el archivo HTML.</div>';
             return;
         }
         
-        // Extraer datos de la primera tabla
-        const table = tables[0];
+        // Buscar la tabla que contiene la información de alumnos (Resumen de Lista de Clase)
+        let targetTable = null;
+        for (const table of tables) {
+            const caption = table.querySelector('caption');
+            if (caption && caption.textContent.includes('Resumen de Lista de Clase')) {
+                targetTable = table;
+                break;
+            }
+        }
+        
+        // Si no encuentra la tabla específica, usar la primera tabla con datos
+        if (!targetTable) {
+            for (const table of tables) {
+                const rows = table.querySelectorAll('tr');
+                if (rows.length > 5) { // Buscar tabla con suficientes filas
+                    targetTable = table;
+                    break;
+                }
+            }
+        }
+        
+        if (!targetTable) {
+            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se encontró la tabla de alumnos en el archivo HTML.</div>';
+            return;
+        }
+        
+        const table = targetTable;
         const rows = table.querySelectorAll('tr');
         
         if (rows.length <= 1) {
@@ -128,38 +153,26 @@ async function previsualizarArchivo(input) {
             return;
         }
         
-        // Extraer encabezados - limpiar y normalizar
+        // Extraer encabezados - específico para formato BUAP
         const headerRow = rows[0];
-        const headers = Array.from(headerRow.querySelectorAll('th, td')).map((cell, index) => {
+        const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
+        
+        // Mapeo específico para el formato BUAP
+        const headers = headerCells.map((cell, index) => {
             let header = cell.textContent.trim();
             console.log(`🔍 Procesando encabezado ${index}: "${header}"`);
             
-            // Si está vacío, intentar extraer de atributos o contenido
-            if (!header) {
-                header = cell.getAttribute('data-label') || cell.getAttribute('title') || `Columna ${index + 1}`;
-            }
+            // Mapeo específico para formato BUAP
+            if (header.includes('Número de Registro') || header.includes('Registro')) return 'Matrícula';
+            if (header.includes('Nombre de Alumno') || header.includes('Nombre')) return 'Nombre';
+            if (header.includes('ID') || header.includes('Identificación')) return 'ID';
+            if (header.includes('Status de Inscripción') || header.includes('Status')) return 'Status';
+            if (header.includes('Nivel')) return 'Nivel';
+            if (header.includes('Créditos')) return 'Créditos';
+            if (header.includes('Detalle de Calificaciones') || header.includes('Calificaciones')) return 'Email'; // En BUAP, el email está en esta columna
             
-            // Normalizar encabezados para identificar columnas estándar
-            const normalizedHeader = header.toLowerCase()
-                .replace(/[^\w\s]/g, '') // Eliminar caracteres especiales
-                .replace(/\s+/g, ' ') // Normalizar espacios
-                .trim();
-            
-            console.log(`🔍 Encabezado normalizado: "${normalizedHeader}"`);
-            
-            // Mapear a nombres estándar
-            if (normalizedHeader.includes('matricula') || normalizedHeader.includes('matrícula')) return 'Matrícula';
-            if (normalizedHeader.includes('nombre') || normalizedHeader.includes('name')) return 'Nombre';
-            if (normalizedHeader.includes('email') || normalizedHeader.includes('correo')) return 'Email';
-            if (normalizedHeader.includes('tarea') || normalizedHeader.includes('task')) return 'Tareas';
-            if (normalizedHeader.includes('examen') || normalizedHeader.includes('exam')) return 'Exámenes';
-            if (normalizedHeader.includes('participacion') || normalizedHeader.includes('participación')) return 'Participación';
-            if (normalizedHeader.includes('proyecto') || normalizedHeader.includes('project')) return 'Proyectos';
-            if (normalizedHeader.includes('practica') || normalizedHeader.includes('práctica') || normalizedHeader.includes('practice')) return 'Prácticas';
-            if (normalizedHeader.includes('final') || normalizedHeader.includes('calificacion')) return 'Calificación Final';
-            
-            // Si no coincide con estándar, usar el original limpio
-            return header || `Columna ${index + 1}`;
+            console.log(`🔍 Encabezado mapeado: "${header}" -> "${mappedHeader}"`);
+            return mappedHeader;
         });
         
         console.log('📋 Encabezados detectados:', headers);
@@ -756,7 +769,7 @@ async function exportarExcel() {
             console.log('📊 Exportando datos de la base de datos:', data.length, 'estudiantes');
         }
 
-        if (!data || data.length === 0) {
+        if (!data || !Array.isArray(data) || data.length === 0) {
             mostrarToast('No hay datos para exportar', 'error');
             return;
         }
