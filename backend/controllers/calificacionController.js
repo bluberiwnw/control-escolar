@@ -71,7 +71,7 @@ const calificacionController = {
                 console.log('📡 uploadFile - Body recibido:', req.body);
                 console.log('📡 uploadFile - Usuario en request:', req.usuario);
                 
-                // Verificar que req.body exista
+                // Verificar que req.body exista y limpiar datos
                 if (!req.body) {
                     console.log('❌ req.body es undefined o null');
                     if (req.file && fs.existsSync(req.file.path)) {
@@ -82,6 +82,11 @@ const calificacionController = {
                         headers: req.headers,
                         contentType: req.headers['content-type']
                     });
+                }
+                
+                // Limpiar materia_id de caracteres especiales
+                if (req.body.materia_id) {
+                    req.body.materia_id = req.body.materia_id.trim();
                 }
                 
                 // Verificar que el usuario exista y tenga permisos
