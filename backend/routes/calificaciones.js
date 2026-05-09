@@ -1,14 +1,43 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const calificacionController = require('../controllers/calificacionController');
 const authMiddleware = require('../middleware/authMiddleware');
 const { verificarRol } = require('../middleware/roleMiddleware');
+
+// Configuración de multer para archivos
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = path.join(__dirname, '../uploads');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+
+const upload = multer({ 
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+        const allowedMimes = ['text/html', 'text/htm'];
+        const allowedExtensions = ['.htm', '.html'];
+        const fileExtension = path.extname(file.originalname).toLowerCase();
+        
+        if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se permiten archivos HTM/HTML'), false);
+        }
+    }
+});
 
 // Middleware de autenticación para todas las rutas
 router.use(authMiddleware);
 
 // Rutas para profesores y administradores (solo funciones que existen)
-router.post('/upload', verificarRol(['profesor', 'administrador']), calificacionController.uploadFile);
+router.post('/upload', verificarRol(['profesor', 'administrador']), upload.single('archivo'), calificacionController.uploadFile);
 router.get('/plantilla', verificarRol(['profesor', 'administrador']), calificacionController.getPlantilla);
 router.get('/archivos', verificarRol(['profesor', 'administrador']), calificacionController.getArchivos);
 router.get('/archivos/:id/descarga', verificarRol(['profesor', 'administrador']), calificacionController.descargarArchivoCalificacion);
