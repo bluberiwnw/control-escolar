@@ -1,0 +1,154 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en" translate="no" class="notranslate">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Plantilla BUAP - Resumen de Lista de Clase</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        line-height: 1.6;
+    }
+    .datadisplaytable {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 20px 0;
+        background: white;
+    }
+    .datadisplaytable th, .datadisplaytable td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .datadisplaytable th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    .ddheader {
+        background-color: #0066cc;
+        color: white;
+        font-weight: bold;
+    }
+    .dddefault {
+        background-color: #f9f9f9;
+    }
+    .captiontext {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin: 10px 0;
+        color: #0066cc;
+    }
+    .fieldmediumtext {
+        font-size: 0.9em;
+    }
+</style>
+</head>
+<body>
+<div class="pageheaderdiv1">
+    <h1> BUAP - Benemérita Universidad Autónoma de Puebla</h1>
+</div>
+
+<div class="pagetitlediv">
+    <h2>Resumen de lista de clase</h2>
+    <div class="staticheaders">
+        [NOMBRE_PROFESOR] - [ID_PROFESOR]<br>
+        [PERIODO_ACADEMICO]<br>
+        [FECHA_ACTUAL]<br>
+    </div>
+</div>
+
+<div class="pagebodydiv">
+    <table class="datadisplaytable" summary="Esta tabla despliega los atributos de curso.">
+        <caption class="captiontext">Información de Curso</caption>
+        <tbody>
+            <tr>
+                <th colspan="2" class="ddlabel" scope="row">[NOMBRE_MATERIA] - [CLAVE_MATERIA]</th>
+            </tr>
+            <tr>
+                <th class="ddlabel" scope="row">NRC:</th>
+                <td class="dddefault">[NRC]</td>
+            </tr>
+            <tr>
+                <th class="ddlabel" scope="row">Duración:</th>
+                <td class="dddefault">[FECHA_INICIO] - [FECHA_FIN]</td>
+            </tr>
+            <tr>
+                <th class="ddlabel" scope="row">Status:</th>
+                <td class="dddefault">Activo</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br>
+    
+    <table class="datadisplaytable" summary="Esta tabla despliega los conteos de ingreso y de lista de espera.">
+        <caption class="captiontext">Conteo de Ingreso</caption>
+        <tbody>
+            <tr>
+                <th class="ddheader" scope="col">&nbsp;</th>
+                <th class="ddheader" scope="col">Máximo</th>
+                <th class="ddheader" scope="col">Real</th>
+                <th class="ddheader" scope="col">Restante</th>
+            </tr>
+            <tr>
+                <th class="ddlabel" scope="row">Ingreso:</th>
+                <td class="dddefault">[MAXIMO_ALUMNOS]</td>
+                <td class="dddefault">[ALUMNOS_INSCRITOS]</td>
+                <td class="dddefault">[LUGARES_DISPONIBLES]</td>
+            </tr>
+            <tr>
+                <th class="ddlabel" scope="row">Lista Cruzada: </th>
+                <td class="dddefault">0</td>
+                <td class="dddefault">0</td>
+                <td class="dddefault">0</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <br>
+    
+    <table class="datadisplaytable" summary="Esta tabla despliega una lista de alumnos inscritos para el curso, se provee información de resumen para cada alumno." width="100%">
+        <caption class="captiontext">Resumen de Lista de Clase</caption>
+        <tbody>
+            <tr>
+                <th class="ddheader" scope="col">Número de<br>Registro</th>
+                <th class="ddheader" scope="col">Nombre de Alumno</th>
+                <th class="ddheader" scope="col"><acronym title="Número de Identificación">ID</acronym></th>
+                <th class="ddheader" scope="col"><abbr title="Status de Inscripción">Status de Inscripción</abbr></th>
+                <th class="ddheader" scope="col">Nivel</th>
+                <th class="ddheader" scope="col">Créditos</th>
+                <th class="ddheader" scope="col">Detalle de Calificaciones</th>
+                <td class="dddead">&nbsp;</td>
+            </tr>
+            <!-- EJEMPLO DE ALUMNO - Copiar y pegar esta fila para cada alumno -->
+            <tr>
+                <td class="dddefault">1</td>
+                <td class="dddefault"><span class="fieldmediumtext">APELLIDO PATERNO, APELLIDO MATERNO NOMBRE(S) </span></td>
+                <td class="dddefault"><span class="fieldmediumtext">[MATRICULA]</span></td>
+                <td class="dddefault"><span class="fieldmediumtext">**Inscrito por Web**</span></td>
+                <td class="dddefault"><span class="fieldmediumtext">Licenciatura</span></td>
+                <td class="dddefault"><span class="fieldmediumtext">    6.000</span></td>
+                <td class="dddead">&nbsp;</td>
+                <td class="dddefault"><span class="fieldmediumtext"><a href="mailto:[EMAIL_ALUMNO]@alumno.buap.mx" target="[NOMBRE_COMPLETO]"><img src="web_email.gif" align="middle" alt="Correo-e" border="0" height="28" width="28"></a></span></td>
+            </tr>
+            <!-- FIN EJEMPLO - Agregar más filas según sea necesario -->
+        </tbody>
+    </table>
+    
+    <p class="whitespace1">
+        <a href="javascript:history.go(-1)">Regresar a Anterior</a>
+    </p>
+</div>
+
+<div class="footerbeforediv"></div>
+<div class="footerlinksdiv"></div>
+<br>
+<br>
+<div class="pagefooterdiv">
+    <span class="releasetext">Versión: 8.7.1</span>
+</div>
+<div class="poweredbydiv"></div>
+<div class="banner_copyright"> <br>© 2021 Benemérita Universidad Autónoma de Puebla</div>
+
+</body>
+</html>

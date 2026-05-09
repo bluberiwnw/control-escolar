@@ -3,7 +3,7 @@ const pool = require('../database/connection');
 
 const authMiddleware = async (req, res, next) => {
     try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
+        const token = req.headers.authorization?.replace('Bearer ', '');
         console.log(' AuthMiddleware - Token recibido:', token ? 'Sí' : 'No');
         
         if (!token) {

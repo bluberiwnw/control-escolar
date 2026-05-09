@@ -157,19 +157,21 @@ async function previsualizarArchivo(input) {
         const headerRow = rows[0];
         const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
         
-        // Mapeo específico para el formato BUAP
+        // Mapeo específico para formato BUAP
         const headers = headerCells.map((cell, index) => {
             let header = cell.textContent.trim();
             console.log(`🔍 Procesando encabezado ${index}: "${header}"`);
             
             // Mapeo específico para formato BUAP
-            if (header.includes('Número de Registro') || header.includes('Registro')) return 'Matrícula';
-            if (header.includes('Nombre de Alumno') || header.includes('Nombre')) return 'Nombre';
-            if (header.includes('ID') || header.includes('Identificación')) return 'ID';
-            if (header.includes('Status de Inscripción') || header.includes('Status')) return 'Status';
-            if (header.includes('Nivel')) return 'Nivel';
-            if (header.includes('Créditos')) return 'Créditos';
-            if (header.includes('Detalle de Calificaciones') || header.includes('Calificaciones')) return 'Email'; // En BUAP, el email está en esta columna
+            const mappedHeader = 
+                header.includes('Número de Registro') || header.includes('Registro') ? 'Matrícula' :
+                header.includes('Nombre de Alumno') || header.includes('Nombre') ? 'Nombre' :
+                header.includes('ID') || header.includes('Identificación') ? 'ID' :
+                header.includes('Status de Inscripción') || header.includes('Status') ? 'Status' :
+                header.includes('Nivel') ? 'Nivel' :
+                header.includes('Créditos') ? 'Créditos' :
+                header.includes('Detalle de Calificaciones') || header.includes('Calificaciones') ? 'Email' : // En BUAP, el email está en esta columna
+                header || `Columna ${index + 1}`;
             
             console.log(`🔍 Encabezado mapeado: "${header}" -> "${mappedHeader}"`);
             return mappedHeader;
@@ -177,10 +179,11 @@ async function previsualizarArchivo(input) {
         
         console.log('📋 Encabezados detectados:', headers);
         
-        // Extraer datos de las filas
+        // Extraer datos de las filas - específico para formato BUAP
         const dataRows = [];
         for (let i = 1; i < rows.length; i++) {
-            const cells = Array.from(rows[i].querySelectorAll('td, th')).map(cell => cell.textContent.trim());
+            const row = rows[i];
+            const cells = Array.from(row.querySelectorAll('td'));
             
             // Si la fila está vacía o tiene muy pocas celdas, saltarla
             if (cells.length < 2) {
@@ -188,30 +191,63 @@ async function previsualizarArchivo(input) {
                 continue;
             }
             
-            // Si todas las celdas están vacías, saltar la fila
-            if (cells.every(cell => !cell)) {
-                console.log(`⚠️ Fila ${i} ignorada: todas las celdas vacías`);
-                continue;
-            }
-            
+            // Extraer información específica del formato BUAP
             const rowData = {};
-            headers.forEach((header, index) => {
-                const value = cells[index] || '';
-                // Limpiar valores numéricos
-                if (['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas', 'Calificación Final'].includes(header)) {
-                    const numValue = parseFloat(value);
-                    rowData[header] = isNaN(numValue) ? 0 : numValue;
-                } else {
-                    rowData[header] = value;
-                }
-            });
             
-            // Validar que tenga datos mínimos (matrícula o nombre)
-            if (rowData['Matrícula'] || rowData['Nombre']) {
+            // Extraer número de registro (primera celda)
+            const numeroRegistro = cells[0]?.textContent.trim() || '';
+            rowData['Número de Registro'] = numeroRegistro;
+            
+            // Extraer nombre del alumno (segunda celda)
+            const nombreAlumno = cells[1]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[1]?.textContent.trim() || '';
+            rowData['Nombre de Alumno'] = nombreAlumno;
+            
+            // Extraer ID/matrícula (tercera celda)
+            const idAlumno = cells[2]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[2]?.textContent.trim() || '';
+            rowData['ID'] = idAlumno;
+            
+            // Extraer status de inscripción (cuarta celda)
+            const statusInscripcion = cells[3]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[3]?.textContent.trim() || '';
+            rowData['Status de Inscripción'] = statusInscripcion;
+            
+            // Extraer nivel (quinta celda)
+            const nivel = cells[4]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[4]?.textContent.trim() || '';
+            rowData['Nivel'] = nivel;
+            
+            // Extraer créditos (sexta celda)
+            const creditos = cells[5]?.querySelector('.fieldmediumtext')?.textContent.trim() || cells[5]?.textContent.trim() || '';
+            rowData['Créditos'] = creditos;
+            
+            // Extraer email de la última celda (buscando enlace de correo)
+            const emailCell = cells[cells.length - 1];
+            const emailLink = emailCell?.querySelector('a[href^="mailto:"]');
+            const email = emailLink ? emailLink.getAttribute('href').replace('mailto:', '') : '';
+            rowData['Email'] = email;
+            
+            // Agregar campos adicionales para compatibilidad con el sistema
+            rowData['Matrícula'] = idAlumno;
+            rowData['Nombre'] = nombreAlumno;
+            rowData['Tareas'] = 0;  // Valores por defecto para calificaciones
+            rowData['Exámenes'] = 0;
+            rowData['Participación'] = 0;
+            rowData['Proyectos'] = 0;
+            rowData['Prácticas'] = 0;
+            rowData['Calificación Final'] = 0;
+            
+            // Validar que tenga datos mínimos (ID o nombre)
+            if (idAlumno || nombreAlumno) {
                 dataRows.push(rowData);
-                console.log(`✅ Fila ${i} procesada:`, rowData);
+                console.log(`✅ Fila ${i} procesada:`, {
+                    'Número de Registro': numeroRegistro,
+                    'Nombre de Alumno': nombreAlumno,
+                    'ID': idAlumno,
+                    'Email': email,
+                    'Status': statusInscripcion,
+                    'Nivel': nivel,
+                    'Créditos': creditos
+                });
             } else {
-                console.log(`⚠️ Fila ${i} ignorada: no tiene matrícula ni nombre válidos`);
+                console.log(`⚠️ Fila ${i} ignorada: no tiene ID ni nombre válidos`);
             }
         }
         
@@ -500,6 +536,14 @@ async function guardarAlumno(event) {
         return;
     }
 
+    // Verificar token antes de hacer la petición
+    const token = localStorage.getItem('token');
+    if (!token) {
+        mostrarToast('Sesión expirada. Por favor inicia sesión nuevamente.', 'error');
+        window.location.href = '/login.html';
+        return;
+    }
+
     try {
         const data = { materia_id, matricula, nombre, email };
         
@@ -516,9 +560,17 @@ async function guardarAlumno(event) {
             });
             mostrarToast('Alumno creado', 'success');
         }
-
-        cerrarModalAlumno();
+        
+        // Limpiar formulario y cerrar modal
+        document.getElementById('alumnoIdEdit').value = '';
+        document.getElementById('alumnoMatricula').value = '';
+        document.getElementById('alumnoNombre').value = '';
+        document.getElementById('alumnoEmail').value = '';
+        document.getElementById('modalAlumno').style.display = 'none';
+        
+        // Recargar lista de alumnos
         await cargarAlumnos();
+        
     } catch (error) {
         mostrarToast(error.message || 'No se pudo guardar el alumno', 'error');
     }

@@ -705,7 +705,7 @@ const calificacionController = {
             // Crear nuevo alumno
             const result = await pool.query(
                 `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
-                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, matricula, nombre, email, created_at`,
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id, matricula, nombre, email, created_at`,
                 [matricula.trim(), nombre.trim(), email?.trim() || null, 'temporal123', 'alumno', true]
             );
 
