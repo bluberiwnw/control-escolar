@@ -496,51 +496,90 @@ const calificacionController = {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
-            // Generar HTML de plantilla
-            const plantillaHtml = `
-<!DOCTYPE html>
-<html>
+            // Leer plantilla BUAP real
+            const fs = require('fs');
+            const path = require('path');
+            const plantillaPath = path.join(__dirname, '../templates/plantilla_buap_completa.htm');
+            
+            let plantillaHtml;
+            if (fs.existsSync(plantillaPath)) {
+                plantillaHtml = fs.readFileSync(plantillaPath, 'utf8');
+                console.log('✅ Plantilla BUAP cargada desde archivo');
+            } else {
+                // Generar plantilla BUAP básica si no existe el archivo
+                plantillaHtml = `
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en" translate="no" class="notranslate">
 <head>
-    <meta charset="UTF-8">
-    <title>Plantilla de Calificaciones</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-    </style>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Resumen de lista de clase</title>
 </head>
 <body>
-    <h1>Plantilla de Calificaciones</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Matrícula</th>
-                <th>Nombre</th>
-                <th>Tareas</th>
-                <th>Exámenes</th>
-                <th>Participación</th>
-                <th>Proyectos</th>
-                <th>Prácticas</th>
-                <th>Calificación Final</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>20230001</td>
-                <td>EJEMPLO ALUMNO</td>
-                <td>8.5</td>
-                <td>9.0</td>
-                <td>8.0</td>
-                <td>7.5</td>
-                <td>8.5</td>
-                <td>8.3</td>
-            </tr>
-        </tbody>
-    </table>
+<div class="pagebodydiv">
+<table class="datadisplaytable" summary="Esta tabla despliega los atributos de curso.">
+<caption class="captiontext">Información de Curso</caption>
+<tbody><tr>
+<th colspan="2" class="ddlabel" scope="row">[NOMBRE_MATERIA] - [CLAVE_MATERIA]</th>
+</tr>
+<tr>
+<th class="ddlabel" scope="row">NRC:</th>
+<td class="dddefault">[NRC]</td>
+</tr>
+<tr>
+<th class="ddlabel" scope="row">Duración:</th>
+<td class="dddefault">[FECHA_INICIO] - [FECHA_FIN]</td>
+</tr>
+<tr>
+<th class="ddlabel" scope="row">Status:</th>
+<td class="dddefault">Activo</td>
+</tr>
+</tbody></table>
+<br>
+<table class="datadisplaytable" summary="Esta tabla despliega los conteos de ingreso y de lista de espera.">
+<caption class="captiontext">Conteo de Ingreso</caption>
+<tbody><tr>
+<th class="ddheader" scope="col">&nbsp;</th>
+<th class="ddheader" scope="col">Máximo</th>
+<th class="ddheader" scope="col">Real</th>
+<th class="ddheader" scope="col">Restante</th>
+</tr>
+<tr>
+<th class="ddlabel" scope="row">Ingreso:</th>
+<td class="dddefault">30</td>
+<td class="dddefault">0</td>
+<td class="dddefault">30</td>
+</tr>
+</tbody></table>
+<br>
+<table class="datadisplaytable" summary="Esta tabla despliega una lista de alumnos inscritos para el curso, se provee información de resumen para cada alumno." width="100%">
+<caption class="captiontext">Resumen de Lista de Clase</caption>
+<tbody><tr>
+<th class="ddheader" scope="col">Número de<br>Registro</th>
+<th class="ddheader" scope="col">Nombre de Alumno</th>
+<th class="ddheader" scope="col">ID</th>
+<th class="ddheader" scope="col">Status de Inscripción</th>
+<th class="ddheader" scope="col">Nivel</th>
+<th class="ddheader" scope="col">Créditos</th>
+<th class="ddheader" scope="col">Detalle de Calificaciones</th>
+<td class="dddead">&nbsp;</td>
+</tr>
+<tr>
+<td class="dddefault">1</td>
+<td class="dddefault"><span class="fieldmediumtext">APELLIDO PATERNO, APELLIDO MATERNO NOMBRE(S) </span></td>
+<td class="dddefault"><span class="fieldmediumtext">202300001</span></td>
+<td class="dddefault"><span class="fieldmediumtext">**Inscrito por Web**</span></td>
+<td class="dddefault"><span class="fieldmediumtext">Licenciatura</span></td>
+<td class="dddefault"><span class="fieldmediumtext">    6.000</span></td>
+<td class="dddead">&nbsp;</td>
+<td class="dddefault"><span class="fieldmediumtext"><a href="mailto:alumno@alumno.buap.mx" target="NOMBRE COMPLETO"><img src="email.gif" align="middle" alt="Correo-e" border="0" height="28" width="28"></a></span></td>
+</tr>
+</tbody></table>
+</div>
 </body>
 </html>
-            `;
+                `;
+                console.log('⚠️ Plantilla BUAP generada por defecto');
+            }
 
             res.setHeader('Content-Type', 'text/html');
             res.setHeader('Content-Disposition', 'attachment; filename=plantilla_calificaciones.htm');
@@ -676,13 +715,14 @@ const calificacionController = {
     async createAlumno(req, res) {
         try {
             console.log('📡 createAlumno - Creando nuevo alumno');
+            console.log('📡 createAlumno - Body recibido:', req.body);
             
             // Verificar que el usuario exista y tenga permisos
             if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
-            const { matricula, nombre, email } = req.body;
+            const { matricula, nombre, email, materia_id } = req.body;
             
             if (!matricula || !nombre) {
                 return res.status(400).json({ 
@@ -709,8 +749,19 @@ const calificacionController = {
                 [matricula.trim(), nombre.trim(), email?.trim() || null, 'temporal123', 'alumno', true]
             );
 
-            console.log('✅ Alumno creado:', result.rows[0]);
-            res.status(201).json(result.rows[0]);
+            const nuevoAlumno = result.rows[0];
+            console.log('✅ Alumno creado:', nuevoAlumno);
+
+            // Si se proporcionó materia_id, asociar el alumno a la materia
+            if (materia_id) {
+                console.log('📡 Asociando alumno a materia:', materia_id);
+                await pool.query(
+                    'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion) VALUES ($1, $2, NOW())',
+                    [materia_id, nuevoAlumno.id]
+                );
+            }
+
+            res.status(201).json(nuevoAlumno);
             
         } catch (error) {
             console.error('❌ Error en createAlumno:', error);
@@ -1210,7 +1261,7 @@ const calificacionController = {
                     
                     // Calcular calificación final si no viene en el archivo
                     if (calificacionFinal === 0) {
-                        calificacionFinal = this.calcularFinal({
+                        calificacionFinal = calificacionController.calcularFinal({
                             tareas,
                             examenes,
                             participacion,
@@ -1257,12 +1308,18 @@ const calificacionController = {
                     } else {
                         // Crear nuevo estudiante
                         const newEstudiante = await pool.query(
-                            `INSERT INTO estudiantes (matricula, nombre, email, created_at)
-                             VALUES ($1, $2, $3, NOW()) RETURNING id`,
-                            [estudiante.matricula, estudiante.nombre, estudiante.email]
+                            `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
+                             VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id`,
+                            [estudiante.matricula, estudiante.nombre, estudiante.email, 'temporal123', 'alumno', true]
                         );
                         estudianteId = newEstudiante.rows[0].id;
                         nuevos++;
+                        
+                        // Asociar estudiante a la materia
+                        await pool.query(
+                            'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion) VALUES ($1, $2, NOW())',
+                            [materiaId, estudianteId]
+                        );
                     }
                     
                     // Guardar calificaciones

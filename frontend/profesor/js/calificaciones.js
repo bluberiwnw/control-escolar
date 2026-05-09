@@ -30,7 +30,7 @@ async function subirArchivo(input) {
         mostrarToast(data.message || 'Archivo HTM procesado', 'success');
         document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
         cargarHistorial();
-        await cargarAlumnos(); // Actualizar lista de alumnos
+        await cargarAlumnos();
     } else {
         mostrarToast(data.message || 'Error al subir archivo', 'error');
         document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir archivo'}</div>`;
@@ -41,7 +41,6 @@ async function descargarPlantilla() {
     try {
         const data = await apiRequest('/calificaciones/plantilla');
         
-        // Crear un enlace temporal para descargar el archivo
         const link = document.createElement('a');
         link.href = `${window.API_URL}${data.archivo_url}`;
         link.download = data.nombre;
@@ -85,13 +84,10 @@ async function eliminarArchivo(id) {
     await cargarHistorial();
 }
 
-
-// Función para leer y validar el archivo Excel/PDF
 async function previsualizarArchivo(input) {
     const file = input.files[0];
     if (!file) return;
 
-    // Validar extensión
     const validExt = ['.htm', '.html'];
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!validExt.includes(ext)) {
@@ -108,18 +104,15 @@ async function previsualizarArchivo(input) {
     reader.onload = function(e) {
         const content = e.target.result;
         
-        // Parsear HTML con DOMParser
         const parser = new DOMParser();
         const doc = parser.parseFromString(content, 'text/html');
         
-        // Buscar tablas en el HTML - buscar específicamente la tabla de resumen de lista de clase
         const tables = doc.querySelectorAll('table');
         if (tables.length === 0) {
             document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se encontraron tablas en el archivo HTML.</div>';
             return;
         }
         
-        // Buscar la tabla que contiene la información de alumnos (Resumen de Lista de Clase)
         let targetTable = null;
         for (const table of tables) {
             const caption = table.querySelector('caption');
@@ -129,11 +122,10 @@ async function previsualizarArchivo(input) {
             }
         }
         
-        // Si no encuentra la tabla específica, usar la primera tabla con datos
         if (!targetTable) {
             for (const table of tables) {
                 const rows = table.querySelectorAll('tr');
-                if (rows.length > 5) { // Buscar tabla con suficientes filas
+                if (rows.length > 5) {
                     targetTable = table;
                     break;
                 }
@@ -153,16 +145,13 @@ async function previsualizarArchivo(input) {
             return;
         }
         
-        // Extraer encabezados - mejorado para formato BUAP completo
         const headerRow = rows[0];
         const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
         
-        // Mapeo completo para formato BUAP
         const headers = headerCells.map((cell, index) => {
             let header = cell.textContent.trim();
             console.log(`🔍 Procesando encabezado ${index}: "${header}"`);
             
-            // Mapeo específico completo para formato BUAP
             let mappedHeader = '';
             
             if (header.includes('Número de Registro') || header.includes('Número de<br>Registro') || header.includes('Registro')) {
@@ -178,9 +167,9 @@ async function previsualizarArchivo(input) {
             } else if (header.includes('Créditos')) {
                 mappedHeader = 'Créditos';
             } else if (header.includes('Detalle de Calificaciones') || header.includes('Calificaciones')) {
-                mappedHeader = 'Email'; // En BUAP, el email está en esta columna
+                mappedHeader = 'Email';
             } else if (header && header.trim()) {
-                mappedHeader = header.trim(); // Mantener encabezados adicionales
+                mappedHeader = header.trim();
             } else {
                 mappedHeader = `Columna ${index + 1}`;
             }
@@ -191,58 +180,47 @@ async function previsualizarArchivo(input) {
         
         console.log('📋 Encabezados detectados:', headers);
         
-        // Extraer datos de las filas - mejorado para formato BUAP real
         const dataRows = [];
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const cells = Array.from(row.querySelectorAll('td'));
             
-            // Si la fila está vacía o tiene muy pocas celdas, saltarla
             if (cells.length < 7) {
                 console.log(`⚠️ Fila ${i} ignorada: muy pocas celdas (${cells.length})`);
                 continue;
             }
             
-            // Extraer información específica del formato BUAP real
             const rowData = {};
             
-            // 1. Extraer número de registro (primera celda)
             const numeroRegistro = cells[0]?.textContent.trim() || '';
             rowData['Número de Registro'] = numeroRegistro;
             
-            // 2. Extraer nombre del alumno (segunda celda)
             const nombreCell = cells[1];
             const nombreSpan = nombreCell?.querySelector('.fieldmediumtext');
             const nombreAlumno = nombreSpan?.textContent.trim() || nombreCell?.textContent.trim() || '';
             rowData['Nombre de Alumno'] = nombreAlumno;
             
-            // 3. Extraer ID/matrícula (tercera celda)
             const idCell = cells[2];
             const idSpan = idCell?.querySelector('.fieldmediumtext');
             const idAlumno = idSpan?.textContent.trim() || idCell?.textContent.trim() || '';
             rowData['ID'] = idAlumno;
             
-            // 4. Extraer status de inscripción (cuarta celda)
             const statusCell = cells[3];
             const statusSpan = statusCell?.querySelector('.fieldmediumtext');
             const statusInscripcion = statusSpan?.textContent.trim() || statusCell?.textContent.trim() || '';
             rowData['Status de Inscripción'] = statusInscripcion;
             
-            // 5. Extraer nivel (quinta celda)
             const nivelCell = cells[4];
             const nivelSpan = nivelCell?.querySelector('.fieldmediumtext');
             const nivel = nivelSpan?.textContent.trim() || nivelCell?.textContent.trim() || '';
             rowData['Nivel'] = nivel;
             
-            // 6. Extraer créditos (sexta celda)
             const creditosCell = cells[5];
             const creditosSpan = creditosCell?.querySelector('.fieldmediumtext');
             const creditos = creditosSpan?.textContent.trim() || creditosCell?.textContent.trim() || '';
             rowData['Créditos'] = creditos;
             
-            // 7. Extraer email de la última celda (buscando enlace de correo)
             let email = '';
-            // Buscar en todas las celdas restantes por un enlace mailto
             for (let j = 6; j < cells.length; j++) {
                 const emailCell = cells[j];
                 const emailLink = emailCell?.querySelector('a[href^="mailto:"]');
@@ -253,11 +231,9 @@ async function previsualizarArchivo(input) {
             }
             rowData['Email'] = email;
             
-            // Agregar campos adicionales para compatibilidad con el sistema
             rowData['Matrícula'] = idAlumno;
             rowData['Nombre'] = nombreAlumno;
             
-            // Inicializar campos de calificación con valores por defecto
             rowData['Tareas'] = 0;
             rowData['Exámenes'] = 0;
             rowData['Participación'] = 0;
@@ -265,7 +241,6 @@ async function previsualizarArchivo(input) {
             rowData['Prácticas'] = 0;
             rowData['Calificación Final'] = 0;
             
-            // Validar que tenga datos mínimos (ID o nombre)
             if (idAlumno || nombreAlumno) {
                 dataRows.push(rowData);
                 console.log(`✅ Fila ${i} procesada:`, {
@@ -289,16 +264,35 @@ async function previsualizarArchivo(input) {
             return;
         }
         
-        // Mostrar previsualización (primeras 10 filas)
+        const calificacionesHeaders = ['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas', 'Calificación Final', 'Acciones'];
+        const allHeaders = [...headers, ...calificacionesHeaders];
+        
         let html = `<h4>Vista previa (primeros 10 registros)</h4>
                     <table class="asistencia-tabla">
-                        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                        <thead><tr>${allHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
                         <tbody>`;
         
         dataRows.slice(0, 10).forEach(row => {
             html += '<tr>';
-            headers.forEach(header => {
-                html += `<td>${row[header] || ''}</td>`;
+            allHeaders.forEach(header => {
+                if (calificacionesHeaders.includes(header)) {
+                    if (header === 'Acciones') {
+                        html += `<td>
+                            <button type="button" class="btn btn-sm btn-secondary" disabled>
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger" disabled>
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>`;
+                    } else if (header === 'Calificación Final') {
+                        html += `<td><span class="badge badge-info">0.00</span></td>`;
+                    } else {
+                        html += `<td><input type="number" value="0" min="0" max="10" step="0.1" disabled style="width: 80px;"></td>`;
+                    }
+                } else {
+                    html += `<td>${row[header] || ''}</td>`;
+                }
             });
             html += '</tr>';
         });
@@ -306,7 +300,7 @@ async function previsualizarArchivo(input) {
         html += `</tbody></table>
                    <div class="alert alert-info">
                        <strong>Se encontraron ${dataRows.length} estudiantes en el archivo.</strong><br>
-                       Se procesarán todas las columnas disponibles: ${headers.filter(h => h).join(', ')}
+                       Los alumnos serán importados con calificaciones iniciales en 0. Podrás editar las calificaciones después de procesar el archivo.
                    </div>
                    <div style="margin-top: 15px; display: flex; gap: 10px;">
                        <button class="btn-login-buap" onclick="confirmarSubida()">
@@ -317,7 +311,6 @@ async function previsualizarArchivo(input) {
                        </button>
                    </div>`;
         
-        // Guardar datos procesados para subir
         window.processedData = {
             headers: headers,
             rows: dataRows
@@ -353,10 +346,10 @@ async function confirmarSubida() {
     });
     const data = await res.json();
     if (res.ok) {
-        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo.detalles || ''}</div>`;
-        cargarHistorial();   // recargar lista de archivos subidos
-        await cargarAlumnos(); // actualizar lista de alumnos
-        document.getElementById('previewTable').innerHTML = ''; // limpiar preview
+        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
+        cargarHistorial();
+        await cargarAlumnos();
+        document.getElementById('previewTable').innerHTML = '';
         window.tempFile = null;
         document.getElementById('fileInput').value = '';
         mostrarToast('Archivo HTM procesado correctamente', 'success');
@@ -366,7 +359,6 @@ async function confirmarSubida() {
     }
 }
 
-// Funciones para CRUD de alumnos
 async function cargarAlumnos() {
     const materia_id = document.getElementById('materiaSelect').value;
     if (!materia_id) {
@@ -377,7 +369,6 @@ async function cargarAlumnos() {
     try {
         const alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
         
-        // Mostrar siempre la tabla, incluso si está vacía
         let html = `
             <div class="panel-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -414,7 +405,6 @@ async function cargarAlumnos() {
         `;
 
         if (alumnos.length === 0) {
-            // Mostrar una fila vacía para demostrar que se pueden agregar alumnos
             html += `
                 <tr>
                     <td colspan="10" style="text-align: center; padding: 2rem; color: #64748b;">
@@ -517,10 +507,8 @@ function abrirModalAlumno(alumnoId = null) {
     console.log('🔓 Abriendo modal alumno:', alumnoId);
     
     if (alumnoId) {
-        // Editar alumno existente
         editarAlumno(alumnoId);
     } else {
-        // Agregar nuevo alumno
         document.getElementById('modalAlumnoTitulo').textContent = 'Agregar Alumno';
         document.getElementById('alumnoIdEdit').value = '';
         document.getElementById('alumnoMatricula').value = '';
@@ -567,7 +555,6 @@ async function guardarAlumno(event) {
         return;
     }
 
-    // Verificar token antes de hacer la petición
     const token = localStorage.getItem('token');
     if (!token) {
         mostrarToast('Sesión expirada. Por favor inicia sesión nuevamente.', 'error');
@@ -592,14 +579,12 @@ async function guardarAlumno(event) {
             mostrarToast('Alumno creado', 'success');
         }
         
-        // Limpiar formulario y cerrar modal
         document.getElementById('alumnoIdEdit').value = '';
         document.getElementById('alumnoMatricula').value = '';
         document.getElementById('alumnoNombre').value = '';
         document.getElementById('alumnoEmail').value = '';
         document.getElementById('modalAlumno').style.display = 'none';
         
-        // Recargar lista de alumnos
         await cargarAlumnos();
         
     } catch (error) {
@@ -623,7 +608,6 @@ async function eliminarAlumno(alumnoId) {
     }
 }
 
-// Funciones para manejo de ponderaciones
 function validarPonderaciones() {
     const tareas = parseFloat(document.getElementById('ponderacionTareas').value) || 0;
     const examenes = parseFloat(document.getElementById('ponderacionExamenes').value) || 0;
@@ -675,7 +659,6 @@ async function guardarPonderaciones() {
         
         mostrarToast('Ponderaciones guardadas correctamente', 'success');
     } catch (error) {
-        // Si no hay ponderaciones guardadas, usar valores por defecto
         console.log('No hay ponderaciones guardadas, usando valores por defecto');
         validarPonderaciones();
     }
@@ -711,7 +694,6 @@ async function calcularCalificaciones() {
         
         mostrarToast(`Calificaciones calculadas para ${resultado.calculados} alumnos`, 'success');
         
-        // Recargar la lista de alumnos para mostrar las calificaciones actualizadas
         await cargarAlumnos();
         
     } catch (error) {
@@ -739,52 +721,43 @@ async function actualizarCalificacion(estudianteId, tipo, valor) {
             body: JSON.stringify(data)
         });
         
-        // Recalcular calificación final automáticamente
         await recalcularCalificacionFinal(estudianteId, materia_id);
         
         mostrarToast('Calificación actualizada', 'success');
     } catch (error) {
         mostrarToast(error.message || 'Error al actualizar calificación', 'error');
-        // Revertir el valor en caso de error
         document.getElementById(`${tipo}_${estudianteId}`).value = valor;
     }
 }
 
 async function recalcularCalificacionFinal(estudianteId, materia_id) {
     try {
-        // Obtener valores directamente del DOM con validación robusta
         const tareaElement = document.getElementById(`tarea_${estudianteId}`);
         const examenElement = document.getElementById(`examen_${estudianteId}`);
         const participacionElement = document.getElementById(`participacion_${estudianteId}`);
         const proyectoElement = document.getElementById(`proyecto_${estudianteId}`);
         const practicaElement = document.getElementById(`practica_${estudianteId}`);
         
-        // Validar que los elementos existan antes de acceder a sus propiedades
         const tarea = (tareaElement && tareaElement.value) ? parseFloat(tareaElement.value) || 0 : 0;
         const examen = (examenElement && examenElement.value) ? parseFloat(examenElement.value) || 0 : 0;
         const participacion = (participacionElement && participacionElement.value) ? parseFloat(participacionElement.value) || 0 : 0;
         const proyecto = (proyectoElement && proyectoElement.value) ? parseFloat(proyectoElement.value) || 0 : 0;
         const practica = (practicaElement && practicaElement.value) ? parseFloat(practicaElement.value) || 0 : 0;
         
-        // Calcular con pesos específicos manteniendo escala 0-10
-        // Los pesos suman 100% pero el resultado debe mantenerse en escala 0-10
         const calificacionFinal = (
-            (proyecto * 0.30) +      // 30% proyectos
-            (examen * 0.30) +        // 30% exámenes
-            (participacion * 0.10) +   // 10% participaciones
-            (tarea * 0.20) +          // 20% tareas
-            (practica * 0.10)          // 10% prácticas
+            (proyecto * 0.30) +      
+            (examen * 0.30) +        
+            (participacion * 0.10) +   
+            (tarea * 0.20) +          
+            (practica * 0.10)          
         );
         
-        // Asegurar que la calificación final esté en el rango 0-10
         const calificacionFinalAjustada = Math.max(0, Math.min(10, calificacionFinal));
         
-        // Actualizar la calificación final en la UI
         const finalElement = document.getElementById(`final_${estudianteId}`);
         if (finalElement) {
             finalElement.textContent = calificacionFinalAjustada.toFixed(2);
             
-            // Actualizar el color del badge
             let colorClass = 'badge-danger';
             if (calificacionFinalAjustada >= 9) colorClass = 'badge-success';
             else if (calificacionFinalAjustada >= 8) colorClass = 'badge-primary';
@@ -821,7 +794,6 @@ async function cancelarCambios() {
     try {
         mostrarToast('Recargando datos...', 'info');
         
-        // Recargar la lista de alumnos desde el servidor
         await cargarAlumnos();
         
         mostrarToast('Cambios cancelados. Datos recargados desde el servidor.', 'success');
@@ -839,14 +811,11 @@ async function exportarExcel() {
     }
 
     try {
-        // Obtener datos de los estudiantes procesados o de la base de datos
         let data;
         if (window.processedData && window.processedData.rows && window.processedData.rows.length > 0) {
-            // Usar datos procesados del archivo HTM
             data = window.processedData.rows;
             console.log('📊 Exportando datos procesados del archivo HTM:', data.length, 'estudiantes');
         } else {
-            // Obtener datos de la base de datos
             const result = await apiRequest(`/calificaciones/materia/${materia_id}/exportar`);
             data = result.students || result;
             console.log('📊 Exportando datos de la base de datos:', data.length, 'estudiantes');
@@ -857,10 +826,8 @@ async function exportarExcel() {
             return;
         }
 
-        // Crear contenido Excel con todas las columnas
-        let csvContent = '\ufeff'; // BOM para UTF-8
+        let csvContent = '\ufeff';
         
-        // Determinar encabezados dinámicamente
         const headers = new Set();
         data.forEach(row => {
             Object.keys(row).forEach(key => headers.add(key));
@@ -868,31 +835,25 @@ async function exportarExcel() {
         
         const headerArray = Array.from(headers);
         
-        // Agregar encabezados
         csvContent += headerArray.map(header => {
-            // Formatear encabezados para mejor legibilidad
             const formattedHeader = header
                 .replace(/_/g, ' ')
                 .replace(/\b\w/g, l => l.toUpperCase());
             return `"${formattedHeader}"`;
         }).join(',') + '\n';
         
-        // Agregar datos de cada estudiante
         data.forEach(row => {
             const rowData = headerArray.map(header => {
                 const value = row[header] || '';
-                // Formatear valores numéricos
                 if (typeof value === 'number') {
                     return value.toFixed(1);
                 }
-                // Escapar comillas y envolver en comillas si contiene comas o comillas
                 const stringValue = String(value).replace(/"/g, '""');
                 return stringValue.includes(',') || stringValue.includes('"') ? `"${stringValue}"` : stringValue;
             });
             csvContent += rowData.join(',') + '\n';
         });
 
-        // Crear blob y descargar
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
@@ -916,434 +877,10 @@ async function exportarExcel() {
     }
 }
 
-async function confirmarSubida() {
-    if (!window.tempFile) {
-        mostrarToast('No hay archivo seleccionado', 'error');
-        return;
-    }
-
-    try {
-        // Obtener materia seleccionada
-        const materiaSelect = document.getElementById('materiaSelect');
-        const materia_id = materiaSelect ? materiaSelect.value : null;
-        
-        if (!materia_id) {
-            mostrarToast('Selecciona una materia antes de subir el archivo', 'error');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', window.tempFile);
-        formData.append('materia_id', materia_id);
-
-        mostrarToast('Procesando archivo HTM...', 'info');
-        const result = await apiRequest('/calificaciones/upload', {
-            method: 'POST',
-            body: formData,
-            headers: {} // No Content-Type para FormData
-        });
-
-        mostrarPreview(result);
-        mostrarToast('Archivo HTM procesado correctamente', 'success');
-        
-        // Mostrar controles del proceso HTM
-        document.getElementById('procesoHTMControls').style.display = 'block';
-        
-        // Guardar referencia al resultado para poder procesarlo después
-        window.currentHTMData = result;
-        
-    } catch (error) {
-        mostrarToast(error.message || 'Error al procesar archivo HTM', 'error');
-        document.getElementById('previewTable').innerHTML = '';
-        document.getElementById('resultadoUpload').innerHTML = '';
-        document.getElementById('procesoHTMControls').style.display = 'none';
-    }
-}
-
-function mostrarPreview(resultado) {
-    console.log('📋 Mostrando preview del resultado:', resultado);
-    
-    const previewTable = document.getElementById('previewTable');
-    const resultadoUpload = document.getElementById('resultadoUpload');
-    
-    if (!resultado || !resultado.resultado) {
-        previewTable.innerHTML = '<div class="alert alert-error">No se pudo procesar el archivo HTM</div>';
-        resultadoUpload.innerHTML = '';
-        return;
-    }
-    
-    const { resultado: data, fileName } = resultado;
-    
-    // Mostrar información general
-    resultadoUpload.innerHTML = `
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            <strong>Archivo procesado correctamente:</strong> ${fileName}<br>
-            <strong>Estudiantes procesados:</strong> ${data.procesados}<br>
-            <strong>Nuevos:</strong> ${data.nuevos}<br>
-            <strong>Actualizados:</strong> ${data.actualizados}
-        </div>
-    `;
-    
-    // Si hay información del curso, mostrarla
-    if (data.courseInfo) {
-        let courseHtml = '<div class="panel-card" style="margin-top: 15px;"><h3>Información del Curso</h3><table class="datadisplaytable">';
-        
-        Object.entries(data.courseInfo).forEach(([key, value]) => {
-            courseHtml += `<tr><td class="dddefault"><strong>${key}:</strong></td><td class="dddefault">${value}</td></tr>`;
-        });
-        
-        courseHtml += '</table></div>';
-        resultadoUpload.innerHTML += courseHtml;
-    }
-    
-    // Mostrar tabla de estudiantes procesados
-    if (data.students && data.students.length > 0) {
-        let studentsHtml = `
-            <div class="panel-card" style="margin-top: 15px;">
-                <h3>Estudiantes Procesados (${data.students.length})</h3>
-                <div style="overflow-x: auto;">
-                    <table class="datadisplaytable" style="min-width: 800px;">
-                        <thead>
-                            <tr>
-                                <th class="ddheader">#</th>
-                                <th class="ddheader">Nombre Completo</th>
-                                <th class="ddheader">Matrícula</th>
-                                <th class="ddheader">Email</th>
-                                <th class="ddheader">Tareas</th>
-                                <th class="ddheader">Exámenes</th>
-                                <th class="ddheader">Proyectos</th>
-                                <th class="ddheader">Prácticas</th>
-                                <th class="ddheader">Calificación Final</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-        `;
-        
-        data.students.forEach((student, index) => {
-            const tareas = student.tareas || 0;
-            const examenes = student.examenes || 0;
-            const proyectos = student.proyectos || 0;
-            const practicas = student.practicas || 0;
-            const calificacionFinal = student.calificacion_final || 0;
-            
-            // Color según calificación
-            let colorClass = '';
-            if (calificacionFinal >= 9) colorClass = 'style="color: #22c55e; font-weight: bold;"';
-            else if (calificacionFinal >= 8) colorClass = 'style="color: #3b82f6; font-weight: bold;"';
-            else if (calificacionFinal >= 7) colorClass = 'style="color: #f59e0b; font-weight: bold;"';
-            else if (calificacionFinal >= 6) colorClass = 'style="color: #f97316; font-weight: bold;"';
-            else colorClass = 'style="color: #ef4444; font-weight: bold;"';
-            
-            studentsHtml += `
-                <tr>
-                    <td class="dddefault">${index + 1}</td>
-                    <td class="dddefault">${student.nombre_completo || 'N/A'}</td>
-                    <td class="dddefault">${student.numero_registro || 'N/A'}</td>
-                    <td class="dddefault">${student.email || 'N/A'}</td>
-                    <td class="dddefault">${tareas}</td>
-                    <td class="dddefault">${examenes}</td>
-                    <td class="dddefault">${proyectos}</td>
-                    <td class="dddefault">${practicas}</td>
-                    <td class="dddefault" ${colorClass}>${calificacionFinal.toFixed(2)}</td>
-                </tr>
-            `;
-        });
-        
-        studentsHtml += '</tbody></table></div></div>';
-        previewTable.innerHTML = studentsHtml;
-        
-        // Actualizar la tabla de alumnos editable
-        cargarAlumnosDesdeHTM(data.students);
-        
-    } else {
-        previewTable.innerHTML = '<div class="alert alert-warning">No se encontraron estudiantes en el archivo HTM</div>';
-    }
-}
-
-function cargarAlumnosDesdeHTM(estudiantes) {
-    console.log('🔄 Cargando alumnos desde HTM:', estudiantes.length);
-    
-    const alumnosTable = document.getElementById('alumnosTable');
-    if (!alumnosTable) return;
-    
-    let html = `
-        <div class="panel-card">
-            <h3>Alumnos Procesados (Edición Habilitada)</h3>
-            <div style="overflow-x: auto;">
-                <table class="datadisplaytable" style="min-width: 1000px;">
-                    <thead>
-                        <tr>
-                            <th class="ddheader">Matrícula</th>
-                            <th class="ddheader">Nombre</th>
-                            <th class="ddheader">Email</th>
-                            <th class="ddheader">Tareas</th>
-                            <th class="ddheader">Exámenes</th>
-                            <th class="ddheader">Proyectos</th>
-                            <th class="ddheader">Prácticas</th>
-                            <th class="ddheader">Final</th>
-                            <th class="ddheader">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-    
-    estudiantes.forEach((estudiante, index) => {
-        const matricula = estudiante.numero_registro || '';
-        const nombre = estudiante.nombre_completo || '';
-        const email = estudiante.email || '';
-        const tareas = estudiante.tareas || 0;
-        const examenes = estudiante.examenes || 0;
-        const proyectos = estudiante.proyectos || 0;
-        const practicas = estudiante.practicas || 0;
-        const calificacionFinal = estudiante.calificacion_final || 0;
-        
-        html += `
-            <tr>
-                <td class="dddefault">${matricula}</td>
-                <td class="dddefault">${nombre}</td>
-                <td class="dddefault">${email}</td>
-                <td class="dddefault">
-                    <input type="number" 
-                           id="tarea_${index}" 
-                           value="${tareas}" 
-                           min="0" max="10" 
-                           step="0.1"
-                           style="width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;"
-                           onchange="recalcularFinal(${index})">
-                </td>
-                <td class="dddefault">
-                    <input type="number" 
-                           id="examen_${index}" 
-                           value="${examenes}" 
-                           min="0" max="10" 
-                           step="0.1"
-                           style="width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;"
-                           onchange="recalcularFinal(${index})">
-                </td>
-                <td class="dddefault">
-                    <input type="number" 
-                           id="proyecto_${index}" 
-                           value="${proyectos}" 
-                           min="0" max="10" 
-                           step="0.1"
-                           style="width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;"
-                           onchange="recalcularFinal(${index})">
-                </td>
-                <td class="dddefault">
-                    <input type="number" 
-                           id="practica_${index}" 
-                           value="${practicas}" 
-                           min="0" max="10" 
-                           step="0.1"
-                           style="width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;"
-                           onchange="recalcularFinal(${index})">
-                </td>
-                <td class="dddefault">
-                    <span id="final_${index}" style="font-weight: bold; color: #2563eb;">
-                        ${calificacionFinal.toFixed(2)}
-                    </span>
-                </td>
-                <td class="dddefault">
-                    <button type="button" 
-                            class="btn btn-sm btn-primary" 
-                            onclick="guardarCambiosAlumno(${index})"
-                            style="padding: 4px 8px; font-size: 12px;">
-                        <i class="fas fa-save"></i> Guardar
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-    
-    html += '</tbody></table></div></div>';
-    alumnosTable.innerHTML = html;
-    
-    // Guardar referencia a los estudiantes para poder usarlos después
-    window.estudiantesHTM = estudiantes;
-}
-
-function recalcularFinal(index) {
-    if (!window.estudiantesHTM || !window.estudiantesHTM[index]) return;
-    
-    const tareas = parseFloat(document.getElementById(`tarea_${index}`).value) || 0;
-    const examenes = parseFloat(document.getElementById(`examen_${index}`).value) || 0;
-    const proyectos = parseFloat(document.getElementById(`proyecto_${index}`).value) || 0;
-    const practicas = parseFloat(document.getElementById(`practica_${index}`).value) || 0;
-    
-    // Calcular promedio simple sin redondeo
-    const calificacionFinal = (tareas + examenes + proyectos + practicas) / 4;
-    
-    // Actualizar display
-    const finalElement = document.getElementById(`final_${index}`);
-    if (finalElement) {
-        finalElement.textContent = calificacionFinal.toFixed(2);
-        
-        // Color según calificación
-        if (calificacionFinal >= 9) finalElement.style.color = '#22c55e';
-        else if (calificacionFinal >= 8) finalElement.style.color = '#3b82f6';
-        else if (calificacionFinal >= 7) finalElement.style.color = '#f59e0b';
-        else if (calificacionFinal >= 6) finalElement.style.color = '#f97316';
-        else finalElement.style.color = '#ef4444';
-    }
-}
-
-async function guardarCambiosAlumno(index) {
-    if (!window.estudiantesHTM || !window.estudiantesHTM[index]) {
-        mostrarToast('Error: no se encontró el estudiante', 'error');
-        return;
-    }
-    
-    const estudiante = window.estudiantesHTM[index];
-    const tareas = parseFloat(document.getElementById(`tarea_${index}`).value) || 0;
-    const examenes = parseFloat(document.getElementById(`examen_${index}`).value) || 0;
-    const proyectos = parseFloat(document.getElementById(`proyecto_${index}`).value) || 0;
-    const practicas = parseFloat(document.getElementById(`practica_${index}`).value) || 0;
-    const calificacionFinal = (tareas + examenes + proyectos + practicas) / 4;
-    
-    try {
-        await apiRequest('/calificaciones/actualizar', {
-            method: 'PUT',
-            body: JSON.stringify({
-                estudiante_id: estudiante.id || estudiante.numero_registro,
-                materia_id: document.getElementById('materiaSelect').value,
-                tipo: 'tarea',
-                calificacion: tareas
-            })
-        });
-        
-        await apiRequest('/calificaciones/actualizar', {
-            method: 'PUT',
-            body: JSON.stringify({
-                estudiante_id: estudiante.id || estudiante.numero_registro,
-                materia_id: document.getElementById('materiaSelect').value,
-                tipo: 'examen',
-                calificacion: examenes
-            })
-        });
-        
-        await apiRequest('/calificaciones/actualizar', {
-            method: 'PUT',
-            body: JSON.stringify({
-                estudiante_id: estudiante.id || estudiante.numero_registro,
-                materia_id: document.getElementById('materiaSelect').value,
-                tipo: 'proyecto',
-                calificacion: proyectos
-            })
-        });
-        
-        await apiRequest('/calificaciones/actualizar', {
-            method: 'PUT',
-            body: JSON.stringify({
-                estudiante_id: estudiante.id || estudiante.numero_registro,
-                materia_id: document.getElementById('materiaSelect').value,
-                tipo: 'practica',
-                calificacion: practicas
-            })
-        });
-        
-        mostrarToast('Calificaciones guardadas correctamente', 'success');
-        
-    } catch (error) {
-        mostrarToast('Error al guardar calificaciones: ' + error.message, 'error');
-    }
-}
-
-// Actualizar cuando se cambia la materia
-document.getElementById('materiaSelect')?.addEventListener('change', async () => {
-    await cargarAlumnos();
-});
-
-// Funciones para controlar el proceso HTM
 function cancelarProcesoHTM() {
-    if (!confirm('¿Estás seguro de cancelar el proceso? Se perderán todos los cambios no guardados.')) {
-        return;
-    }
-    
-    // Limpiar todo
     document.getElementById('previewTable').innerHTML = '';
-    document.getElementById('resultadoUpload').innerHTML = '';
-    document.getElementById('alumnosTable').innerHTML = '';
-    document.getElementById('procesoHTMControls').style.display = 'none';
-    
-    // Limpiar archivo temporal
+    document.getElementById('fileInput').value = '';
     window.tempFile = null;
-    window.currentHTMData = null;
-    window.estudiantesHTM = null;
-    
-    // Limpiar input de archivo
-    const fileInput = document.querySelector('input[type="file"]');
-    if (fileInput) {
-        fileInput.value = '';
-    }
-    
-    mostrarToast('Proceso cancelado', 'info');
+    window.processedData = null;
+    mostrarToast('Proceso HTM cancelado', 'info');
 }
-
-async function subirDefinitivamenteHTM() {
-    if (!window.currentHTMData || !window.currentHTMData.resultado) {
-        mostrarToast('No hay datos procesados para subir', 'error');
-        return;
-    }
-    
-    if (!confirm('¿Estás seguro de subir definitivamente estas calificaciones? Esta acción enviará la información al administrador y no podrá deshacerse.')) {
-        return;
-    }
-    
-    try {
-        const materia_id = document.getElementById('materiaSelect').value;
-        const datos = window.currentHTMData.resultado;
-        
-        mostrarToast('Subiendo calificaciones definitivamente...', 'info');
-        
-        const result = await apiRequest('/calificaciones/procesar-definitivo', {
-            method: 'POST',
-            body: JSON.stringify({
-                materia_id: materia_id,
-                datos: datos
-            })
-        });
-        
-        mostrarToast(`Calificaciones subidas correctamente: ${result.procesados} procesados, ${result.errores} errores`, 'success');
-        
-        // Limpiar todo después de subir
-        document.getElementById('previewTable').innerHTML = '';
-        document.getElementById('resultadoUpload').innerHTML = '';
-        document.getElementById('alumnosTable').innerHTML = '';
-        document.getElementById('procesoHTMControls').style.display = 'none';
-        
-        window.tempFile = null;
-        window.currentHTMData = null;
-        window.estudiantesHTM = null;
-        
-        // Limpiar input de archivo
-        const fileInput = document.querySelector('input[type="file"]');
-        if (fileInput) {
-            fileInput.value = '';
-        }
-        
-        // Recargar alumnos para mostrar los cambios
-        await cargarAlumnos();
-        
-    } catch (error) {
-        mostrarToast('Error al subir calificaciones: ' + error.message, 'error');
-    }
-}
-
-// Exportar funciones al scope global
-window.eliminarArchivo = eliminarArchivo;
-window.abrirModalAlumno = abrirModalAlumno;
-window.editarAlumno = editarAlumno;
-window.guardarAlumno = guardarAlumno;
-window.eliminarAlumno = eliminarAlumno;
-window.cerrarModalAlumno = cerrarModalAlumno;
-window.cancelarCambios = cancelarCambios;
-window.exportarExcel = exportarExcel;
-window.cargarAlumnos = cargarAlumnos;
-window.descargarPlantilla = descargarPlantilla;
-window.cancelarProcesoHTM = cancelarProcesoHTM;
-window.subirDefinitivamenteHTM = subirDefinitivamenteHTM;
-window.previsualizarArchivo = previsualizarArchivo;
-window.confirmarSubida = confirmarSubida;
-window.recalcularFinal = recalcularFinal;
-window.guardarCambiosAlumno = guardarCambiosAlumno;
