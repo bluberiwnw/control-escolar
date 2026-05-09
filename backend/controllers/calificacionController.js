@@ -54,6 +54,9 @@ const calificacionController = {
             
             if (!req.file) {
                 console.error('❌ No se proporcionó archivo');
+                console.error('❌ req.file:', req.file);
+                console.error('❌ req.body:', req.body);
+                console.error('❌ req.usuario:', req.usuario);
                 return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
             }
             
@@ -69,6 +72,8 @@ const calificacionController = {
                 });
                 
                 console.log('📡 uploadFile - Body recibido:', req.body);
+                console.log('📡 uploadFile - Body tipo:', typeof req.body);
+                console.log('📡 uploadFile - Body keys:', Object.keys(req.body || {}));
                 console.log('📡 uploadFile - Usuario en request:', req.usuario);
                 
                 // Verificar que req.body exista y limpiar datos

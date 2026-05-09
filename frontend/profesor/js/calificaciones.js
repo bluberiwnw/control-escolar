@@ -597,10 +597,11 @@ async function guardarAlumno(event) {
             });
             mostrarToast('Alumno actualizado', 'success');
         } else {
-            await apiRequest('/calificaciones/alumnos', {
+            const response = await apiRequest('/calificaciones/alumnos', {
                 method: 'POST',
                 body: JSON.stringify(data)
             });
+            console.log('✅ Alumno creado exitosamente:', response);
             mostrarToast('Alumno creado', 'success');
         }
         
@@ -610,7 +611,9 @@ async function guardarAlumno(event) {
         document.getElementById('alumnoEmail').value = '';
         document.getElementById('modalAlumno').style.display = 'none';
         
+        console.log('🔄 Refrescando lista de alumnos...');
         await cargarAlumnos();
+        console.log('✅ Lista de alumnos refrescada');
         
     } catch (error) {
         mostrarToast(error.message || 'No se pudo guardar el alumno', 'error');
