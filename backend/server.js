@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const authController = require('./controllers/authController');
+
 require('dotenv').config();
 
 const app = express();
@@ -15,8 +16,9 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.options('*', cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// NOTA: express.json() y express.urlencoded() se aplican DESPUÉS de las rutas que usan multer
+// para evitar conflictos con multipart/form-data
 
 // Servir archivos estáticos del frontend (sin autenticación)
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -32,6 +34,10 @@ app.use('/admin', require('./routes/admin'));
 app.use('/alumno', require('./routes/alumno'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/qr', require('./routes/qr'));
+
+// Middlewares para parsear body (después de las rutas que usan multer)
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 console.log('✅ Rutas API cargadas correctamente');
 

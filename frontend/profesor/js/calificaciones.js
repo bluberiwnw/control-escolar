@@ -566,8 +566,17 @@ async function guardarAlumno(event) {
     const nombre = document.getElementById('alumnoNombre').value.trim();
     const email = document.getElementById('alumnoEmail').value.trim();
 
+    console.log('🔍 guardarAlumno - Datos del formulario:', {
+        alumnoId,
+        materia_id,
+        matricula,
+        nombre,
+        email
+    });
+
     if (!materia_id || !matricula || !nombre) {
         mostrarToast('Completa los campos obligatorios', 'error');
+        console.log('❌ Validación fallida:', { materia_id, matricula, nombre });
         return;
     }
 

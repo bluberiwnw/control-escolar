@@ -1337,7 +1337,7 @@ const calificacionController = {
                                 INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                                 VALUES ($1, $2, $3, $4, NOW())
                                 ON CONFLICT (estudiante_id, materia_id, tipo) 
-                                DO UPDATE SET calificacion = $4, updated_at = NOW()
+                                DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
                             `, [estudianteId, materiaId, cal.tipo, cal.calificacion]);
                         }
                     }
