@@ -758,34 +758,64 @@ const calificacionController = {
 
             // Verificar si la matrícula ya existe
             const matriculaCheck = await pool.query(
-                'SELECT id FROM estudiantes WHERE matricula = $1',
+                'SELECT id, nombre, email FROM estudiantes WHERE matricula = $1',
                 [matricula.trim()]
             );
             
+            let alumnoExistente = null;
+            
             if (matriculaCheck.rows.length > 0) {
-                return res.status(400).json({ message: 'La matrícula ya existe en el sistema' });
+                alumnoExistente = matriculaCheck.rows[0];
+                console.log('📡 Alumno existente encontrado:', alumnoExistente);
+                
+                // Verificar si ya está inscrito en esta materia
+                if (materia_id) {
+                    const materiaCheck = await pool.query(
+                        'SELECT id FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2',
+                        [alumnoExistente.id, materia_id]
+                    );
+                    
+                    if (materiaCheck.rows.length > 0) {
+                        console.log('❌ Alumno ya está inscrito en esta materia');
+                        return res.status(400).json({ 
+                            message: 'El alumno ya está inscrito en esta materia',
+                            alumno: alumnoExistente,
+                            materia_id: materia_id
+                        });
+                    }
+                }
+                
+                // Actualizar datos si es necesario
+                if (alumnoExistente.nombre !== nombre.trim() || alumnoExistente.email !== (email?.trim() || null)) {
+                    await pool.query(
+                        'UPDATE estudiantes SET nombre = $1, email = $2 WHERE id = $3',
+                        [nombre.trim(), email?.trim() || null, alumnoExistente.id]
+                    );
+                    console.log('✅ Datos del alumno actualizados');
+                }
+            } else {
+                // Crear nuevo alumno
+                const result = await pool.query(
+                    `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
+                     VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id, matricula, nombre, email, created_at`,
+                    [matricula.trim(), nombre.trim(), email?.trim() || null, 'temporal123', 'alumno', true]
+                );
+                
+                alumnoExistente = result.rows[0];
+                console.log('✅ Alumno creado:', alumnoExistente);
             }
-
-            // Crear nuevo alumno
-            const result = await pool.query(
-                `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id, matricula, nombre, email, created_at`,
-                [matricula.trim(), nombre.trim(), email?.trim() || null, 'temporal123', 'alumno', true]
-            );
-
-            const nuevoAlumno = result.rows[0];
-            console.log('✅ Alumno creado:', nuevoAlumno);
 
             // Si se proporcionó materia_id, asociar el alumno a la materia
             if (materia_id) {
                 console.log('📡 Asociando alumno a materia:', materia_id);
                 await pool.query(
                     'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion) VALUES ($1, $2, NOW())',
-                    [materia_id, nuevoAlumno.id]
+                    [materia_id, alumnoExistente.id]
                 );
+                console.log('✅ Alumno asociado a materia');
             }
 
-            res.status(201).json(nuevoAlumno);
+            res.status(201).json(alumnoExistente);
             
         } catch (error) {
             console.error('❌ Error en createAlumno:', error);
