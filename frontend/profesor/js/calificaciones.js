@@ -377,13 +377,18 @@ async function confirmarSubida() {
 
 async function cargarAlumnos() {
     const materia_id = document.getElementById('materiaSelect').value;
+    console.log('🔄 cargarAlumnos - materia_id:', materia_id);
+    console.log('🔄 cargarAlumnos - materiaSelect value:', document.getElementById('materiaSelect').value);
+    
     if (!materia_id) {
         document.getElementById('alumnosTable').innerHTML = '<div class="alert alert-info">Selecciona una materia para ver los alumnos.</div>';
         return;
     }
 
     try {
+        console.log('🔄 cargarAlumnos - Solicitando alumnos para materia:', materia_id);
         const alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
+        console.log('🔄 cargarAlumnos - Alumnos recibidos:', alumnos);
         
         let html = `
             <div class="panel-card">

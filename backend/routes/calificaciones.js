@@ -21,13 +21,22 @@ const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
+        console.log(' Multer fileFilter - Archivo recibido:', {
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+            fieldname: file.fieldname
+        });
+        
         const allowedMimes = ['text/html', 'text/htm'];
         const allowedExtensions = ['.htm', '.html'];
         const fileExtension = path.extname(file.originalname).toLowerCase();
         
         if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+            console.log(' Multer fileFilter - Archivo aceptado');
             cb(null, true);
         } else {
+            console.log(' Multer fileFilter - Archivo rechazado');
             cb(new Error('Solo se permiten archivos HTM/HTML'), false);
         }
     }
