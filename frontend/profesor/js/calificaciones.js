@@ -607,7 +607,12 @@ async function guardarAlumno(event) {
                 body: JSON.stringify(data)
             });
             console.log('✅ Alumno creado exitosamente:', response);
-            mostrarToast('Alumno creado', 'success');
+            
+            if (response.ya_inscrito) {
+                mostrarToast(response.message, 'warning');
+            } else {
+                mostrarToast('Alumno creado', 'success');
+            }
         }
         
         document.getElementById('alumnoIdEdit').value = '';

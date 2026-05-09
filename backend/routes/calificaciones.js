@@ -54,13 +54,19 @@ router.use('/actualizar', express.json());
 router.use('/actualizar', express.urlencoded({ extended: true }));
 router.use('/calcular', express.json());
 router.use('/calcular', express.urlencoded({ extended: true }));
-router.use('/exportar', express.json());
-router.use('/exportar', express.urlencoded({ extended: true }));
-router.use('/guardar-calificaciones-alumno', express.json());
-router.use('/guardar-calificaciones-alumno', express.urlencoded({ extended: true }));
 
 // Rutas para profesores y administradores (solo funciones que existen)
-router.post('/upload', verificarRol(['profesor', 'administrador']), upload.single('archivo'), calificacionController.uploadFile);
+router.post('/upload', verificarRol(['profesor', 'administrador']), (req, res, next) => {
+    console.log(' Upload middleware - Headers:', req.headers);
+    console.log(' Upload middleware - Content-Type:', req.headers['content-type']);
+    console.log(' Upload middleware - Content-Length:', req.headers['content-length']);
+    next();
+}, upload.single('archivo'), (req, res, next) => {
+    console.log(' Upload middleware - Después de multer:');
+    console.log(' Upload middleware - req.file:', req.file ? 'EXISTS' : 'UNDEFINED');
+    console.log(' Upload middleware - req.body:', req.body);
+    next();
+}, calificacionController.uploadFile);
 router.get('/plantilla', verificarRol(['profesor', 'administrador']), calificacionController.getPlantilla);
 router.get('/archivos', verificarRol(['profesor', 'administrador']), calificacionController.getArchivos);
 router.get('/archivos/:id/descarga', verificarRol(['profesor', 'administrador']), calificacionController.descargarArchivoCalificacion);

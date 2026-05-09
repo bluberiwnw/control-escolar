@@ -777,10 +777,21 @@ const calificacionController = {
                     
                     if (materiaCheck.rows.length > 0) {
                         console.log('❌ Alumno ya está inscrito en esta materia');
+                        
+                        // Obtener información de la materia para mostrar mensaje más claro
+                        const materiaInfo = await pool.query(
+                            'SELECT nombre FROM materias WHERE id = $1',
+                            [materia_id]
+                        );
+                        
+                        const materiaNombre = materiaInfo.rows[0]?.nombre || 'esta materia';
+                        
                         return res.status(400).json({ 
-                            message: 'El alumno ya está inscrito en esta materia',
+                            message: `El alumno ya está inscrito en ${materiaNombre}`,
                             alumno: alumnoExistente,
-                            materia_id: materia_id
+                            materia_id: materia_id,
+                            materia_nombre: materiaNombre,
+                            ya_inscrito: true
                         });
                     }
                 }
