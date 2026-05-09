@@ -726,13 +726,27 @@ const calificacionController = {
         try {
             console.log('📡 createAlumno - Creando nuevo alumno');
             console.log('📡 createAlumno - Body recibido:', req.body);
+            console.log('📡 createAlumno - Body tipo:', typeof req.body);
+            console.log('📡 createAlumno - Body keys:', Object.keys(req.body || {}));
+            console.log('📡 createAlumno - Usuario en request:', req.usuario);
             
             // Verificar que el usuario exista y tenga permisos
             if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
+                console.log('❌ createAlumno - Usuario no autorizado:', req.usuario?.rol);
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
+            if (!req.body) {
+                console.log('❌ createAlumno - req.body es undefined o null');
+                return res.status(400).json({ 
+                    message: 'No se recibieron datos en el request body',
+                    received: req.body,
+                    contentType: req.headers['content-type']
+                });
+            }
+
             const { matricula, nombre, email, materia_id } = req.body;
+            console.log('📡 createAlumno - Datos extraídos:', { matricula, nombre, email, materia_id });
             
             if (!matricula || !nombre) {
                 return res.status(400).json({ 
