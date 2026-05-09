@@ -280,7 +280,6 @@ const calificacionController = {
                 console.log('❌ Estudiante no encontrado:', idNum);
                 return res.status(404).json({ message: 'Estudiante no encontrado' });
             }
-            }
 
             console.log('✅ Verificaciones de base de datos pasadas, actualizando estudiante...');
             
