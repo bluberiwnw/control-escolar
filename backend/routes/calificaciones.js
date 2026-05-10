@@ -19,7 +19,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    limits: { 
+        fileSize: 10 * 1024 * 1024, // 10MB
+        fieldSize: 10 * 1024 * 1024, // 10MB para campos
+        fields: 10, // máximo 10 campos
+        files: 1, // máximo 1 archivo
+        parts: 11 // máximo 11 partes (10 campos + 1 archivo)
+    },
     fileFilter: (req, file, cb) => {
         console.log(' Multer fileFilter - Archivo recibido:', {
             originalname: file.originalname,
@@ -50,23 +56,9 @@ router.use('/alumnos', express.json());
 router.use('/alumnos', express.urlencoded({ extended: true }));
 router.use('/ponderaciones', express.json());
 router.use('/ponderaciones', express.urlencoded({ extended: true }));
-router.use('/actualizar', express.json());
-router.use('/actualizar', express.urlencoded({ extended: true }));
-router.use('/calcular', express.json());
-router.use('/calcular', express.urlencoded({ extended: true }));
 
 // Rutas para profesores y administradores (solo funciones que existen)
-router.post('/upload', verificarRol(['profesor', 'administrador']), (req, res, next) => {
-    console.log(' Upload middleware - Headers:', req.headers);
-    console.log(' Upload middleware - Content-Type:', req.headers['content-type']);
-    console.log(' Upload middleware - Content-Length:', req.headers['content-length']);
-    next();
-}, upload.single('archivo'), (req, res, next) => {
-    console.log(' Upload middleware - Después de multer:');
-    console.log(' Upload middleware - req.file:', req.file ? 'EXISTS' : 'UNDEFINED');
-    console.log(' Upload middleware - req.body:', req.body);
-    next();
-}, calificacionController.uploadFile);
+router.post('/upload', verificarRol(['profesor', 'administrador']), upload.single('archivo'), calificacionController.uploadFile);
 router.get('/plantilla', verificarRol(['profesor', 'administrador']), calificacionController.getPlantilla);
 router.get('/archivos', verificarRol(['profesor', 'administrador']), calificacionController.getArchivos);
 router.get('/archivos/:id/descarga', verificarRol(['profesor', 'administrador']), calificacionController.descargarArchivoCalificacion);
