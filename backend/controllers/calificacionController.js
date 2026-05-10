@@ -52,32 +52,22 @@ const calificacionController = {
                 return res.status(400).json({ message: err.message });
             }
             
-            if (!req.file) {
+            if (!req.files || !req.files.archivo) {
                 console.error('❌ No se proporcionó archivo');
-                console.error('❌ req.file:', req.file);
+                console.error('❌ req.files:', req.files);
                 console.error('❌ req.body:', req.body);
                 console.error('❌ req.usuario:', req.usuario);
                 return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
             }
             
             try {
-                // Guardar archivo en disco desde memoria
-                const dir = path.join(__dirname, '../uploads');
-                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-                
-                const filename = Date.now() + '-' + req.file.originalname;
-                const filepath = path.join(dir, filename);
-                
-                fs.writeFileSync(filepath, req.file.buffer);
-                
-                console.log('📡 uploadFile - Archivo recibido:', {
-                    filename: filename,
-                    originalname: req.file.originalname,
-                    path: filepath,
-                    mimetype: req.file.mimetype,
-                    size: req.file.size,
-                    encoding: req.file.encoding,
-                    fieldname: req.file.fieldname
+                const archivo = req.files.archivo;
+                console.log('📡 uploadFile - Archivo recibido (connect-multiparty):', {
+                    originalFilename: archivo.originalFilename,
+                    path: archivo.path,
+                    size: archivo.size,
+                    type: archivo.type,
+                    name: archivo.name
                 });
                 
                 console.log('📡 uploadFile - Body recibido:', req.body);
@@ -85,9 +75,16 @@ const calificacionController = {
                 console.log('📡 uploadFile - Body keys:', Object.keys(req.body || {}));
                 console.log('📡 uploadFile - Usuario en request:', req.usuario);
                 
-                // Modificar req.file para que tenga la estructura esperada
-                req.file.filename = filename;
-                req.file.path = filepath;
+                // Crear req.file para mantener compatibilidad con el resto del código
+                req.file = {
+                    filename: path.basename(archivo.path),
+                    originalname: archivo.originalFilename,
+                    path: archivo.path,
+                    mimetype: archivo.type,
+                    size: archivo.size,
+                    encoding: '7bit',
+                    fieldname: 'archivo'
+                };
                 
                 // Verificar que req.body exista y limpiar datos
                 if (!req.body) {
@@ -689,10 +686,8 @@ const calificacionController = {
             const alumnosQuery = await pool.query(`
                 SELECT DISTINCT e.id, e.matricula, e.nombre, e.email
                 FROM estudiantes e
-                WHERE EXISTS (
-                    SELECT 1 FROM calificaciones 
-                    WHERE estudiante_id = e.id AND materia_id = $1
-                )
+                INNER JOIN materias_estudiantes me ON e.id = me.estudiante_id
+                WHERE me.materia_id = $1 AND me.activo = true
                 ORDER BY e.nombre
             `, [materia_id]);
             
