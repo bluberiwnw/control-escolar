@@ -435,7 +435,9 @@ async function cargarAlumnos() {
                 </tr>
             `;
         } else {
-            alumnos.forEach(alumno => {
+            console.log('🔄 cargarAlumnos - Procesando alumnos:', alumnos.length);
+            alumnos.forEach((alumno, index) => {
+                console.log(`🔄 cargarAlumnos - Procesando alumno ${index + 1}:`, alumno);
                 const calificacionColor = alumno.calificacion_final >= 9 ? 'success' : 
                                         alumno.calificacion_final >= 7 ? 'warning' : 'danger';
                 
@@ -517,7 +519,9 @@ async function cargarAlumnos() {
             </div>
         `;
 
+        console.log('🔄 cargarAlumnos - HTML generado:', html.length, 'caracteres');
         document.getElementById('alumnosTable').innerHTML = html;
+        console.log('✅ cargarAlumnos - HTML actualizado en DOM');
     } catch (error) {
         console.error('Error al cargar alumnos:', error);
         document.getElementById('alumnosTable').innerHTML = '<div class="alert alert-error">Error al cargar alumnos.</div>';
