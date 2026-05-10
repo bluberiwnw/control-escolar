@@ -52,15 +52,53 @@ const upload = multer({
 router.use(authMiddleware);
 
 // Body parser solo para rutas que no usan multer
-router.use('/alumnos', express.json());
-router.use('/alumnos', express.urlencoded({ extended: true }));
-router.use('/ponderaciones', express.json());
-router.use('/ponderaciones', express.urlencoded({ extended: true }));
-router.use('/actualizar', express.json());
-router.use('/actualizar', express.urlencoded({ extended: true }));
+router.use(express.json());
+router.use(express.urlencoded({ extended: true }));
 
 // Rutas para profesores y administradores (solo funciones que existen)
-router.post('/upload', verificarRol(['profesor', 'administrador']), upload.single('archivo'), calificacionController.uploadFile);
+router.post('/upload', verificarRol(['profesor', 'administrador']), (req, res, next) => {
+    console.log('🔍 DEBUG UPLOAD - Inicio middleware');
+    console.log('🔍 DEBUG UPLOAD - Headers:', {
+        'content-type': req.headers['content-type'],
+        'content-length': req.headers['content-length'],
+        'user-agent': req.headers['user-agent']
+    });
+    
+    // Intentar procesar con multer
+    upload.single('archivo')(req, res, (err) => {
+        if (err) {
+            console.error('❌ DEBUG UPLOAD - Error en multer:', err);
+            console.error('❌ DEBUG UPLOAD - Detalles:', {
+                name: err.name,
+                message: err.message,
+                code: err.code,
+                limit: err.limit,
+                field: err.field,
+                storageErrors: err.storageErrors
+            });
+            return res.status(400).json({ 
+                message: 'Error al procesar archivo: ' + err.message,
+                error: err.message,
+                details: err
+            });
+        }
+        
+        console.log('✅ DEBUG UPLOAD - Multer procesado correctamente');
+        console.log('🔍 DEBUG UPLOAD - req.file:', req.file ? 'EXISTS' : 'NULL');
+        console.log('🔍 DEBUG UPLOAD - req.body:', req.body ? 'EXISTS' : 'NULL');
+        
+        if (req.file) {
+            console.log('🔍 DEBUG UPLOAD - Archivo:', {
+                filename: req.file.filename,
+                originalname: req.file.originalname,
+                size: req.file.size,
+                mimetype: req.file.mimetype
+            });
+        }
+        
+        next();
+    });
+}, calificacionController.uploadFile);
 router.get('/plantilla', verificarRol(['profesor', 'administrador']), calificacionController.getPlantilla);
 router.get('/archivos', verificarRol(['profesor', 'administrador']), calificacionController.getArchivos);
 router.get('/archivos/:id/descarga', verificarRol(['profesor', 'administrador']), calificacionController.descargarArchivoCalificacion);
