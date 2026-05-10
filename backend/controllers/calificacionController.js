@@ -61,6 +61,32 @@ const calificacionController = {
             }
             
             try {
+                // Validar que el archivo sea HTM/HTML
+                const allowedMimes = ['text/html', 'text/htm'];
+                const allowedExtensions = ['.htm', '.html'];
+                const fileExtension = path.extname(req.file.originalname).toLowerCase();
+                
+                if (!allowedMimes.includes(req.file.mimetype) && !allowedExtensions.includes(fileExtension)) {
+                    console.error('❌ Tipo de archivo no permitido:', {
+                        mimetype: req.file.mimetype,
+                        extension: fileExtension,
+                        originalname: req.file.originalname
+                    });
+                    
+                    // Eliminar archivo no permitido
+                    if (fs.existsSync(req.file.path)) {
+                        fs.unlinkSync(req.file.path);
+                    }
+                    
+                    return res.status(400).json({ 
+                        message: 'Solo se permiten archivos HTM/HTML',
+                        received: {
+                            mimetype: req.file.mimetype,
+                            extension: fileExtension
+                        }
+                    });
+                }
+                
                 console.log('📡 uploadFile - Archivo recibido (diskStorage):', {
                     filename: req.file.filename,
                     originalname: req.file.originalname,

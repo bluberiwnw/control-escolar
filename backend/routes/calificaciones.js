@@ -20,32 +20,13 @@ const storage = multer.diskStorage({
 const upload = multer({ 
     storage: storage, // Usar diskStorage simple
     limits: { 
-        fileSize: 50 * 1024 * 1024, // 50MB
-        fieldSize: 50 * 1024 * 1024, // 50MB para campos
-        fields: 20, // máximo 20 campos
-        files: 1, // máximo 1 archivo
-        parts: 21 // máximo 21 partes (20 campos + 1 archivo)
-    },
-    fileFilter: (req, file, cb) => {
-        console.log(' Multer fileFilter - Archivo recibido:', {
-            originalname: file.originalname,
-            mimetype: file.mimetype,
-            size: file.size,
-            fieldname: file.fieldname
-        });
-        
-        const allowedMimes = ['text/html', 'text/htm'];
-        const allowedExtensions = ['.htm', '.html'];
-        const fileExtension = path.extname(file.originalname).toLowerCase();
-        
-        if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
-            console.log(' Multer fileFilter - Archivo aceptado');
-            cb(null, true);
-        } else {
-            console.log(' Multer fileFilter - Archivo rechazado');
-            cb(new Error('Solo se permiten archivos HTM/HTML'), false);
-        }
+        fileSize: 100 * 1024 * 1024, // 100MB
+        fieldSize: 100 * 1024 * 1024, // 100MB para campos
+        fields: 50, // máximo 50 campos
+        files: 5, // máximo 5 archivos
+        parts: 55 // máximo 55 partes (50 campos + 5 archivos)
     }
+    // Sin fileFilter para evitar errores de validación
 });
 
 // Middleware de autenticación para todas las rutas
