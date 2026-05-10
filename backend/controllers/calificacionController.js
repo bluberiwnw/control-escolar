@@ -61,7 +61,7 @@ const calificacionController = {
             }
             
             try {
-                console.log('📡 uploadFile - Archivo recibido (multer):', {
+                console.log('📡 uploadFile - Archivo recibido (diskStorage):', {
                     filename: req.file.filename,
                     originalname: req.file.originalname,
                     path: req.file.path,

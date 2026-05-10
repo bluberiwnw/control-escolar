@@ -18,13 +18,13 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ 
-    storage: multer.memoryStorage(), // Cambiar a memoryStorage para evitar problemas
+    storage: storage, // Usar diskStorage simple
     limits: { 
-        fileSize: 100 * 1024 * 1024, // 100MB
-        fieldSize: 100 * 1024 * 1024, // 100MB para campos
-        fields: 100, // máximo 100 campos
-        files: 10, // máximo 10 archivos
-        parts: 110 // máximo 110 partes (100 campos + 10 archivos)
+        fileSize: 50 * 1024 * 1024, // 50MB
+        fieldSize: 50 * 1024 * 1024, // 50MB para campos
+        fields: 20, // máximo 20 campos
+        files: 1, // máximo 1 archivo
+        parts: 21 // máximo 21 partes (20 campos + 1 archivo)
     },
     fileFilter: (req, file, cb) => {
         console.log(' Multer fileFilter - Archivo recibido:', {
