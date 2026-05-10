@@ -929,8 +929,50 @@ const calificacionController = {
 
             const { materia_id, ponderaciones } = req.body;
             
-            // Por ahora, retornar éxito simulado
-            res.json({ message: 'Ponderaciones guardadas correctamente' });
+            if (!materia_id || !ponderaciones) {
+                return res.status(400).json({ 
+                    message: 'Faltan parámetros requeridos',
+                    required: ['materia_id', 'ponderaciones'],
+                    received: { materia_id, ponderaciones }
+                });
+            }
+
+            // Verificar que la materia exista
+            const materiaCheck = await pool.query(
+                'SELECT id FROM materias WHERE id = $1',
+                [materia_id]
+            );
+
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada' });
+            }
+
+            // Eliminar ponderaciones existentes para esta materia
+            await pool.query(
+                'DELETE FROM ponderaciones WHERE materia_id = $1',
+                [materia_id]
+            );
+
+            // Insertar nuevas ponderaciones
+            const ponderacionesArray = Object.entries(ponderaciones).map(([tipo, peso]) => ({
+                materia_id: parseInt(materia_id),
+                tipo,
+                peso: parseFloat(peso)
+            }));
+
+            for (const ponderacion of ponderacionesArray) {
+                await pool.query(
+                    `INSERT INTO ponderaciones (materia_id, tipo, peso) 
+                     VALUES ($1, $2, $3)`,
+                    [ponderacion.materia_id, ponderacion.tipo, ponderacion.peso]
+                );
+            }
+
+            console.log('✅ Ponderaciones guardadas:', ponderacionesArray);
+            res.json({ 
+                message: 'Ponderaciones guardadas correctamente',
+                ponderaciones: ponderacionesArray
+            });
             
         } catch (error) {
             console.error('❌ Error en guardarPonderaciones:', error);
@@ -949,15 +991,32 @@ const calificacionController = {
 
             const { materia_id } = req.params;
             
-            // Por ahora, retornar ponderaciones por defecto
-            const ponderaciones = {
-                tarea: 20,
-                examen: 30,
-                participacion: 10,
-                proyecto: 25,
-                practica: 15
-            };
-            
+            // Obtener ponderaciones de la base de datos
+            const ponderacionesQuery = await pool.query(
+                'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                [materia_id]
+            );
+
+            // Si no hay ponderaciones guardadas, retornar valores por defecto
+            if (ponderacionesQuery.rows.length === 0) {
+                const defaultPonderaciones = {
+                    tarea: 20,
+                    examen: 30,
+                    participacion: 10,
+                    proyecto: 25,
+                    practica: 15
+                };
+                console.log('📡 getPonderaciones - Usando ponderaciones por defecto');
+                return res.json(defaultPonderaciones);
+            }
+
+            // Convertir a objeto
+            const ponderaciones = {};
+            ponderacionesQuery.rows.forEach(row => {
+                ponderaciones[row.tipo] = parseFloat(row.peso);
+            });
+
+            console.log('✅ Ponderaciones obtenidas:', ponderaciones);
             res.json(ponderaciones);
             
         } catch (error) {
