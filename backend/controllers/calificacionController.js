@@ -173,18 +173,18 @@ const calificacionController = {
                 console.log('✅ Materia verificada:', materiaCheck.rows[0].nombre);
 
                 // Validar que el archivo sea un HTM/HTML válido
-                const allowedMimes = ['text/html', 'text/htm'];
-                const allowedExtensions = ['.htm', '.html'];
-                const fileExtension = path.extname(req.file.originalname).toLowerCase();
+                const allowedMimes2 = ['text/html', 'text/htm'];
+                const allowedExtensions2 = ['.htm', '.html'];
+                const fileExtension2 = path.extname(req.file.originalname).toLowerCase();
                 
-                if (!allowedMimes.includes(req.file.mimetype) && !allowedExtensions.includes(fileExtension)) {
-                    console.log('❌ Tipo de archivo no permitido:', req.file.mimetype, fileExtension);
+                if (!allowedMimes2.includes(req.file.mimetype) && !allowedExtensions2.includes(fileExtension2)) {
+                    console.log('❌ Tipo de archivo no permitido:', req.file.mimetype, fileExtension2);
                     if (req.file && fs.existsSync(req.file.path)) {
                         fs.unlinkSync(req.file.path);
                     }
                     return res.status(400).json({ 
                         message: 'Tipo de archivo no permitido. Solo archivos HTM/HTML',
-                        received: { mimetype: req.file.mimetype, extension: fileExtension }
+                        received: { mimetype: req.file.mimetype, extension: fileExtension2 }
                     });
                 }
 
