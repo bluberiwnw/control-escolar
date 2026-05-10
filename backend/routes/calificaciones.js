@@ -56,33 +56,11 @@ router.use('/alumnos', express.json());
 router.use('/alumnos', express.urlencoded({ extended: true }));
 router.use('/ponderaciones', express.json());
 router.use('/ponderaciones', express.urlencoded({ extended: true }));
+router.use('/actualizar', express.json());
+router.use('/actualizar', express.urlencoded({ extended: true }));
 
 // Rutas para profesores y administradores (solo funciones que existen)
-router.post('/upload', verificarRol(['profesor', 'administrador']), (req, res, next) => {
-    console.log('🔍 Upload middleware - Inicio');
-    console.log('🔍 Upload middleware - Content-Type:', req.headers['content-type']);
-    console.log('🔍 Upload middleware - Content-Length:', req.headers['content-length']);
-    
-    // Usar express.urlencoded para parsear multipart
-    const express = require('express');
-    const bodyParser = require('body-parser');
-    
-    // Middleware personalizado para manejar multipart
-    const multipart = require('connect-multiparty')();
-    
-    multipart(req, res, (err) => {
-        if (err) {
-            console.error('❌ Error en multipart:', err);
-            return res.status(400).json({ message: 'Error al procesar archivo: ' + err.message });
-        }
-        
-        console.log('✅ Upload middleware - Multipart procesado');
-        console.log('🔍 Upload middleware - req.files:', req.files);
-        console.log('🔍 Upload middleware - req.body:', req.body);
-        
-        next();
-    });
-}, calificacionController.uploadFile);
+router.post('/upload', verificarRol(['profesor', 'administrador']), upload.single('archivo'), calificacionController.uploadFile);
 router.get('/plantilla', verificarRol(['profesor', 'administrador']), calificacionController.getPlantilla);
 router.get('/archivos', verificarRol(['profesor', 'administrador']), calificacionController.getArchivos);
 router.get('/archivos/:id/descarga', verificarRol(['profesor', 'administrador']), calificacionController.descargarArchivoCalificacion);

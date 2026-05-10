@@ -52,39 +52,29 @@ const calificacionController = {
                 return res.status(400).json({ message: err.message });
             }
             
-            if (!req.files || !req.files.archivo) {
+            if (!req.file) {
                 console.error('❌ No se proporcionó archivo');
-                console.error('❌ req.files:', req.files);
+                console.error('❌ req.file:', req.file);
                 console.error('❌ req.body:', req.body);
                 console.error('❌ req.usuario:', req.usuario);
                 return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
             }
             
             try {
-                const archivo = req.files.archivo;
-                console.log('📡 uploadFile - Archivo recibido (connect-multiparty):', {
-                    originalFilename: archivo.originalFilename,
-                    path: archivo.path,
-                    size: archivo.size,
-                    type: archivo.type,
-                    name: archivo.name
+                console.log('📡 uploadFile - Archivo recibido (multer):', {
+                    filename: req.file.filename,
+                    originalname: req.file.originalname,
+                    path: req.file.path,
+                    mimetype: req.file.mimetype,
+                    size: req.file.size,
+                    encoding: req.file.encoding,
+                    fieldname: req.file.fieldname
                 });
                 
                 console.log('📡 uploadFile - Body recibido:', req.body);
                 console.log('📡 uploadFile - Body tipo:', typeof req.body);
                 console.log('📡 uploadFile - Body keys:', Object.keys(req.body || {}));
                 console.log('📡 uploadFile - Usuario en request:', req.usuario);
-                
-                // Crear req.file para mantener compatibilidad con el resto del código
-                req.file = {
-                    filename: path.basename(archivo.path),
-                    originalname: archivo.originalFilename,
-                    path: archivo.path,
-                    mimetype: archivo.type,
-                    size: archivo.size,
-                    encoding: '7bit',
-                    fieldname: 'archivo'
-                };
                 
                 // Verificar que req.body exista y limpiar datos
                 if (!req.body) {
