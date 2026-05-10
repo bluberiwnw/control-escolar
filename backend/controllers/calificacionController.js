@@ -61,10 +61,19 @@ const calificacionController = {
             }
             
             try {
+                // Guardar archivo en disco desde memoria
+                const dir = path.join(__dirname, '../uploads');
+                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                
+                const filename = Date.now() + '-' + req.file.originalname;
+                const filepath = path.join(dir, filename);
+                
+                fs.writeFileSync(filepath, req.file.buffer);
+                
                 console.log('📡 uploadFile - Archivo recibido:', {
-                    filename: req.file.filename,
+                    filename: filename,
                     originalname: req.file.originalname,
-                    path: req.file.path,
+                    path: filepath,
                     mimetype: req.file.mimetype,
                     size: req.file.size,
                     encoding: req.file.encoding,
@@ -75,6 +84,10 @@ const calificacionController = {
                 console.log('📡 uploadFile - Body tipo:', typeof req.body);
                 console.log('📡 uploadFile - Body keys:', Object.keys(req.body || {}));
                 console.log('📡 uploadFile - Usuario en request:', req.usuario);
+                
+                // Modificar req.file para que tenga la estructura esperada
+                req.file.filename = filename;
+                req.file.path = filepath;
                 
                 // Verificar que req.body exista y limpiar datos
                 if (!req.body) {
