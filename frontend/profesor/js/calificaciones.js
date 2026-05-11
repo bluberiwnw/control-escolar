@@ -347,6 +347,12 @@ async function previsualizarArchivo(input) {
         };
         
         document.getElementById('previewTable').innerHTML = html;
+        
+        // Mostrar controles de proceso HTM si hay datos procesados
+        if (dataRows.length > 0) {
+            document.getElementById('procesoHTMControls').style.display = 'block';
+        }
+        
         console.log('📊 Datos procesados:', window.processedData);
     };
     
@@ -997,7 +1003,75 @@ function cancelarProcesoHTM() {
     document.getElementById('fileInput').value = '';
     window.tempFile = null;
     window.processedData = null;
+    document.getElementById('procesoHTMControls').style.display = 'none';
     mostrarToast('Proceso HTM cancelado', 'info');
+}
+
+async function subirDefinitivamenteHTM() {
+    try {
+        if (!window.tempFile || !window.processedData) {
+            mostrarToast('No hay archivo procesado para subir', 'error');
+            return;
+        }
+        
+        const materia_id = document.getElementById('materiaSelect').value;
+        if (!materia_id) {
+            mostrarToast('Seleccione una materia', 'error');
+            return;
+        }
+        
+        // Confirmar subida definitiva
+        const confirmacion = confirm(`¿Estás seguro de que quieres subir definitivamente las calificaciones de este archivo HTM?\n\nEsta acción:\n• Procesará todos los alumnos del archivo\n• Aplicará las ponderaciones configuradas\n• Guardará las calificaciones en el sistema\n• No se podrá deshacer\n\n¿Deseas continuar?`);
+        
+        if (!confirmacion) {
+            return;
+        }
+        
+        console.log('📤 Subiendo definitivamente archivo HTM...');
+        
+        // Enviar los datos procesados directamente
+        const payload = {
+            materia_id: materia_id,
+            estudiantes: window.processedData.rows,
+            archivo_original: window.tempFile.name
+        };
+        
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${window.API_URL}/calificaciones/procesar-datos`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
+            
+            // Limpiar controles
+            document.getElementById('previewTable').innerHTML = '';
+            document.getElementById('procesoHTMControls').style.display = 'none';
+            window.tempFile = null;
+            window.processedData = null;
+            document.getElementById('fileInput').value = '';
+            
+            // Recargar datos
+            await cargarAlumnos();
+            await cargarHistorial();
+            
+            mostrarToast('Archivo HTM subido definitivamente', 'success');
+        } else {
+            document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir archivo HTM'}</div>`;
+            mostrarToast(data.message || 'Error al subir archivo', 'error');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al subir definitivamente HTM:', error);
+        mostrarToast(error.message || 'Error al subir archivo', 'error');
+    }
 }
 
 async function enviarDefinitivamente() {
