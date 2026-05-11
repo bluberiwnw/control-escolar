@@ -67,6 +67,9 @@ router.post('/guardar-calificaciones-alumno', verificarRol(['profesor', 'adminis
 // Rutas para procesamiento definitivo HTM
 router.post('/procesar-definitivo', verificarRol(['profesor', 'administrador']), calificacionController.procesarDefinitivo);
 
+// Ruta para envío definitivo de calificaciones
+router.post('/enviar-definitivo/:materia_id', verificarRol(['profesor', 'administrador']), calificacionController.enviarDefinitivo);
+
 // Rutas para alumnos (separadas para no tener conflicto de roles)
 router.get('/alumno/todas', verificarRol(['alumno']), calificacionController.getAllCalificacionesAlumno);
 router.delete('/alumno/materia/:materia_id/baja', verificarRol(['alumno']), calificacionController.darseDeBajaMateria);

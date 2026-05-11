@@ -999,3 +999,72 @@ function cancelarProcesoHTM() {
     window.processedData = null;
     mostrarToast('Proceso HTM cancelado', 'info');
 }
+
+async function enviarDefinitivamente() {
+    try {
+        const materia_id = document.getElementById('materiaSelect').value;
+        
+        if (!materia_id) {
+            mostrarToast('Por favor selecciona una materia', 'warning');
+            return;
+        }
+        
+        // Confirmar envío definitivo
+        const confirmacion = confirm(`¿Estás seguro de que quieres enviar definitivamente las calificaciones de esta materia?\n\nEsta acción:\n• Bloqueará la edición de calificaciones\n• Sincronizará con el rol administrador\n• No se podrá deshacer\n\n¿Deseas continuar?`);
+        
+        if (!confirmacion) {
+            return;
+        }
+        
+        console.log('🔒 Enviando calificaciones definitivamente para materia:', materia_id);
+        
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${window.API_URL}/calificaciones/enviar-definitivo/${materia_id}`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            mostrarToast(`${data.message}`, 'success');
+            console.log('✅ Calificaciones enviadas definitivamente:', data);
+            
+            // Deshabilitar botones de edición
+            document.getElementById('btnEnviarDefinitivamente').disabled = true;
+            document.getElementById('btnEnviarDefinitivamente').innerHTML = '<i class="fas fa-lock"></i> Enviado Definitivamente';
+            
+            // Ocultar botones de guardar ponderaciones y calcular
+            const btnGuardar = document.querySelector('button[onclick="guardarPonderaciones()"]');
+            const btnCalcular = document.querySelector('button[onclick="calcularCalificaciones()"]');
+            
+            if (btnGuardar) {
+                btnGuardar.disabled = true;
+                btnGuardar.style.opacity = '0.5';
+            }
+            
+            if (btnCalcular) {
+                btnCalcular.disabled = true;
+                btnCalcular.style.opacity = '0.5';
+            }
+            
+            // Mostrar mensaje de estado
+            document.getElementById('mensajePonderaciones').innerHTML = 
+                '<div class="alert alert-success"><i class="fas fa-lock"></i> Calificaciones enviadas definitivamente. Ya no se pueden modificar.</div>';
+            
+            // Recargar la lista de alumnos para mostrar el estado bloqueado
+            await cargarAlumnos();
+            
+        } else {
+            mostrarToast(data.message || 'Error al enviar calificaciones definitivamente', 'error');
+            console.error('❌ Error al enviar definitivamente:', data);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al enviar calificaciones definitivamente:', error);
+        mostrarToast(error.message || 'Error al enviar calificaciones definitivamente', 'error');
+    }
+}

@@ -1364,13 +1364,208 @@ const calificacionController = {
             }
 
             const { materia_id } = req.params;
+            const ponderaciones = req.body;
             
-            // Por ahora, retornar éxito simulado
-            res.json({ message: 'Calificaciones calculadas correctamente', calculados: 0 });
+            console.log('📡 calcularCalificaciones - materia_id:', materia_id);
+            console.log('📡 calcularCalificaciones - ponderaciones recibidas:', ponderaciones);
+            
+            // Validar que materia_id sea un número válido
+            const materiaIdNum = parseInt(materia_id);
+            if (isNaN(materiaIdNum) || materiaIdNum <= 0) {
+                return res.status(400).json({ 
+                    message: 'Materia ID inválido',
+                    received: { materia_id }
+                });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materiaIdNum, req.usuario.id]
+            );
+            
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            console.log('✅ Materia verificada:', materiaCheck.rows[0].nombre);
+            
+            // Obtener todos los alumnos inscritos en la materia
+            const alumnosQuery = await pool.query(`
+                SELECT DISTINCT e.id, e.matricula, e.nombre
+                FROM estudiantes e
+                INNER JOIN materias_estudiantes me ON e.id = me.estudiante_id
+                WHERE me.materia_id = $1 AND me.activo = true
+                ORDER BY e.nombre
+            `, [materiaIdNum]);
+            
+            console.log(`📊 Encontrados ${alumnosQuery.rows.length} alumnos en materia ${materiaIdNum}`);
+            
+            let calculados = 0;
+            
+            // Para cada alumno, recalcular calificaciones usando las ponderaciones recibidas
+            for (const alumno of alumnosQuery.rows) {
+                try {
+                    // Obtener todas las calificaciones del alumno
+                    const calificacionesQuery = await pool.query(`
+                        SELECT tipo, calificacion
+                        FROM calificaciones 
+                        WHERE estudiante_id = $1 AND materia_id = $2 AND tipo != 'final'
+                    `, [alumno.id, materiaIdNum]);
+                    
+                    if (calificacionesQuery.rows.length > 0) {
+                        // Calcular calificación final usando las ponderaciones recibidas
+                        let calificacionFinal = 0;
+                        let totalPeso = 0;
+                        
+                        calificacionesQuery.rows.forEach(cal => {
+                            const peso = ponderaciones[cal.tipo] || 0;
+                            if (peso > 0) {
+                                calificacionFinal += (cal.calificacion * peso) / 100;
+                                totalPeso += peso;
+                            }
+                        });
+                        
+                        // Normalizar si el total de pesos no es 100
+                        if (totalPeso > 0 && totalPeso !== 100) {
+                            calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                        }
+                        
+                        // Redondear a 2 decimales
+                        calificacionFinal = Math.round(calificacionFinal * 100) / 100;
+                        
+                        // Actualizar o insertar calificación final
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, updated_at)
+                            VALUES ($1, $2, 'final', $3, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = $3, updated_at = NOW()
+                        `, [alumno.id, materiaIdNum, calificacionFinal]);
+                        
+                        console.log(`✅ Calificación final actualizada: ${alumno.nombre} - ${calificacionFinal}`);
+                        calculados++;
+                    }
+                    
+                } catch (error) {
+                    console.error(`❌ Error calculando calificación para alumno ${alumno.id}:`, error);
+                }
+            }
+            
+            console.log(`✅ Calificaciones calculadas para ${calculados} alumnos`);
+            
+            res.json({ 
+                message: 'Calificaciones calculadas correctamente', 
+                calculados,
+                materia: materiaCheck.rows[0].nombre,
+                total_alumnos: alumnosQuery.rows.length
+            });
             
         } catch (error) {
             console.error('❌ Error en calcularCalificaciones:', error);
             res.status(500).json({ message: 'Error al calcular calificaciones', error: error.message });
+        }
+    },
+
+    async enviarDefinitivo(req, res) {
+        try {
+            console.log('📡 enviarDefinitivo - Enviando calificaciones definitivamente');
+            
+            // Verificar que el usuario exista y tenga permisos
+            if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
+                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
+            }
+
+            const { materia_id } = req.params;
+            
+            // Validar que materia_id sea un número válido
+            const materiaIdNum = parseInt(materia_id);
+            if (isNaN(materiaIdNum) || materiaIdNum <= 0) {
+                return res.status(400).json({ 
+                    message: 'Materia ID inválido',
+                    received: { materia_id }
+                });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materiaIdNum, req.usuario.id]
+            );
+            
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            console.log('✅ Materia verificada:', materiaCheck.rows[0].nombre);
+            
+            // Verificar si ya fue enviada definitivamente
+            const estadoCheck = await pool.query(
+                'SELECT definitiva FROM materias WHERE id = $1',
+                [materiaIdNum]
+            );
+            
+            if (estadoCheck.rows[0].definitiva) {
+                return res.status(400).json({ 
+                    message: 'Las calificaciones de esta materia ya fueron enviadas definitivamente' 
+                });
+            }
+            
+            // Marcar materia como definitiva
+            await pool.query(
+                'UPDATE materias SET definitiva = true, fecha_definitiva = NOW() WHERE id = $1',
+                [materiaIdNum]
+            );
+            
+            // Obtener todos los alumnos para registrar el envío
+            const alumnosQuery = await pool.query(`
+                SELECT e.id, e.matricula, e.nombre, c.calificacion as calificacion_final
+                FROM estudiantes e
+                INNER JOIN materias_estudiantes me ON e.id = me.estudiante_id
+                LEFT JOIN calificaciones c ON e.id = c.estudiante_id AND c.materia_id = $1 AND c.tipo = 'final'
+                WHERE me.materia_id = $1 AND me.activo = true
+                ORDER BY e.nombre
+            `, [materiaIdNum]);
+            
+            console.log(`📊 Procesando ${alumnosQuery.rows.length} alumnos para envío definitivo`);
+            
+            // Sincronizar con tabla global de calificaciones (para rol admin)
+            for (const alumno of alumnosQuery.rows) {
+                // Insertar o actualizar en tabla global de calificaciones
+                await pool.query(`
+                    INSERT INTO calificaciones_globales (
+                        estudiante_id, materia_id, profesor_id, 
+                        calificacion_final, fecha_envio, sincronizado_admin
+                    ) VALUES ($1, $2, $3, $4, NOW(), true)
+                    ON CONFLICT (estudiante_id, materia_id) 
+                    DO UPDATE SET 
+                        calificacion_final = EXCLUDED.calificacion_final,
+                        fecha_envio = EXCLUDED.fecha_envio,
+                        sincronizado_admin = EXCLUDED.sincronizado_admin
+                `, [
+                    alumno.id, 
+                    materiaIdNum, 
+                    req.usuario.id, 
+                    alumno.calificacion_final || 0
+                ]);
+                
+                console.log(`✅ Sincronizado: ${alumno.nombre} - ${alumno.calificacion_final || 0}`);
+            }
+            
+            console.log(`✅ Calificaciones enviadas definitivamente para materia ${materiaCheck.rows[0].nombre}`);
+            
+            res.json({ 
+                message: 'Calificaciones enviadas definitivamente y sincronizadas con el rol administrador',
+                materia: materiaCheck.rows[0].nombre,
+                alumnos_sincronizados: alumnosQuery.rows.length,
+                fecha_envio: new Date().toISOString()
+            });
+            
+        } catch (error) {
+            console.error('❌ Error en enviarDefinitivo:', error);
+            res.status(500).json({ 
+                message: 'Error al enviar calificaciones definitivamente', 
+                error: error.message 
+            });
         }
     },
 
