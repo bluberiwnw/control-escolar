@@ -247,12 +247,19 @@ async function previsualizarArchivo(input) {
             rowData['Matrícula'] = idAlumno;
             rowData['Nombre'] = nombreAlumno;
             
-            rowData['Tareas'] = 0;
-            rowData['Exámenes'] = 0;
-            rowData['Participación'] = 0;
-            rowData['Proyectos'] = 0;
-            rowData['Prácticas'] = 0;
-            rowData['Calificación Final'] = 0;
+            // Extraer calificaciones de las celdas restantes
+            let calificacionIndex = 7; // Empezar después de las columnas básicas
+            rowData['Tareas'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
+            calificacionIndex++;
+            rowData['Exámenes'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
+            calificacionIndex++;
+            rowData['Participación'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
+            calificacionIndex++;
+            rowData['Proyectos'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
+            calificacionIndex++;
+            rowData['Prácticas'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
+            calificacionIndex++;
+            rowData['Calificación Final'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
             
             if (idAlumno || nombreAlumno) {
                 dataRows.push(rowData);
@@ -263,10 +270,18 @@ async function previsualizarArchivo(input) {
                     'Email': email,
                     'Status': statusInscripcion,
                     'Nivel': nivel,
-                    'Créditos': creditos
+                    'Créditos': creditos,
+                    'Tareas': rowData['Tareas'],
+                    'Exámenes': rowData['Exámenes'],
+                    'Participación': rowData['Participación'],
+                    'Proyectos': rowData['Proyectos'],
+                    'Prácticas': rowData['Prácticas'],
+                    'Calificación Final': rowData['Calificación Final'],
+                    'Total celdas': cells.length
                 });
             } else {
                 console.log(`⚠️ Fila ${i} ignorada: no tiene ID ni nombre válidos`);
+                console.log(`🔍 Contenido de celdas ignoradas:`, cells.map(cell => cell.textContent.trim()));
             }
         }
         
@@ -299,9 +314,11 @@ async function previsualizarArchivo(input) {
                             </button>
                         </td>`;
                     } else if (header === 'Calificación Final') {
-                        html += `<td><span class="badge badge-info">0.00</span></td>`;
+                        const valorFinal = row[header] || 0;
+                        html += `<td><span class="badge badge-info">${parseFloat(valorFinal).toFixed(2)}</span></td>`;
                     } else {
-                        html += `<td><input type="number" value="0" min="0" max="10" step="0.1" disabled style="width: 80px;"></td>`;
+                        const valorCalificacion = row[header] || 0;
+                        html += `<td><input type="number" value="${parseFloat(valorCalificacion).toFixed(1)}" min="0" max="10" step="0.1" disabled style="width: 80px;"></td>`;
                     }
                 } else {
                     html += `<td>${row[header] || ''}</td>`;
