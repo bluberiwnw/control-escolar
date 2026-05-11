@@ -354,7 +354,7 @@ async function previsualizarArchivo(input) {
 }
 
 async function confirmarSubida() {
-    if (!window.tempFile) {
+    if (!window.tempFile || !window.processedData) {
         mostrarToast('No hay archivo para procesar', 'error');
         return;
     }
@@ -364,18 +364,23 @@ async function confirmarSubida() {
         return;
     }
 
-    const formData = new FormData();
-    formData.append('archivo', window.tempFile);
-    formData.append('materia_id', materia_id);
+    // Enviar los datos procesados en lugar del archivo original
+    const payload = {
+        materia_id: materia_id,
+        estudiantes: window.processedData.rows,
+        archivo_original: window.tempFile.name
+    };
+
+    console.log('📤 Enviando datos procesados:', payload);
 
     const token = localStorage.getItem('token');
-    const res = await fetch(`${window.API_URL}/calificaciones/upload`, {
+    const res = await fetch(`${window.API_URL}/calificaciones/procesar-datos`, {
         method: 'POST',
         headers: { 
-            'Authorization': `Bearer ${token}`
-            // No especificar Content-Type para FormData, el navegador lo establece automáticamente
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
         },
-        body: formData
+        body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (res.ok) {
