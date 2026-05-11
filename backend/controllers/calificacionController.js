@@ -872,35 +872,98 @@ const calificacionController = {
         try {
             console.log('📡 deleteAlumno - Eliminando alumno');
             
-            // Verificar que el usuario exista y tenga permisos
-            if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
-                return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
-            }
-
             const { id } = req.params;
             
-            // Verificar si el alumno existe
+            // Verificar que el usuario exista y tenga permisos
+            if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
+                return res.status(403).json({ message: 'No tienes permisos para eliminar alumnos' });
+            }
+            
+            // Verificar que el alumno exista
             const alumnoCheck = await pool.query(
-                'SELECT id FROM estudiantes WHERE id = $1',
+                'SELECT id, nombre FROM estudiantes WHERE id = $1',
                 [id]
             );
             
             if (alumnoCheck.rows.length === 0) {
                 return res.status(404).json({ message: 'Alumno no encontrado' });
             }
-
-            // Eliminar calificaciones del alumno
-            await pool.query('DELETE FROM calificaciones WHERE estudiante_id = $1', [id]);
             
-            // Eliminar alumno
-            await pool.query('DELETE FROM estudiantes WHERE id = $1', [id]);
-
-            console.log('✅ Alumno eliminado:', id);
-            res.json({ message: 'Alumno eliminado correctamente' });
+            // Eliminar inscripciones del alumno (se eliminarán en cascada las calificaciones)
+            await pool.query(
+                'DELETE FROM materias_estudiantes WHERE estudiante_id = $1',
+                [id]
+            );
+            
+            console.log(`✅ Alumno eliminado: ${alumnoCheck.rows[0].nombre}`);
+            
+            res.json({ 
+                message: 'Alumno eliminado correctamente',
+                alumno: alumnoCheck.rows[0]
+            });
             
         } catch (error) {
             console.error('❌ Error en deleteAlumno:', error);
             res.status(500).json({ message: 'Error al eliminar alumno', error: error.message });
+        }
+    },
+
+    async deleteAllAlumnos(req, res) {
+        try {
+            console.log('📡 deleteAllAlumnos - Eliminando todos los alumnos de una materia');
+            
+            const { materia_id } = req.params;
+            
+            // Verificar que el usuario exista y tenga permisos
+            if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
+                return res.status(403).json({ message: 'No tienes permisos para eliminar alumnos' });
+            }
+            
+            // Validar materia_id
+            const materiaIdNum = parseInt(materia_id);
+            if (isNaN(materiaIdNum) || materiaIdNum <= 0) {
+                return res.status(400).json({ message: 'ID de materia inválido' });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materiaIdNum, req.usuario.id]
+            );
+            
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            // Contar alumnos antes de eliminar
+            const countQuery = await pool.query(
+                'SELECT COUNT(*) as total FROM materias_estudiantes WHERE materia_id = $1 AND activo = true',
+                [materiaIdNum]
+            );
+            
+            const totalAlumnos = parseInt(countQuery.rows[0].total);
+            
+            if (totalAlumnos === 0) {
+                return res.status(400).json({ message: 'No hay alumnos inscritos en esta materia' });
+            }
+            
+            // Eliminar todas las inscripciones de la materia (se eliminarán en cascada las calificaciones)
+            await pool.query(
+                'DELETE FROM materias_estudiantes WHERE materia_id = $1',
+                [materiaIdNum]
+            );
+            
+            console.log(`✅ Eliminados ${totalAlumnos} alumnos de la materia ${materiaCheck.rows[0].nombre}`);
+            
+            res.json({ 
+                message: 'Todos los alumnos eliminados correctamente',
+                materia: materiaCheck.rows[0],
+                total_eliminados: totalAlumnos
+            });
+            
+        } catch (error) {
+            console.error('❌ Error en deleteAllAlumnos:', error);
+            res.status(500).json({ message: 'Error al eliminar todos los alumnos', error: error.message });
         }
     },
 
@@ -1558,7 +1621,20 @@ const calificacionController = {
                         );
                     }
                     
-                    // Guardar calificaciones
+                    // Obtener ponderaciones de la materia para aplicarlas
+                    const ponderacionesQuery = await pool.query(
+                        'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                        [materiaId]
+                    );
+                    
+                    const ponderaciones = {};
+                    ponderacionesQuery.rows.forEach(row => {
+                        ponderaciones[row.tipo] = row.peso;
+                    });
+                    
+                    console.log('📊 Ponderaciones encontradas para materia:', ponderaciones);
+                    
+                    // Guardar calificaciones aplicando ponderaciones
                     const calificaciones = [
                         { tipo: 'tarea', calificacion: estudiante.tareas },
                         { tipo: 'examen', calificacion: estudiante.examenes },
@@ -1567,15 +1643,47 @@ const calificacionController = {
                         { tipo: 'practica', calificacion: estudiante.practicas }
                     ];
                     
+                    let calificacionFinal = 0;
+                    let totalPeso = 0;
+                    
                     for (const cal of calificaciones) {
-                        if (cal.calificacion > 0) {
-                            await pool.query(`
-                                INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
-                                VALUES ($1, $2, $3, $4, NOW())
-                                ON CONFLICT (estudiante_id, materia_id, tipo) 
-                                DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
-                            `, [estudianteId, materiaId, cal.tipo, cal.calificacion]);
+                        // Guardar cada calificación individual
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                            VALUES ($1, $2, $3, $4, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        `, [estudianteId, materiaId, cal.tipo, cal.calificacion]);
+                        
+                        // Calcular contribución a la calificación final usando ponderaciones
+                        const peso = ponderaciones[cal.tipo] || 0;
+                        if (peso > 0) {
+                            calificacionFinal += (cal.calificacion * peso) / 100;
+                            totalPeso += peso;
                         }
+                        
+                        console.log(`✅ Calificación guardada: ${estudiante.nombre} - ${cal.tipo}: ${cal.calificacion} (peso: ${peso}%)`);
+                    }
+                    
+                    // Calcular y guardar calificación final
+                    if (totalPeso > 0) {
+                        // Normalizar si el total de pesos no es 100
+                        if (totalPeso !== 100) {
+                            calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                        }
+                        
+                        // Redondear a 2 decimales
+                        calificacionFinal = Math.round(calificacionFinal * 100) / 100;
+                        
+                        // Guardar calificación final
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                            VALUES ($1, $2, 'final', $3, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        `, [estudianteId, materiaId, calificacionFinal]);
+                        
+                        console.log(`✅ Calificación final calculada: ${estudiante.nombre} - ${calificacionFinal}`);
                     }
                     
                 } catch (error) {

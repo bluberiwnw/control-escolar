@@ -919,6 +919,57 @@ async function exportarExcel() {
     }
 }
 
+// Función para eliminar todos los alumnos de una materia
+async function eliminarTodosAlumnos() {
+    try {
+        const materia_id = document.getElementById('materiaSelect').value;
+        
+        if (!materia_id) {
+            mostrarToast('Por favor selecciona una materia', 'warning');
+            return;
+        }
+        
+        // Confirmar eliminación
+        const confirmacion = confirm(`¿Estás seguro de que quieres eliminar TODOS los alumnos de esta materia?\n\nEsta acción eliminará:\n• Todas las inscripciones\n• Todas las calificaciones\n• No se puede deshacer`);
+        
+        if (!confirmacion) {
+            return;
+        }
+        
+        console.log('🗑️ Eliminando todos los alumnos de la materia:', materia_id);
+        
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${window.API_URL}/calificaciones/materia/${materia_id}/alumnos`, {
+            method: 'DELETE',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            mostrarToast(`${data.message}: ${data.total_eliminados} alumnos eliminados`, 'success');
+            console.log('✅ Todos los alumnos eliminados:', data);
+            
+            // Recargar la lista de alumnos
+            await cargarAlumnos();
+            
+            // Limpiar tabla de vista previa si existe
+            document.getElementById('previewTable').innerHTML = '';
+            
+        } else {
+            mostrarToast(data.message || 'Error al eliminar alumnos', 'error');
+            console.error('❌ Error al eliminar todos los alumnos:', data);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al eliminar todos los alumnos:', error);
+        mostrarToast(error.message || 'Error al eliminar alumnos', 'error');
+    }
+}
+
 function cancelarProcesoHTM() {
     document.getElementById('previewTable').innerHTML = '';
     document.getElementById('fileInput').value = '';

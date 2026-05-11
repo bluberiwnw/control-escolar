@@ -48,6 +48,7 @@ router.get('/materia/:materia_id/alumnos', verificarRol(['profesor', 'administra
 router.post('/alumnos', verificarRol(['profesor', 'administrador']), calificacionController.createAlumno);
 router.put('/alumnos/:id', verificarRol(['profesor', 'administrador']), calificacionController.updateAlumno);
 router.delete('/alumnos/:id', verificarRol(['profesor', 'administrador']), calificacionController.deleteAlumno);
+router.delete('/materia/:materia_id/alumnos', verificarRol(['profesor', 'administrador']), calificacionController.deleteAllAlumnos);
 router.get('/materia/:materia_id/exportar', verificarRol(['profesor', 'administrador']), calificacionController.exportToExcel);
 
 // Rutas para ponderaciones (solo profesores)
