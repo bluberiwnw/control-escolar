@@ -38,7 +38,6 @@ router.use(express.urlencoded({ extended: true }));
 
 // Rutas para procesamiento de archivos
 router.post('/upload', upload.single('archivo'), calificacionController.uploadFile);
-router.post('/procesar-datos', verificarRol(['profesor', 'administrador']), calificacionController.procesarDatosDirectos);
 router.get('/plantilla', verificarRol(['profesor', 'administrador']), calificacionController.getPlantilla);
 router.get('/archivos', verificarRol(['profesor', 'administrador']), calificacionController.getArchivos);
 router.get('/archivos/:id/descarga', verificarRol(['profesor', 'administrador']), calificacionController.descargarArchivoCalificacion);
@@ -66,9 +65,6 @@ router.post('/guardar-calificaciones-alumno', verificarRol(['profesor', 'adminis
 
 // Rutas para procesamiento definitivo HTM
 router.post('/procesar-definitivo', verificarRol(['profesor', 'administrador']), calificacionController.procesarDefinitivo);
-
-// Ruta para envío definitivo de calificaciones
-router.post('/enviar-definitivo/:materia_id', verificarRol(['profesor', 'administrador']), calificacionController.enviarDefinitivo);
 
 // Rutas para alumnos (separadas para no tener conflicto de roles)
 router.get('/alumno/todas', verificarRol(['alumno']), calificacionController.getAllCalificacionesAlumno);
