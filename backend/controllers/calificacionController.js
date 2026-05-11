@@ -36,202 +36,212 @@ const upload = multer({
 
 const calificacionController = {
     async uploadFile(req, res) {
-        console.log('📡 uploadFile - Inicio del endpoint');
-        console.log('📡 Headers:', req.headers);
+        console.log('🔍 uploadFile - INICIO COMPLETO');
+        console.log('🔍 uploadFile - Headers completos:', JSON.stringify(req.headers, null, 2));
+        console.log('🔍 uploadFile - req.file existe:', !!req.file);
+        console.log('🔍 uploadFile - req.body existe:', !!req.body);
+        console.log('🔍 uploadFile - req.usuario existe:', !!req.usuario);
         
-        upload(req, res, async function(err) {
-            if (err) {
-                console.error('❌ Error en upload middleware:', err);
-                console.error('🔍 Detalles del error:', {
-                    name: err.name,
-                    message: err.message,
-                    code: err.code,
-                    limit: err.limit,
-                    fileSize: err.size
-                });
-                return res.status(400).json({ message: err.message });
+        if (req.file) {
+            console.log('🔍 uploadFile - Detalles archivo:', {
+                filename: req.file.filename,
+                originalname: req.file.originalname,
+                size: req.file.size,
+                mimetype: req.file.mimetype,
+                path: req.file.path
+            });
+        }
+        
+        if (req.body) {
+            console.log('🔍 uploadFile - Body:', JSON.stringify(req.body, null, 2));
+        }
+        
+        try {
+            // Manejo de errores de multer
+            if (req.file && req.fileValidationError) {
+                console.error('❌ Error de validación de archivo:', req.fileValidationError);
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(400).json({ message: req.fileValidationError });
             }
             
             if (!req.file) {
-                console.error('❌ No se proporcionó archivo');
+                console.error('❌ ERROR CRÍTICO - No se proporcionó archivo');
                 console.error('❌ req.file:', req.file);
                 console.error('❌ req.body:', req.body);
                 console.error('❌ req.usuario:', req.usuario);
-                return res.status(400).json({ message: 'Selecciona un archivo antes de continuar.' });
+                console.error('❌ Posibles causas:');
+                console.error('   - Error en multer ANTES de llegar al controller');
+                console.error('   - Content-Type incorrecto');
+                console.error('   - Archivo demasiado grande');
+                console.error('   - Formato multipart incorrecto');
+                return res.status(400).json({ 
+                    message: 'Selecciona un archivo antes de continuar.',
+                    debug: {
+                        hasFile: !!req.file,
+                        hasBody: !!req.body,
+                        hasUser: !!req.usuario,
+                        contentType: req.headers['content-type'],
+                        contentLength: req.headers['content-length']
+                    }
+                });
             }
             
-            try {
-                // Validar que el archivo sea HTM/HTML
-                const allowedMimes = ['text/html', 'text/htm'];
-                const allowedExtensions = ['.htm', '.html'];
-                const fileExtension = path.extname(req.file.originalname).toLowerCase();
-                
-                if (!allowedMimes.includes(req.file.mimetype) && !allowedExtensions.includes(fileExtension)) {
-                    console.error('❌ Tipo de archivo no permitido:', {
-                        mimetype: req.file.mimetype,
-                        extension: fileExtension,
-                        originalname: req.file.originalname
-                    });
-                    
-                    // Eliminar archivo no permitido
-                    if (fs.existsSync(req.file.path)) {
-                        fs.unlinkSync(req.file.path);
-                    }
-                    
-                    return res.status(400).json({ 
-                        message: 'Solo se permiten archivos HTM/HTML',
-                        received: {
-                            mimetype: req.file.mimetype,
-                            extension: fileExtension
-                        }
-                    });
-                }
-                
-                console.log('📡 uploadFile - Archivo recibido (diskStorage):', {
-                    filename: req.file.filename,
-                    originalname: req.file.originalname,
-                    path: req.file.path,
+            // Validar que el archivo sea HTM/HTML
+            const allowedMimes = ['text/html', 'text/htm'];
+            const allowedExtensions = ['.htm', '.html'];
+            const fileExtension = path.extname(req.file.originalname).toLowerCase();
+            
+            if (!allowedMimes.includes(req.file.mimetype) && !allowedExtensions.includes(fileExtension)) {
+                console.error('❌ Tipo de archivo no permitido:', {
                     mimetype: req.file.mimetype,
-                    size: req.file.size,
-                    encoding: req.file.encoding,
-                    fieldname: req.file.fieldname
+                    extension: fileExtension,
+                    originalname: req.file.originalname
                 });
                 
-                console.log('📡 uploadFile - Body recibido:', req.body);
-                console.log('📡 uploadFile - Body tipo:', typeof req.body);
-                console.log('📡 uploadFile - Body keys:', Object.keys(req.body || {}));
-                console.log('📡 uploadFile - Usuario en request:', req.usuario);
-                
-                // Verificar que req.body exista y limpiar datos
-                if (!req.body) {
-                    console.log('❌ req.body es undefined o null');
-                    if (req.file && fs.existsSync(req.file.path)) {
-                        fs.unlinkSync(req.file.path);
-                    }
-                    return res.status(400).json({ 
-                        message: 'No se recibieron datos en el request body',
-                        headers: req.headers,
-                        contentType: req.headers['content-type']
-                    });
+                // Eliminar archivo no permitido
+                if (fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
                 }
                 
-                // Limpiar materia_id de caracteres especiales
-                if (req.body.materia_id) {
-                    req.body.materia_id = req.body.materia_id.trim();
-                }
-                
-                // Verificar que el usuario exista y tenga permisos
-                if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
-                    console.log('❌ Usuario no autorizado:', req.usuario?.rol);
-                    if (req.file && fs.existsSync(req.file.path)) {
-                        fs.unlinkSync(req.file.path);
+                return res.status(400).json({ 
+                    message: 'Solo se permiten archivos HTM/HTML',
+                    received: {
+                        mimetype: req.file.mimetype,
+                        extension: fileExtension
                     }
-                    return res.status(403).json({ message: 'No tienes permisos para subir archivos' });
-                }
-                
-                const { materia_id } = req.body;
-                console.log('📡 uploadFile - materia_id parseado:', materia_id, typeof materia_id);
-                
-                if (!materia_id) {
-                    console.log('❌ Materia ID faltante');
-                    if (req.file && fs.existsSync(req.file.path)) {
-                        fs.unlinkSync(req.file.path);
-                    }
-                    return res.status(400).json({ 
-                        message: 'Selecciona una materia antes de subir el archivo.',
-                        received: { materia_id }
-                    });
-                }
-                
-                // Validar que materia_id sea un número válido
-                const materiaIdNum = parseInt(materia_id);
-                if (isNaN(materiaIdNum) || materiaIdNum <= 0) {
-                    console.log('❌ Materia ID inválido:', materia_id);
-                    if (req.file && fs.existsSync(req.file.path)) {
-                        fs.unlinkSync(req.file.path);
-                    }
-                    return res.status(400).json({ 
-                        message: 'Materia ID inválido',
-                        received: { materia_id }
-                    });
-                }
-                
-                console.log('✅ Validaciones básicas pasadas, consultando base de datos...');
-                
-                const materiaCheck = await pool.query(
-                    'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
-                    [materiaIdNum, req.usuario.id]
-                );
-                if (materiaCheck.rows.length === 0) {
-                    console.log('❌ Materia no encontrada o sin permisos:', materiaIdNum);
-                    if (req.file && fs.existsSync(req.file.path)) {
-                        fs.unlinkSync(req.file.path);
-                    }
-                    return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
-                }
-
-                console.log('✅ Materia verificada:', materiaCheck.rows[0].nombre);
-
-                // Validar que el archivo sea un HTM/HTML válido
-                const allowedMimes2 = ['text/html', 'text/htm'];
-                const allowedExtensions2 = ['.htm', '.html'];
-                const fileExtension2 = path.extname(req.file.originalname).toLowerCase();
-                
-                if (!allowedMimes2.includes(req.file.mimetype) && !allowedExtensions2.includes(fileExtension2)) {
-                    console.log('❌ Tipo de archivo no permitido:', req.file.mimetype, fileExtension2);
-                    if (req.file && fs.existsSync(req.file.path)) {
-                        fs.unlinkSync(req.file.path);
-                    }
-                    return res.status(400).json({ 
-                        message: 'Tipo de archivo no permitido. Solo archivos HTM/HTML',
-                        received: { mimetype: req.file.mimetype, extension: fileExtension2 }
-                    });
-                }
-
-                console.log('✅ Validaciones de archivo pasadas, procesando HTML...');
-                const resultado = await calificacionController.processHtmlFile(req.file.path, materiaIdNum, req.usuario.id);
-                
-                console.log('✅ Archivo procesado exitosamente:', resultado);
-                
-                res.json({
-                    message: 'Archivo procesado correctamente',
-                    resultado,
-                    fileName: req.file.filename,
-                    archivo: {
-                        detalles: `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`
-                    }
-                });
-                
-            } catch (error) {
-                console.error('❌ Error en uploadFile:', error);
-                console.error('🔍 Stack trace completo:', error.stack);
-                console.error('🔍 Detalles del error:', {
-                    name: error.name,
-                    message: error.message,
-                    code: error.code,
-                    severity: error.severity,
-                    detail: error.detail,
-                    hint: error.hint,
-                    where: error.where,
-                    file: error.file,
-                    line: error.line,
-                    routine: error.routine
-                });
-                if (req.file && fs.existsSync(req.file.path)) {
-                    try {
-                        fs.unlinkSync(req.file.path);
-                        console.log('🗑️ Archivo temporal eliminado');
-                    } catch (unlinkError) {
-                        console.error('❌ Error al eliminar archivo temporal:', unlinkError);
-                    }
-                }
-                res.status(500).json({ 
-                    message: 'Error al procesar el archivo', 
-                    error: error.message,
-                    details: process.env.NODE_ENV === 'development' ? error.stack : undefined
                 });
             }
-        });
+            
+            console.log('📡 uploadFile - Archivo recibido (diskStorage):', {
+                filename: req.file.filename,
+                originalname: req.file.originalname,
+                path: req.file.path,
+                mimetype: req.file.mimetype,
+                size: req.file.size,
+                encoding: req.file.encoding,
+                fieldname: req.file.fieldname
+            });
+            
+            console.log('📡 uploadFile - Body recibido:', req.body);
+            console.log('📡 uploadFile - Body tipo:', typeof req.body);
+            console.log('📡 uploadFile - Body keys:', Object.keys(req.body || {}));
+            console.log('📡 uploadFile - Usuario en request:', req.usuario);
+            
+            // Verificar que req.body exista y limpiar datos
+            if (!req.body) {
+                console.log('❌ req.body es undefined o null');
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(400).json({ 
+                    message: 'No se recibieron datos en el request body',
+                    headers: req.headers,
+                    contentType: req.headers['content-type']
+                });
+            }
+            
+            // Limpiar materia_id de caracteres especiales
+            if (req.body.materia_id) {
+                req.body.materia_id = req.body.materia_id.trim();
+            }
+            
+            // Verificar que el usuario exista y tenga permisos
+            if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
+                console.log('❌ Usuario no autorizado:', req.usuario?.rol);
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(403).json({ message: 'No tienes permisos para subir archivos' });
+            }
+            
+            const { materia_id } = req.body;
+            console.log('📡 uploadFile - materia_id parseado:', materia_id, typeof materia_id);
+            
+            if (!materia_id) {
+                console.log('❌ Materia ID faltante');
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(400).json({ 
+                    message: 'Selecciona una materia antes de subir el archivo.',
+                    received: { materia_id }
+                });
+            }
+            
+            // Validar que materia_id sea un número válido
+            const materiaIdNum = parseInt(materia_id);
+            if (isNaN(materiaIdNum) || materiaIdNum <= 0) {
+                console.log('❌ Materia ID inválido:', materia_id);
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(400).json({ 
+                    message: 'Materia ID inválido',
+                    received: { materia_id }
+                });
+            }
+            
+            console.log('✅ Validaciones básicas pasadas, consultando base de datos...');
+            
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materiaIdNum, req.usuario.id]
+            );
+            if (materiaCheck.rows.length === 0) {
+                console.log('❌ Materia no encontrada o sin permisos:', materiaIdNum);
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+
+            console.log('✅ Materia verificada:', materiaCheck.rows[0].nombre);
+
+            console.log('✅ Validaciones de archivo pasadas, procesando HTML...');
+            const resultado = await calificacionController.processHtmlFile(req.file.path, materiaIdNum, req.usuario.id);
+            
+            console.log('✅ Archivo procesado exitosamente:', resultado);
+            
+            res.json({
+                message: 'Archivo procesado correctamente',
+                resultado,
+                fileName: req.file.filename,
+                archivo: {
+                    detalles: `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`
+                }
+            });
+            
+        } catch (error) {
+            console.error('❌ Error en uploadFile:', error);
+            console.error('🔍 Stack trace completo:', error.stack);
+            console.error('🔍 Detalles del error:', {
+                name: error.name,
+                message: error.message,
+                code: error.code,
+                severity: error.severity,
+                detail: error.detail,
+                hint: error.hint,
+                where: error.where,
+                file: error.file,
+                line: error.line,
+                routine: error.routine
+            });
+            if (req.file && fs.existsSync(req.file.path)) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                    console.log('🗑️ Archivo temporal eliminado');
+                } catch (unlinkError) {
+                    console.error('❌ Error al eliminar archivo temporal:', unlinkError);
+                }
+            }
+            res.status(500).json({ 
+                message: 'Error al procesar el archivo', 
+                error: error.message,
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
+        }
     },
 
     async updateAlumno(req, res) {
@@ -969,9 +979,87 @@ const calificacionController = {
             }
 
             console.log('✅ Ponderaciones guardadas:', ponderacionesArray);
+            
+            // Aplicar ponderaciones a los alumnos existentes en la materia
+            console.log('🔄 Aplicando ponderaciones a alumnos existentes...');
+            
+            // Obtener todos los alumnos inscritos en la materia
+            const alumnosQuery = await pool.query(`
+                SELECT DISTINCT e.id, e.matricula, e.nombre
+                FROM estudiantes e
+                INNER JOIN materias_estudiantes me ON e.id = me.estudiante_id
+                WHERE me.materia_id = $1 AND me.activo = true
+                ORDER BY e.nombre
+            `, [materia_id]);
+            
+            console.log(`📊 Encontrados ${alumnosQuery.rows.length} alumnos en materia ${materia_id}`);
+            
+            // Para cada alumno, asegurarse que tenga calificaciones para todos los tipos
+            for (const alumno of alumnosQuery.rows) {
+                for (const ponderacion of ponderacionesArray) {
+                    // Verificar si el alumno ya tiene calificación para este tipo
+                    const calificacionExistente = await pool.query(`
+                        SELECT id FROM calificaciones 
+                        WHERE estudiante_id = $1 AND materia_id = $2 AND tipo = $3
+                    `, [alumno.id, materia_id, ponderacion.tipo]);
+                    
+                    if (calificacionExistente.rows.length === 0) {
+                        // Insertar calificación inicial con valor 0
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion)
+                            VALUES ($1, $2, $3, 0)
+                        `, [alumno.id, materia_id, ponderacion.tipo]);
+                        
+                        console.log(`✅ Calificación inicial creada: ${alumno.nombre} - ${ponderacion.tipo}: 0`);
+                    }
+                }
+            }
+            
+            // Recalcular calificaciones finales para todos los alumnos
+            console.log('🔄 Recalculando calificaciones finales...');
+            
+            for (const alumno of alumnosQuery.rows) {
+                // Obtener todas las calificaciones del alumno con sus ponderaciones
+                const calificacionesQuery = await pool.query(`
+                    SELECT c.tipo, c.calificacion, p.peso
+                    FROM calificaciones c
+                    INNER JOIN ponderaciones p ON c.tipo = p.tipo AND p.materia_id = c.materia_id
+                    WHERE c.estudiante_id = $1 AND c.materia_id = $2
+                `, [alumno.id, materia_id]);
+                
+                if (calificacionesQuery.rows.length > 0) {
+                    // Calcular calificación final
+                    let calificacionFinal = 0;
+                    let totalPeso = 0;
+                    
+                    calificacionesQuery.rows.forEach(cal => {
+                        calificacionFinal += (cal.calificacion * cal.peso) / 100;
+                        totalPeso += cal.peso;
+                    });
+                    
+                    // Normalizar si el total de pesos no es 100
+                    if (totalPeso > 0 && totalPeso !== 100) {
+                        calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                    }
+                    
+                    // Actualizar o insertar calificación final
+                    await pool.query(`
+                        INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion)
+                        VALUES ($1, $2, 'final', $3)
+                        ON CONFLICT (estudiante_id, materia_id, tipo) 
+                        DO UPDATE SET calificacion = $3
+                    `, [alumno.id, materia_id, Math.round(calificacionFinal * 100) / 100]);
+                    
+                    console.log(`✅ Calificación final actualizada: ${alumno.nombre} - ${Math.round(calificacionFinal * 100) / 100}`);
+                }
+            }
+            
+            console.log('✅ Ponderaciones aplicadas correctamente a todos los alumnos');
+            
             res.json({ 
-                message: 'Ponderaciones guardadas correctamente',
-                ponderaciones: ponderacionesArray
+                message: 'Ponderaciones guardadas y aplicadas correctamente',
+                ponderaciones: ponderacionesArray,
+                alumnos_actualizados: alumnosQuery.rows.length
             });
             
         } catch (error) {
