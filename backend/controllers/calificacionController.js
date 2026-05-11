@@ -1443,27 +1443,83 @@ const calificacionController = {
                 
                 console.log('📋 Encabezados encontrados:', headers);
                 
-                // Mapeo de columnas basado en encabezados
+                // Mapeo de columnas basado en encabezados - mejorado y más robusto
                 const columnMapping = {};
                 headers.forEach((header, index) => {
-                    if (header.includes('matrícula') || header.includes('matricula')) {
+                    const cleanHeader = header.toLowerCase().trim();
+                    console.log(`🔍 Analizando encabezado [${index}]: "${cleanHeader}"`);
+                    
+                    // Matrícula - más términos posibles
+                    if (cleanHeader.includes('matrícula') || cleanHeader.includes('matricula') || 
+                        cleanHeader.includes('mat') || cleanHeader.includes('no.') || 
+                        cleanHeader.includes('numero') || cleanHeader.includes('expediente')) {
                         columnMapping.matricula = index;
-                    } else if (header.includes('nombre') || header.includes('name')) {
+                        console.log(`✅ Columna matrícula detectada en índice ${index}`);
+                    } 
+                    // Nombre - más términos posibles
+                    else if (cleanHeader.includes('nombre') || cleanHeader.includes('name') || 
+                             cleanHeader.includes('alumno') || cleanHeader.includes('estudiante')) {
                         columnMapping.nombre = index;
-                    } else if (header.includes('email') || header.includes('correo')) {
+                        console.log(`✅ Columna nombre detectada en índice ${index}`);
+                    } 
+                    // Email - más términos posibles
+                    else if (cleanHeader.includes('email') || cleanHeader.includes('correo') || 
+                             cleanHeader.includes('e-mail') || cleanHeader.includes('mail')) {
                         columnMapping.email = index;
-                    } else if (header.includes('tarea') || header.includes('task')) {
+                        console.log(`✅ Columna email detectada en índice ${index}`);
+                    } 
+                    // Tareas - más términos posibles
+                    else if (cleanHeader.includes('tarea') || cleanHeader.includes('task') || 
+                             cleanHeader.includes('trabajo') || cleanHeader.includes('homework')) {
                         columnMapping.tareas = index;
-                    } else if (header.includes('examen') || header.includes('exam')) {
+                        console.log(`✅ Columna tareas detectada en índice ${index}`);
+                    } 
+                    // Exámenes - más términos posibles
+                    else if (cleanHeader.includes('examen') || cleanHeader.includes('exam') || 
+                             cleanHeader.includes('prueba') || cleanHeader.includes('test')) {
                         columnMapping.examenes = index;
-                    } else if (header.includes('participación') || header.includes('participacion')) {
+                        console.log(`✅ Columna exámenes detectada en índice ${index}`);
+                    } 
+                    // Participación - más términos posibles
+                    else if (cleanHeader.includes('participación') || cleanHeader.includes('participacion') || 
+                             cleanHeader.includes('particip') || cleanHeader.includes('asistencia')) {
                         columnMapping.participacion = index;
-                    } else if (header.includes('proyecto') || header.includes('project')) {
+                        console.log(`✅ Columna participación detectada en índice ${index}`);
+                    } 
+                    // Proyectos - más términos posibles
+                    else if (cleanHeader.includes('proyecto') || cleanHeader.includes('project') || 
+                             cleanHeader.includes('proyect')) {
                         columnMapping.proyectos = index;
-                    } else if (header.includes('práctica') || header.includes('practica') || header.includes('practice')) {
+                        console.log(`✅ Columna proyectos detectada en índice ${index}`);
+                    } 
+                    // Prácticas - más términos posibles
+                    else if (cleanHeader.includes('práctica') || cleanHeader.includes('practica') || 
+                             cleanHeader.includes('practice') || cleanHeader.includes('lab') ||
+                             cleanHeader.includes('laboratorio')) {
                         columnMapping.practicas = index;
-                    } else if (header.includes('final') || header.includes('calificación') || header.includes('calificacion')) {
+                        console.log(`✅ Columna prácticas detectada en índice ${index}`);
+                    } 
+                    // Final - más términos posibles
+                    else if (cleanHeader.includes('final') || cleanHeader.includes('calificación') || 
+                             cleanHeader.includes('calificacion') || cleanHeader.includes('promedio') ||
+                             cleanHeader.includes('average') || cleanHeader.includes('grade')) {
                         columnMapping.final = index;
+                        console.log(`✅ Columna final detectada en índice ${index}`);
+                    }
+                    // Si es un número, podría ser una calificación sin nombre específico
+                    else if (/^\d+(\.\d+)?$/.test(cleanHeader) || 
+                             (cleanHeader.includes('calif') || cleanHeader.includes('nota'))) {
+                        // Asignar a la primera columna de calificación disponible
+                        if (!columnMapping.tareas) {
+                            columnMapping.tareas = index;
+                            console.log(`✅ Columna numérica asignada a tareas en índice ${index}`);
+                        } else if (!columnMapping.examenes) {
+                            columnMapping.examenes = index;
+                            console.log(`✅ Columna numérica asignada a exámenes en índice ${index}`);
+                        } else if (!columnMapping.participacion) {
+                            columnMapping.participacion = index;
+                            console.log(`✅ Columna numérica asignada a participación en índice ${index}`);
+                        }
                     }
                 });
                 
@@ -1523,36 +1579,68 @@ const calificacionController = {
                         calificacionFinal = parseFloat(rowData[columnMapping.final]) || 0;
                     }
                     
-                    // Si no hay mapeo, intentar heurística automática
-                    if (Object.keys(columnMapping).length === 0) {
-                        console.log('🔍 Usando heurística automática para la fila:', rowData);
+                    // Si no hay mapeo o es incompleto, usar heurística automática mejorada
+                    if (Object.keys(columnMapping).length < 3) { // Si hay menos de 3 columnas mapeadas
+                        console.log('🔍 Usando heurística automática mejorada para la fila:', rowData);
                         
-                        // Detectar automáticamente
+                        // Detectar automáticamente con mejor lógica
                         for (let i = 0; i < rowData.length; i++) {
-                            const value = rowData[i];
+                            const value = rowData[i].trim();
                             
-                            // Matrícula (solo números)
-                            if (/^\d+$/.test(value) && !matricula) {
+                            // Saltar valores vacíos
+                            if (!value || value === '' || value === '-') continue;
+                            
+                            // Matrícula (varios formatos posibles)
+                            if ((/^\d{6,10}$/.test(value) || /^\d{4}-\d{4}$/.test(value)) && !matricula) {
                                 matricula = value;
+                                console.log(`🔍 Matrícula detectada: "${value}" en posición ${i}`);
                             }
-                            // Email (contiene @)
-                            else if (value.includes('@') && !email) {
+                            // Email (contiene @ y tiene formato válido)
+                            else if (value.includes('@') && value.includes('.') && !email) {
                                 email = value;
+                                console.log(`🔍 Email detectado: "${value}" en posición ${i}`);
                             }
-                            // Nombre (texto sin números ni @)
-                            else if (!/^\d+$/.test(value) && !value.includes('@') && !nombre && value.length > 2) {
+                            // Nombre (texto con letras y espacios, no números ni @)
+                            else if (!/^\d+$/.test(value) && !value.includes('@') && !nombre && 
+                                     value.length > 2 && /[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/.test(value)) {
                                 nombre = value;
+                                console.log(`🔍 Nombre detectado: "${value}" en posición ${i}`);
                             }
-                            // Calificaciones (números entre 0 y 10)
+                            // Calificaciones (números entre 0 y 10, incluyendo decimales)
                             else {
                                 const numValue = parseFloat(value);
                                 if (!isNaN(numValue) && numValue >= 0 && numValue <= 10) {
                                     // Asignar en orden si no hay mapeo específico
-                                    if (!tareas) tareas = numValue;
-                                    else if (!examenes) examenes = numValue;
-                                    else if (!participacion) participacion = numValue;
-                                    else if (!proyectos) proyectos = numValue;
-                                    else if (!practicas) practicas = numValue;
+                                    if (!columnMapping.tareas && !tareas) {
+                                        tareas = numValue;
+                                        columnMapping.tareas = i;
+                                        console.log(`🔍 Tareas detectadas: ${numValue} en posición ${i}`);
+                                    }
+                                    else if (!columnMapping.examenes && !examenes) {
+                                        examenes = numValue;
+                                        columnMapping.examenes = i;
+                                        console.log(`🔍 Exámenes detectados: ${numValue} en posición ${i}`);
+                                    }
+                                    else if (!columnMapping.participacion && !participacion) {
+                                        participacion = numValue;
+                                        columnMapping.participacion = i;
+                                        console.log(`🔍 Participación detectada: ${numValue} en posición ${i}`);
+                                    }
+                                    else if (!columnMapping.proyectos && !proyectos) {
+                                        proyectos = numValue;
+                                        columnMapping.proyectos = i;
+                                        console.log(`🔍 Proyectos detectados: ${numValue} en posición ${i}`);
+                                    }
+                                    else if (!columnMapping.practicas && !practicas) {
+                                        practicas = numValue;
+                                        columnMapping.practicas = i;
+                                        console.log(`🔍 Prácticas detectadas: ${numValue} en posición ${i}`);
+                                    }
+                                    else if (!columnMapping.final && !calificacionFinal) {
+                                        calificacionFinal = numValue;
+                                        columnMapping.final = i;
+                                        console.log(`🔍 Calificación final detectada: ${numValue} en posición ${i}`);
+                                    }
                                 }
                             }
                         }
@@ -1569,9 +1657,9 @@ const calificacionController = {
                         });
                     }
                     
-                    // Validar datos mínimos
+                    // Validar datos mínimos y mostrar detalles completos
                     if (matricula || nombre) {
-                        estudiantes.push({
+                        const estudianteProcesado = {
                             matricula: matricula || 'AUTO_' + Date.now() + '_' + rowIndex,
                             nombre: nombre || 'Sin nombre',
                             email: email || '',
@@ -1580,11 +1668,37 @@ const calificacionController = {
                             participacion,
                             proyectos,
                             practicas,
-                            calificacion_final: calificacionFinal
-                        });
+                            calificacion_final: calificacionFinal,
+                            // Guardar también los datos originales para depuración
+                            datos_originales: rowData,
+                            mapeo_usado: columnMapping
+                        };
                         
+                        estudiantes.push(estudianteProcesado);
                         procesados++;
+                        
                         console.log(`✅ Estudiante procesado: ${nombre} (${matricula})`);
+                        console.log(`📊 Datos completos:`, {
+                            matricula,
+                            nombre,
+                            email,
+                            tareas,
+                            examenes,
+                            participacion,
+                            proyectos,
+                            practicas,
+                            calificacionFinal,
+                            fila_original: rowData,
+                            mapeo_columnas: columnMapping
+                        });
+                    } else {
+                        console.log(`⚠️ Fila ignorada - datos insuficientes:`, {
+                            rowIndex,
+                            rowData,
+                            matricula,
+                            nombre,
+                            columnMapping
+                        });
                     }
                 });
             });
