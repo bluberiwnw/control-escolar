@@ -1409,9 +1409,116 @@ const calificacionController = {
             }
 
             const { materia_id } = req.params;
+            const materiaIdNum = parseInt(materia_id);
             
-            // Por ahora, retornar éxito simulado
-            res.json({ message: 'Calificaciones calculadas correctamente', calculados: 0 });
+            if (isNaN(materiaIdNum) || materiaIdNum <= 0) {
+                return res.status(400).json({ message: 'Materia ID inválido' });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materiaIdNum, req.usuario.id]
+            );
+            
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            console.log('✅ Materia verificada:', materiaCheck.rows[0].nombre);
+            
+            // Obtener ponderaciones de la materia
+            const ponderacionesQuery = await pool.query(
+                'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                [materiaIdNum]
+            );
+            
+            if (ponderacionesQuery.rows.length === 0) {
+                return res.status(400).json({ message: 'No hay ponderaciones configuradas para esta materia' });
+            }
+            
+            const ponderaciones = {};
+            ponderacionesQuery.rows.forEach(row => {
+                ponderaciones[row.tipo] = row.peso;
+            });
+            
+            console.log('📊 Ponderaciones encontradas:', ponderaciones);
+            
+            // Obtener todos los estudiantes de la materia
+            const estudiantesQuery = await pool.query(`
+                SELECT DISTINCT e.id, e.matricula, e.nombre
+                FROM estudiantes e
+                INNER JOIN materias_estudiantes me ON e.id = me.estudiante_id
+                WHERE me.materia_id = $1 AND me.activo = true
+                ORDER BY e.nombre
+            `, [materiaIdNum]);
+            
+            if (estudiantesQuery.rows.length === 0) {
+                return res.json({ message: 'No hay alumnos inscritos en esta materia', calculados: 0 });
+            }
+            
+            console.log(`📊 Procesando ${estudiantesQuery.rows.length} estudiantes...`);
+            
+            let calculados = 0;
+            
+            // Procesar cada estudiante
+            for (const estudiante of estudiantesQuery.rows) {
+                try {
+                    // Obtener calificaciones del estudiante
+                    const calificacionesQuery = await pool.query(`
+                        SELECT tipo, calificacion
+                        FROM calificaciones 
+                        WHERE estudiante_id = $1 AND materia_id = $2 AND tipo != 'final'
+                    `, [estudiante.id, materiaIdNum]);
+                    
+                    if (calificacionesQuery.rows.length === 0) {
+                        console.log(`⚠️ Estudiante ${estudiante.nombre} no tiene calificaciones parciales`);
+                        continue;
+                    }
+                    
+                    // Calcular calificación final aplicando ponderaciones
+                    let calificacionFinal = 0;
+                    let totalPeso = 0;
+                    
+                    calificacionesQuery.rows.forEach(cal => {
+                        const peso = ponderaciones[cal.tipo] || 0;
+                        if (peso > 0) {
+                            calificacionFinal += (parseFloat(cal.calificacion) * peso) / 100;
+                            totalPeso += peso;
+                        }
+                    });
+                    
+                    // Normalizar si el total de pesos no es 100
+                    if (totalPeso > 0 && totalPeso !== 100) {
+                        calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                    }
+                    
+                    // Redondear a 2 decimales
+                    calificacionFinal = Math.round(calificacionFinal * 100) / 100;
+                    
+                    // Actualizar o insertar calificación final
+                    await pool.query(`
+                        INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                        VALUES ($1, $2, 'final', $3, NOW())
+                        ON CONFLICT (estudiante_id, materia_id, tipo) 
+                        DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                    `, [estudiante.id, materiaIdNum, calificacionFinal]);
+                    
+                    console.log(`✅ Calificación final calculada: ${estudiante.nombre} - ${calificacionFinal}`);
+                    calculados++;
+                    
+                } catch (error) {
+                    console.error(`❌ Error calculando calificación para estudiante ${estudiante.id}:`, error.message);
+                }
+            }
+            
+            console.log(`✅ Calificaciones finales calculadas para ${calculados} estudiantes`);
+            
+            res.json({ 
+                message: 'Calificaciones calculadas correctamente', 
+                calculados: calculados,
+                total_estudiantes: estudiantesQuery.rows.length
+            });
             
         } catch (error) {
             console.error('❌ Error en calcularCalificaciones:', error);
