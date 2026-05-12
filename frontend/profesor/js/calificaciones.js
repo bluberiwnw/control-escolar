@@ -161,35 +161,7 @@ async function previsualizarArchivo(input) {
         const headerRow = rows[0];
         const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
         
-        const headers = headerCells.map((cell, index) => {
-            let header = cell.textContent.trim();
-            console.log(`🔍 Procesando encabezado ${index}: "${header}"`);
-            
-            let mappedHeader = '';
-            
-            if (header.includes('Número de Registro') || header.includes('Número de<br>Registro') || header.includes('Registro')) {
-                mappedHeader = 'Número de Registro';
-            } else if (header.includes('Nombre de Alumno') || header.includes('Nombre')) {
-                mappedHeader = 'Nombre de Alumno';
-            } else if (header.includes('ID') || header.includes('Identificación')) {
-                mappedHeader = 'ID';
-            } else if (header.includes('Status de Inscripción') || header.includes('Status')) {
-                mappedHeader = 'Status de Inscripción';
-            } else if (header.includes('Nivel')) {
-                mappedHeader = 'Nivel';
-            } else if (header.includes('Créditos')) {
-                mappedHeader = 'Créditos';
-            } else if (header.includes('Detalle de Calificaciones') || header.includes('Calificaciones')) {
-                mappedHeader = 'Email';
-            } else if (header && header.trim()) {
-                mappedHeader = header.trim();
-            } else {
-                mappedHeader = `Columna ${index + 1}`;
-            }
-            
-            console.log(`🔍 Encabezado mapeado: "${header}" -> "${mappedHeader}"`);
-            return mappedHeader;
-        });
+        const headers = headerCells.map(cell => cell.textContent.trim());
         
         console.log('📋 Encabezados detectados:', headers);
         
@@ -197,92 +169,13 @@ async function previsualizarArchivo(input) {
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const cells = Array.from(row.querySelectorAll('td'));
-            
-            if (cells.length < 7) {
-                console.log(`⚠️ Fila ${i} ignorada: muy pocas celdas (${cells.length})`);
-                continue;
-            }
-            
             const rowData = {};
             
-            const numeroRegistro = cells[0]?.textContent.trim() || '';
-            rowData['Número de Registro'] = numeroRegistro;
+            headers.forEach((header, index) => {
+                rowData[header] = cells[index]?.textContent.trim() || '';
+            });
             
-            const nombreCell = cells[1];
-            const nombreSpan = nombreCell?.querySelector('.fieldmediumtext');
-            const nombreAlumno = nombreSpan?.textContent.trim() || nombreCell?.textContent.trim() || '';
-            rowData['Nombre de Alumno'] = nombreAlumno;
-            
-            const idCell = cells[2];
-            const idSpan = idCell?.querySelector('.fieldmediumtext');
-            const idAlumno = idSpan?.textContent.trim() || idCell?.textContent.trim() || '';
-            rowData['ID'] = idAlumno;
-            
-            const statusCell = cells[3];
-            const statusSpan = statusCell?.querySelector('.fieldmediumtext');
-            const statusInscripcion = statusSpan?.textContent.trim() || statusCell?.textContent.trim() || '';
-            rowData['Status de Inscripción'] = statusInscripcion;
-            
-            const nivelCell = cells[4];
-            const nivelSpan = nivelCell?.querySelector('.fieldmediumtext');
-            const nivel = nivelSpan?.textContent.trim() || nivelCell?.textContent.trim() || '';
-            rowData['Nivel'] = nivel;
-            
-            const creditosCell = cells[5];
-            const creditosSpan = creditosCell?.querySelector('.fieldmediumtext');
-            const creditos = creditosSpan?.textContent.trim() || creditosCell?.textContent.trim() || '';
-            rowData['Créditos'] = creditos;
-            
-            let email = '';
-            for (let j = 6; j < cells.length; j++) {
-                const emailCell = cells[j];
-                const emailLink = emailCell?.querySelector('a[href^="mailto:"]');
-                if (emailLink) {
-                    email = emailLink.getAttribute('href').replace('mailto:', '');
-                    break;
-                }
-            }
-            rowData['Email'] = email;
-            
-            rowData['Matrícula'] = idAlumno;
-            rowData['Nombre'] = nombreAlumno;
-            
-            // Extraer calificaciones de las celdas restantes
-            let calificacionIndex = 7; // Empezar después de las columnas básicas
-            rowData['Tareas'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Exámenes'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Participación'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Proyectos'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Prácticas'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Calificación Final'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            
-            if (idAlumno || nombreAlumno) {
-                dataRows.push(rowData);
-                console.log(`✅ Fila ${i} procesada:`, {
-                    'Número de Registro': numeroRegistro,
-                    'Nombre de Alumno': nombreAlumno,
-                    'ID': idAlumno,
-                    'Email': email,
-                    'Status': statusInscripcion,
-                    'Nivel': nivel,
-                    'Créditos': creditos,
-                    'Tareas': rowData['Tareas'],
-                    'Exámenes': rowData['Exámenes'],
-                    'Participación': rowData['Participación'],
-                    'Proyectos': rowData['Proyectos'],
-                    'Prácticas': rowData['Prácticas'],
-                    'Calificación Final': rowData['Calificación Final'],
-                    'Total celdas': cells.length
-                });
-            } else {
-                console.log(`⚠️ Fila ${i} ignorada: no tiene ID ni nombre válidos`);
-                console.log(`🔍 Contenido de celdas ignoradas:`, cells.map(cell => cell.textContent.trim()));
-            }
+            dataRows.push(rowData);
         }
         
         console.log(`📊 Total de filas procesadas: ${dataRows.length} de ${rows.length - 1} filas de datos`);
@@ -292,42 +185,21 @@ async function previsualizarArchivo(input) {
             return;
         }
         
-        const calificacionesHeaders = ['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas', 'Calificación Final', 'Acciones'];
-        const allHeaders = [...headers, ...calificacionesHeaders];
-        
-        let html = `<h4>Vista previa (primeros 10 registros)</h4>
-                    <table class="asistencia-tabla">
-                        <thead><tr>${allHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-                        <tbody>`;
+        let html = '<table class="asistencia-tabla"><thead><tr>';
+        headers.forEach(header => {
+            html += `<th>${header}</th>`;
+        });
+        html += '</tr></thead><tbody>';
         
         dataRows.slice(0, 10).forEach(row => {
             html += '<tr>';
-            allHeaders.forEach(header => {
-                if (calificacionesHeaders.includes(header)) {
-                    if (header === 'Acciones') {
-                        html += `<td>
-                            <button type="button" class="btn btn-sm btn-secondary" disabled>
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger" disabled>
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>`;
-                    } else if (header === 'Calificación Final') {
-                        const valorFinal = row[header] || 0;
-                        html += `<td><span class="badge badge-info">${parseFloat(valorFinal).toFixed(2)}</span></td>`;
-                    } else {
-                        const valorCalificacion = row[header] || 0;
-                        html += `<td><input type="number" value="${parseFloat(valorCalificacion).toFixed(1)}" min="0" max="10" step="0.1" disabled style="width: 80px;"></td>`;
-                    }
-                } else {
-                    html += `<td>${row[header] || ''}</td>`;
-                }
+            headers.forEach(header => {
+                html += `<td>${row[header] || ''}</td>`;
             });
             html += '</tr>';
         });
         
-        html += `</tbody></table>
+        html += '</tbody></table>
                    <div class="alert alert-info">
                        <strong>Se encontraron ${dataRows.length} estudiantes en el archivo.</strong><br>
                        Los alumnos serán importados con calificaciones iniciales en 0. Podrás editar las calificaciones después de procesar el archivo.
