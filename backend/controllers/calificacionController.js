@@ -244,6 +244,184 @@ const calificacionController = {
         }
     },
 
+    async procesarDatosDirectos(req, res) {
+        try {
+            console.log('📡 procesarDatosDirectos - Procesando datos directos desde frontend');
+            console.log('📡 procesarDatosDirectos - Body recibido:', req.body);
+            
+            // Verificar que el usuario exista y tenga permisos
+            if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
+                return res.status(403).json({ message: 'No tienes permisos para procesar datos' });
+            }
+            
+            const { materia_id, estudiantes, archivo_original } = req.body;
+            
+            if (!materia_id || !estudiantes) {
+                return res.status(400).json({ 
+                    message: 'Faltan parámetros requeridos',
+                    required: ['materia_id', 'estudiantes'],
+                    received: { materia_id, estudiantes: !!estudiantes }
+                });
+            }
+            
+            // Validar que materia_id sea un número válido
+            const materiaIdNum = parseInt(materia_id);
+            if (isNaN(materiaIdNum) || materiaIdNum <= 0) {
+                return res.status(400).json({ 
+                    message: 'Materia ID inválido',
+                    received: { materia_id }
+                });
+            }
+            
+            // Verificar que la materia exista y pertenezca al profesor
+            const materiaCheck = await pool.query(
+                'SELECT id, nombre FROM materias WHERE id = $1 AND profesor_id = $2',
+                [materiaIdNum, req.usuario.id]
+            );
+            
+            if (materiaCheck.rows.length === 0) {
+                return res.status(404).json({ message: 'Materia no encontrada o no tienes permisos' });
+            }
+            
+            console.log('✅ Materia verificada:', materiaCheck.rows[0].nombre);
+            console.log(`📊 Procesando ${estudiantes.length} estudiantes desde datos directos...`);
+            
+            let procesados = 0;
+            let nuevos = 0;
+            let actualizados = 0;
+            
+            // Obtener ponderaciones de la materia para aplicarlas
+            const ponderacionesQuery = await pool.query(
+                'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                [materiaIdNum]
+            );
+            
+            const ponderaciones = {};
+            ponderacionesQuery.rows.forEach(row => {
+                ponderaciones[row.tipo] = row.peso;
+            });
+            
+            console.log('📊 Ponderaciones encontradas para materia:', ponderaciones);
+            
+            // Procesar cada estudiante
+            for (const estudiante of estudiantes) {
+                try {
+                    console.log(`🔄 Procesando estudiante: ${estudiante['Nombre de Alumno']} (${estudiante.ID})`);
+                    
+                    // Buscar si el estudiante ya existe
+                    const existingEstudiante = await pool.query(
+                        'SELECT id FROM estudiantes WHERE matricula = $1',
+                        [estudiante.ID]
+                    );
+                    
+                    let estudianteId;
+                    if (existingEstudiante.rows.length > 0) {
+                        estudianteId = existingEstudiante.rows[0].id;
+                        actualizados++;
+                    } else {
+                        // Crear nuevo estudiante
+                        const newEstudiante = await pool.query(
+                            `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
+                             VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id`,
+                            [estudiante.ID, estudiante['Nombre de Alumno'], estudiante.Email || '', 'temporal123', 'alumno', true]
+                        );
+                        estudianteId = newEstudiante.rows[0].id;
+                        nuevos++;
+                        
+                        // Asociar estudiante a la materia
+                        await pool.query(
+                            'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion) VALUES ($1, $2, NOW())',
+                            [materiaIdNum, estudianteId]
+                        );
+                    }
+                    
+                    // Guardar calificaciones aplicando ponderaciones
+                    const calificaciones = [
+                        { tipo: 'tarea', calificacion: estudiante.Tareas || 0 },
+                        { tipo: 'examen', calificacion: estudiante.Exámenes || 0 },
+                        { tipo: 'participacion', calificacion: estudiante['Participación'] || 0 },
+                        { tipo: 'proyecto', calificacion: estudiante.Proyectos || 0 },
+                        { tipo: 'practica', calificacion: estudiante.Prácticas || 0 }
+                    ];
+                    
+                    let calificacionFinal = 0;
+                    let totalPeso = 0;
+                    
+                    for (const cal of calificaciones) {
+                        // Guardar cada calificación individual
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                            VALUES ($1, $2, $3, $4, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        `, [estudianteId, materiaIdNum, cal.tipo, cal.calificacion]);
+                        
+                        // Calcular contribución a la calificación final usando ponderaciones
+                        const peso = ponderaciones[cal.tipo] || 0;
+                        if (peso > 0) {
+                            calificacionFinal += (cal.calificacion * peso) / 100;
+                            totalPeso += peso;
+                        }
+                        
+                        console.log(`✅ Calificación guardada: ${estudiante['Nombre de Alumno']} - ${cal.tipo}: ${cal.calificacion} (peso: ${peso}%)`);
+                    }
+                    
+                    // Calcular y guardar calificación final
+                    if (totalPeso > 0) {
+                        // Normalizar si el total de pesos no es 100
+                        if (totalPeso !== 100) {
+                            calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                        }
+                        
+                        // Redondear a 2 decimales
+                        calificacionFinal = Math.round(calificacionFinal * 100) / 100;
+                        
+                        // Guardar calificación final
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                            VALUES ($1, $2, 'final', $3, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        `, [estudianteId, materiaIdNum, calificacionFinal]);
+                        
+                        console.log(`✅ Calificación final calculada: ${estudiante['Nombre de Alumno']} - ${calificacionFinal}`);
+                    }
+                    
+                    procesados++;
+                    
+                } catch (error) {
+                    console.error(`❌ Error procesando estudiante ${estudiante.ID}:`, error.message);
+                }
+            }
+            
+            const resultado = {
+                procesados,
+                nuevos,
+                actualizados,
+                estudiantes
+            };
+            
+            console.log('✅ Datos procesados exitosamente:', resultado);
+            
+            res.json({
+                message: 'Datos procesados correctamente',
+                resultado,
+                fileName: archivo_original,
+                archivo: {
+                    detalles: `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`
+                }
+            });
+            
+        } catch (error) {
+            console.error('❌ Error en procesarDatosDirectos:', error);
+            res.status(500).json({ 
+                message: 'Error al procesar los datos', 
+                error: error.message,
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
+        }
+    },
+
     async updateAlumno(req, res) {
         try {
             console.log('📡 updateAlumno - Inicio del endpoint');
