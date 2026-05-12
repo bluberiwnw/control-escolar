@@ -318,6 +318,23 @@ const calificacionController = {
                     if (existingEstudiante.rows.length > 0) {
                         estudianteId = existingEstudiante.rows[0].id;
                         actualizados++;
+                        
+                        // Verificar si ya está asociado a la materia
+                        const materiaEstudianteCheck = await pool.query(
+                            'SELECT id FROM materias_estudiantes WHERE materia_id = $1 AND estudiante_id = $2',
+                            [materiaIdNum, estudianteId]
+                        );
+                        
+                        if (materiaEstudianteCheck.rows.length === 0) {
+                            // Asociar estudiante existente a la materia
+                            await pool.query(
+                                'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion, activo) VALUES ($1, $2, NOW(), true)',
+                                [materiaIdNum, estudianteId]
+                            );
+                            console.log(`✅ Estudiante existente ${estudiante['Nombre de Alumno']} asociado a materia`);
+                        } else {
+                            console.log(`ℹ️ Estudiante existente ${estudiante['Nombre de Alumno']} ya estaba asociado a materia`);
+                        }
                     } else {
                         // Crear nuevo estudiante
                         const newEstudiante = await pool.query(
@@ -330,9 +347,10 @@ const calificacionController = {
                         
                         // Asociar estudiante a la materia
                         await pool.query(
-                            'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion) VALUES ($1, $2, NOW())',
+                            'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion, activo) VALUES ($1, $2, NOW(), true)',
                             [materiaIdNum, estudianteId]
                         );
+                        console.log(`✅ Nuevo estudiante ${estudiante['Nombre de Alumno']} creado y asociado a materia`);
                     }
                     
                     // Guardar calificaciones aplicando ponderaciones
