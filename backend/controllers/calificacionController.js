@@ -911,16 +911,43 @@ const calificacionController = {
                         ? calificaciones.reduce((sum, c) => sum + parseFloat(c.calificacion), 0) / calificaciones.length
                         : 0;
                     
-                    // Construir objeto con todas las calificaciones
+                    // Construir objeto con todas las calificaciones - mapeo de tipos a nombres de campos
                     const calificacionesObj = {};
                     calificaciones.forEach(c => {
-                        calificacionesObj[c.tipo] = parseFloat(c.calificacion);
+                        // Mapear tipos a nombres de campos que espera el frontend
+                        switch(c.tipo) {
+                            case 'tarea':
+                                calificacionesObj.tarea = parseFloat(c.calificacion);
+                                break;
+                            case 'examen':
+                                calificacionesObj.examen = parseFloat(c.calificacion);
+                                break;
+                            case 'participacion':
+                                calificacionesObj.participacion = parseFloat(c.calificacion);
+                                break;
+                            case 'proyecto':
+                                calificacionesObj.proyecto = parseFloat(c.calificacion);
+                                break;
+                            case 'practica':
+                                calificacionesObj.practica = parseFloat(c.calificacion);
+                                break;
+                            case 'final':
+                                calificacionesObj.calificacion_final = parseFloat(c.calificacion);
+                                break;
+                            default:
+                                // Para cualquier otro tipo, usar el nombre del tipo directamente
+                                calificacionesObj[c.tipo] = parseFloat(c.calificacion);
+                        }
                     });
+                    
+                    // Si no hay calificación final en los tipos, usar el promedio calculado
+                    if (!calificacionesObj.calificacion_final) {
+                        calificacionesObj.calificacion_final = promedioFinal;
+                    }
                     
                     return {
                         ...alumno,
                         ...calificacionesObj,
-                        calificacion_final: promedioFinal,
                         calificaciones_detalle: calificaciones
                     };
                 })
