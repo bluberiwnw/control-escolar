@@ -36,9 +36,8 @@ router.use(authMiddleware);
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-// Rutas para procesamiento de archivos
-router.post('/upload', upload.single('archivo'), calificacionController.uploadFile);
-router.post('/procesar-datos', verificarRol(['profesor', 'administrador']), calificacionController.procesarDatosDirectos);
+// Rutas para profesores y administradores (solo funciones que existen)
+router.post('/upload', verificarRol(['profesor', 'administrador']), upload.single('archivo'), calificacionController.uploadFile);
 router.get('/plantilla', verificarRol(['profesor', 'administrador']), calificacionController.getPlantilla);
 router.get('/archivos', verificarRol(['profesor', 'administrador']), calificacionController.getArchivos);
 router.get('/archivos/:id/descarga', verificarRol(['profesor', 'administrador']), calificacionController.descargarArchivoCalificacion);
