@@ -34,6 +34,18 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 }).single('archivo');
 
+// Función de redondeo personalizada: .5 o menos baja, .6 o más sube
+function redondearCalificacion(calificacion) {
+    const parteEntera = Math.floor(calificacion);
+    const decimal = calificacion - parteEntera;
+    
+    if (decimal >= 0.6) {
+        return parteEntera + 1;
+    } else {
+        return parteEntera;
+    }
+}
+
 const calificacionController = {
     async uploadFile(req, res) {
         console.log('🔍 uploadFile - INICIO COMPLETO');
@@ -391,8 +403,8 @@ const calificacionController = {
                             calificacionFinal = (calificacionFinal * 100) / totalPeso;
                         }
                         
-                        // Redondear a 2 decimales
-                        calificacionFinal = Math.round(calificacionFinal * 100) / 100;
+                        // Redondear usando la función personalizada (.5 baja, .6 sube)
+                        calificacionFinal = redondearCalificacion(calificacionFinal);
                         
                         // Guardar calificación final
                         await pool.query(`
@@ -1334,9 +1346,9 @@ const calificacionController = {
                         VALUES ($1, $2, 'final', $3)
                         ON CONFLICT (estudiante_id, materia_id, tipo) 
                         DO UPDATE SET calificacion = $3
-                    `, [alumno.id, materia_id, Math.round(calificacionFinal * 100) / 100]);
+                    `, [alumno.id, materia_id, redondearCalificacion(calificacionFinal)]);
                     
-                    console.log(`✅ Calificación final actualizada: ${alumno.nombre} - ${Math.round(calificacionFinal * 100) / 100}`);
+                    console.log(`✅ Calificación final actualizada: ${alumno.nombre} - ${redondearCalificacion(calificacionFinal)}`);
                 }
             }
             
@@ -1493,8 +1505,8 @@ const calificacionController = {
                         calificacionFinal = (calificacionFinal * 100) / totalPeso;
                     }
                     
-                    // Redondear a 2 decimales
-                    calificacionFinal = Math.round(calificacionFinal * 100) / 100;
+                    // Redondear usando la función personalizada (.5 baja, .6 sube)
+                    calificacionFinal = redondearCalificacion(calificacionFinal);
                     
                     // Actualizar o insertar calificación final
                     await pool.query(`
@@ -2116,8 +2128,8 @@ const calificacionController = {
                             calificacionFinal = (calificacionFinal * 100) / totalPeso;
                         }
                         
-                        // Redondear a 2 decimales
-                        calificacionFinal = Math.round(calificacionFinal * 100) / 100;
+                        // Redondear usando la función personalizada (.5 baja, .6 sube)
+                        calificacionFinal = redondearCalificacion(calificacionFinal);
                         
                         // Guardar calificación final
                         await pool.query(`

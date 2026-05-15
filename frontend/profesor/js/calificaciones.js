@@ -11,6 +11,55 @@ async function cargarMaterias() {
     const materias = await apiRequest('/materias');
     const select = document.getElementById('materiaSelect');
     select.innerHTML = '<option value="">Seleccionar materia</option>' + materias.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    
+    // Agregar evento change para cargar ponderaciones cuando se seleccione una materia
+    select.addEventListener('change', async () => {
+        const materia_id = select.value;
+        if (materia_id) {
+            await cargarPonderaciones(materia_id);
+            await cargarAlumnos();
+        } else {
+            // Limpiar campos de ponderación si no hay materia seleccionada
+            document.getElementById('ponderacionTareas').value = 20;
+            document.getElementById('ponderacionExamenes').value = 30;
+            document.getElementById('ponderacionParticipacion').value = 10;
+            document.getElementById('ponderacionProyectos').value = 20;
+            document.getElementById('ponderacionPracticas').value = 20;
+        }
+    });
+}
+async function cargarPonderaciones(materia_id) {
+    try {
+        const ponderaciones = await apiRequest(`/calificaciones/ponderaciones/${materia_id}`);
+        
+        if (ponderaciones.tareas !== undefined) {
+            document.getElementById('ponderacionTareas').value = ponderaciones.tareas;
+        }
+        if (ponderaciones.examenes !== undefined) {
+            document.getElementById('ponderacionExamenes').value = ponderaciones.examenes;
+        }
+        if (ponderaciones.participacion !== undefined) {
+            document.getElementById('ponderacionParticipacion').value = ponderaciones.participacion;
+        }
+        if (ponderaciones.proyectos !== undefined) {
+            document.getElementById('ponderacionProyectos').value = ponderaciones.proyectos;
+        }
+        if (ponderaciones.practicas !== undefined) {
+            document.getElementById('ponderacionPracticas').value = ponderaciones.practicas;
+        }
+        
+        validarPonderaciones();
+        console.log('✅ Ponderaciones cargadas para materia:', materia_id, ponderaciones);
+    } catch (error) {
+        console.log('No hay ponderaciones guardadas, usando valores por defecto');
+        // Usar valores por defecto
+        document.getElementById('ponderacionTareas').value = 20;
+        document.getElementById('ponderacionExamenes').value = 30;
+        document.getElementById('ponderacionParticipacion').value = 10;
+        document.getElementById('ponderacionProyectos').value = 20;
+        document.getElementById('ponderacionPracticas').value = 20;
+        validarPonderaciones();
+    }
 }
 
 async function subirArchivo(input) {
@@ -722,6 +771,9 @@ async function guardarPonderaciones() {
         });
         
         mostrarToast('Ponderaciones guardadas correctamente', 'success');
+        
+        // Recargar alumnos para mostrar las calificaciones actualizadas con las nuevas ponderaciones
+        await cargarAlumnos();
     } catch (error) {
         console.log('No hay ponderaciones guardadas, usando valores por defecto');
         validarPonderaciones();
@@ -794,6 +846,18 @@ async function actualizarCalificacion(estudianteId, tipo, valor) {
     }
 }
 
+// Función de redondeo personalizada: .5 o menos baja, .6 o más sube
+function redondearCalificacion(calificacion) {
+    const parteEntera = Math.floor(calificacion);
+    const decimal = calificacion - parteEntera;
+    
+    if (decimal >= 0.6) {
+        return parteEntera + 1;
+    } else {
+        return parteEntera;
+    }
+}
+
 async function recalcularCalificacionFinal(estudianteId, materia_id) {
     try {
         const tareaElement = document.getElementById(`tarea_${estudianteId}`);
@@ -808,31 +872,41 @@ async function recalcularCalificacionFinal(estudianteId, materia_id) {
         const proyecto = (proyectoElement && proyectoElement.value) ? parseFloat(proyectoElement.value) || 0 : 0;
         const practica = (practicaElement && practicaElement.value) ? parseFloat(practicaElement.value) || 0 : 0;
         
+        // Obtener ponderaciones del formulario
+        const pesoTarea = (parseFloat(document.getElementById('ponderacionTareas').value) || 20) / 100;
+        const pesoExamen = (parseFloat(document.getElementById('ponderacionExamenes').value) || 30) / 100;
+        const pesoParticipacion = (parseFloat(document.getElementById('ponderacionParticipacion').value) || 10) / 100;
+        const pesoProyecto = (parseFloat(document.getElementById('ponderacionProyectos').value) || 20) / 100;
+        const pesoPractica = (parseFloat(document.getElementById('ponderacionPracticas').value) || 20) / 100;
+        
         const calificacionFinal = (
-            (proyecto * 0.30) +      
-            (examen * 0.30) +        
-            (participacion * 0.10) +   
-            (tarea * 0.20) +          
-            (practica * 0.10)          
+            (proyecto * pesoProyecto) +      
+            (examen * pesoExamen) +        
+            (participacion * pesoParticipacion) +   
+            (tarea * pesoTarea) +          
+            (practica * pesoPractica)          
         );
         
         const calificacionFinalAjustada = Math.max(0, Math.min(10, calificacionFinal));
         
+        // Aplicar redondeo personalizado (.5 baja, .6 sube)
+        const calificacionFinalRedondeada = redondearCalificacion(calificacionFinalAjustada);
+        
         const finalElement = document.getElementById(`final_${estudianteId}`);
         if (finalElement) {
-            finalElement.textContent = calificacionFinalAjustada.toFixed(2);
+            finalElement.textContent = calificacionFinalRedondeada.toFixed(2);
             
             let colorClass = 'badge-danger';
-            if (calificacionFinalAjustada >= 9) colorClass = 'badge-success';
-            else if (calificacionFinalAjustada >= 8) colorClass = 'badge-primary';
-            else if (calificacionFinalAjustada >= 7) colorClass = 'badge-warning';
-            else if (calificacionFinalAjustada >= 6) colorClass = 'badge-info';
+            if (calificacionFinalRedondeada >= 9) colorClass = 'badge-success';
+            else if (calificacionFinalRedondeada >= 8) colorClass = 'badge-primary';
+            else if (calificacionFinalRedondeada >= 7) colorClass = 'badge-warning';
+            else if (calificacionFinalRedondeada >= 6) colorClass = 'badge-info';
             
             finalElement.className = `badge ${colorClass}`;
         }
         
-        console.log(`Calificación final recalculada para estudiante ${estudianteId}: ${calificacionFinalAjustada.toFixed(2)}`);
-        console.log(`Componentes: Tarea(${tarea}*0.20) + Examen(${examen}*0.30) + Participación(${participacion}*0.10) + Proyecto(${proyecto}*0.30) + Práctica(${practica}*0.10)`);
+        console.log(`Calificación final recalculada para estudiante ${estudianteId}: ${calificacionFinalRedondeada.toFixed(2)}`);
+        console.log(`Componentes: Tarea(${tarea}*${(pesoTarea*100).toFixed(0)}%) + Examen(${examen}*${(pesoExamen*100).toFixed(0)}%) + Participación(${participacion}*${(pesoParticipacion*100).toFixed(0)}%) + Proyecto(${proyecto}*${(pesoProyecto*100).toFixed(0)}%) + Práctica(${practica}*${(pesoPractica*100).toFixed(0)}%)`);
         
     } catch (error) {
         console.error('Error al recalcular calificación final:', error);
