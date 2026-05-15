@@ -1,10 +1,11 @@
+let eventoChangeAgregado = false;
 document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion();
     mostrarInfoUsuario();
     mostrarFechaActual();
     await cargarMaterias();
     await cargarHistorial();
-    await cargarAlumnos();
+    // No cargar alumnos automáticamente al inicio, esperar a que seleccione materia
 });
 
 async function cargarMaterias() {

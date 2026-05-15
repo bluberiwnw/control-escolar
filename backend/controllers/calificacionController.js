@@ -1386,11 +1386,11 @@ const calificacionController = {
             // Si no hay ponderaciones guardadas, retornar valores por defecto
             if (ponderacionesQuery.rows.length === 0) {
                 const defaultPonderaciones = {
-                    tarea: 20,
-                    examen: 30,
+                    tareas: 20,
+                    examenes: 30,
                     participacion: 10,
-                    proyecto: 25,
-                    practica: 15
+                    proyectos: 25,
+                    practicas: 15
                 };
                 console.log('📡 getPonderaciones - Usando ponderaciones por defecto');
                 return res.json(defaultPonderaciones);
