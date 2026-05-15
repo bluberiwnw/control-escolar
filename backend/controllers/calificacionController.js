@@ -716,6 +716,53 @@ const calificacionController = {
             }
             
             console.log(`📊 Calificación guardada: estudiante ${estudianteIdNum}, materia ${materiaIdNum}, tipo ${tipo}, valor ${calificacionNum}`);
+            
+            // Recalcular calificación final automáticamente
+            const ponderacionesQuery = await pool.query(
+                'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                [materiaIdNum]
+            );
+            
+            if (ponderacionesQuery.rows.length > 0) {
+                const ponderacionesMap = {};
+                ponderacionesQuery.rows.forEach(row => {
+                    ponderacionesMap[row.tipo] = parseFloat(row.peso);
+                });
+                
+                const calificacionesQuery = await pool.query(
+                    `SELECT tipo, calificacion FROM calificaciones 
+                     WHERE estudiante_id = $1 AND materia_id = $2 AND tipo != 'final'`,
+                    [estudianteIdNum, materiaIdNum]
+                );
+                
+                let calificacionFinal = 0;
+                let totalPeso = 0;
+                
+                calificacionesQuery.rows.forEach(cal => {
+                    const peso = ponderacionesMap[cal.tipo] || 0;
+                    if (peso > 0) {
+                        calificacionFinal += (parseFloat(cal.calificacion) * peso) / 100;
+                        totalPeso += peso;
+                    }
+                });
+                
+                if (totalPeso > 0 && totalPeso !== 100) {
+                    calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                }
+                
+                calificacionFinal = redondearCalificacion(calificacionFinal);
+                
+                await pool.query(
+                    `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                     VALUES ($1, $2, 'final', $3, NOW())
+                     ON CONFLICT (estudiante_id, materia_id, tipo) 
+                     DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()`,
+                    [estudianteIdNum, materiaIdNum, calificacionFinal]
+                );
+                
+                console.log(`📊 Calificación final recalculada: ${calificacionFinal}`);
+            }
+            
             res.json({ message: 'Calificación actualizada correctamente' });
         } catch (error) {
             console.error('❌ Error en actualizarCalificacion:', error);
@@ -1229,19 +1276,44 @@ const calificacionController = {
     async guardarPonderaciones(req, res) {
         try {
             console.log('📡 guardarPonderaciones - Guardando ponderaciones');
+            console.log('📡 guardarPonderaciones - Body recibido:', JSON.stringify(req.body));
             
             // Verificar que el usuario exista y tenga permisos
             if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
-            const { materia_id, ponderaciones } = req.body;
+            const { materia_id } = req.body;
+            
+            // Aceptar ponderaciones como objeto anidado O como campos planos en el body
+            let ponderaciones = req.body.ponderaciones;
+            if (!ponderaciones) {
+                // Extraer de campos planos (compatibilidad con frontend)
+                const { tarea, tareas, examen, examenes, participacion, proyecto, proyectos, practica, practicas } = req.body;
+                if (tarea !== undefined || tareas !== undefined || examen !== undefined || examenes !== undefined || participacion !== undefined) {
+                    ponderaciones = {
+                        tarea: parseFloat(tarea || tareas) || 0,
+                        examen: parseFloat(examen || examenes) || 0,
+                        participacion: parseFloat(participacion) || 0,
+                        proyecto: parseFloat(proyecto || proyectos) || 0,
+                        practica: parseFloat(practica || practicas) || 0
+                    };
+                }
+            } else {
+                // Normalizar keys a singular si vienen en plural
+                const normalized = {};
+                for (const [key, value] of Object.entries(ponderaciones)) {
+                    const normalizedKey = key === 'tareas' ? 'tarea' : key === 'examenes' ? 'examen' : key === 'proyectos' ? 'proyecto' : key === 'practicas' ? 'practica' : key;
+                    normalized[normalizedKey] = parseFloat(value) || 0;
+                }
+                ponderaciones = normalized;
+            }
             
             if (!materia_id || !ponderaciones) {
                 return res.status(400).json({ 
                     message: 'Faltan parámetros requeridos',
-                    required: ['materia_id', 'ponderaciones'],
-                    received: { materia_id, ponderaciones }
+                    required: ['materia_id', 'ponderaciones (o campos: tarea, examen, participacion, proyecto, practica)'],
+                    received: req.body
                 });
             }
 
@@ -1386,11 +1458,11 @@ const calificacionController = {
             // Si no hay ponderaciones guardadas, retornar valores por defecto
             if (ponderacionesQuery.rows.length === 0) {
                 const defaultPonderaciones = {
-                    tareas: 20,
-                    examenes: 30,
+                    tarea: 20,
+                    examen: 30,
                     participacion: 10,
-                    proyectos: 25,
-                    practicas: 15
+                    proyecto: 20,
+                    practica: 20
                 };
                 console.log('📡 getPonderaciones - Usando ponderaciones por defecto');
                 return res.json(defaultPonderaciones);
