@@ -32,20 +32,20 @@ async function cargarPonderaciones(materia_id) {
     try {
         const ponderaciones = await apiRequest(`/calificaciones/ponderaciones/${materia_id}`);
         
-        if (ponderaciones.tareas !== undefined) {
-            document.getElementById('ponderacionTareas').value = ponderaciones.tareas;
+        if (ponderaciones.tarea !== undefined) {
+            document.getElementById('ponderacionTareas').value = ponderaciones.tarea;
         }
-        if (ponderaciones.examenes !== undefined) {
-            document.getElementById('ponderacionExamenes').value = ponderaciones.examenes;
+        if (ponderaciones.examen !== undefined) {
+            document.getElementById('ponderacionExamenes').value = ponderaciones.examen;
         }
         if (ponderaciones.participacion !== undefined) {
             document.getElementById('ponderacionParticipacion').value = ponderaciones.participacion;
         }
-        if (ponderaciones.proyectos !== undefined) {
-            document.getElementById('ponderacionProyectos').value = ponderaciones.proyectos;
+        if (ponderaciones.proyecto !== undefined) {
+            document.getElementById('ponderacionProyectos').value = ponderaciones.proyecto;
         }
-        if (ponderaciones.practicas !== undefined) {
-            document.getElementById('ponderacionPracticas').value = ponderaciones.practicas;
+        if (ponderaciones.practica !== undefined) {
+            document.getElementById('ponderacionPracticas').value = ponderaciones.practica;
         }
         
         validarPonderaciones();
@@ -754,11 +754,11 @@ async function guardarPonderaciones() {
     }
     
     const ponderaciones = {
-        tareas: parseFloat(document.getElementById('ponderacionTareas').value) || 20,
-        examenes: parseFloat(document.getElementById('ponderacionExamenes').value) || 30,
+        tarea: parseFloat(document.getElementById('ponderacionTareas').value) || 20,
+        examen: parseFloat(document.getElementById('ponderacionExamenes').value) || 30,
         participacion: parseFloat(document.getElementById('ponderacionParticipacion').value) || 10,
-        proyectos: parseFloat(document.getElementById('ponderacionProyectos').value) || 20,
-        practicas: parseFloat(document.getElementById('ponderacionPracticas').value) || 20
+        proyecto: parseFloat(document.getElementById('ponderacionProyectos').value) || 20,
+        practica: parseFloat(document.getElementById('ponderacionPracticas').value) || 20
     };
     
     try {
@@ -766,7 +766,7 @@ async function guardarPonderaciones() {
             method: 'POST',
             body: JSON.stringify({
                 materia_id: materia_id,
-                ...ponderaciones
+                ponderaciones: ponderaciones
             })
         });
         
@@ -796,11 +796,11 @@ async function calcularCalificaciones() {
         mostrarToast('Calculando calificaciones...', 'info');
         
         const ponderaciones = {
-            tareas: parseFloat(document.getElementById('ponderacionTareas').value) || 0,
-            examenes: parseFloat(document.getElementById('ponderacionExamenes').value) || 0,
+            tarea: parseFloat(document.getElementById('ponderacionTareas').value) || 0,
+            examen: parseFloat(document.getElementById('ponderacionExamenes').value) || 0,
             participacion: parseFloat(document.getElementById('ponderacionParticipacion').value) || 0,
-            proyectos: parseFloat(document.getElementById('ponderacionProyectos').value) || 0,
-            practicas: parseFloat(document.getElementById('ponderacionPracticas').value) || 0
+            proyecto: parseFloat(document.getElementById('ponderacionProyectos').value) || 0,
+            practica: parseFloat(document.getElementById('ponderacionPracticas').value) || 0
         };
         
         const resultado = await apiRequest(`/calificaciones/calcular/${materia_id}`, {

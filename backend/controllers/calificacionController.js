@@ -716,6 +716,53 @@ const calificacionController = {
             }
             
             console.log(`📊 Calificación guardada: estudiante ${estudianteIdNum}, materia ${materiaIdNum}, tipo ${tipo}, valor ${calificacionNum}`);
+            
+            // Recalcular calificación final automáticamente
+            const ponderacionesQuery = await pool.query(
+                'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                [materiaIdNum]
+            );
+            
+            if (ponderacionesQuery.rows.length > 0) {
+                const ponderacionesMap = {};
+                ponderacionesQuery.rows.forEach(row => {
+                    ponderacionesMap[row.tipo] = parseFloat(row.peso);
+                });
+                
+                const calificacionesQuery = await pool.query(
+                    `SELECT tipo, calificacion FROM calificaciones 
+                     WHERE estudiante_id = $1 AND materia_id = $2 AND tipo != 'final'`,
+                    [estudianteIdNum, materiaIdNum]
+                );
+                
+                let calificacionFinal = 0;
+                let totalPeso = 0;
+                
+                calificacionesQuery.rows.forEach(cal => {
+                    const peso = ponderacionesMap[cal.tipo] || 0;
+                    if (peso > 0) {
+                        calificacionFinal += (parseFloat(cal.calificacion) * peso) / 100;
+                        totalPeso += peso;
+                    }
+                });
+                
+                if (totalPeso > 0 && totalPeso !== 100) {
+                    calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                }
+                
+                calificacionFinal = redondearCalificacion(calificacionFinal);
+                
+                await pool.query(
+                    `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                     VALUES ($1, $2, 'final', $3, NOW())
+                     ON CONFLICT (estudiante_id, materia_id, tipo) 
+                     DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()`,
+                    [estudianteIdNum, materiaIdNum, calificacionFinal]
+                );
+                
+                console.log(`📊 Calificación final recalculada: ${calificacionFinal}`);
+            }
+            
             res.json({ message: 'Calificación actualizada correctamente' });
         } catch (error) {
             console.error('❌ Error en actualizarCalificacion:', error);
