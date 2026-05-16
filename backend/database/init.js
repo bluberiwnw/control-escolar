@@ -170,6 +170,41 @@ async function initDatabase() {
       ON entregas(actividad_id, estudiante_id);
     `);
 
+    // Migraciones: expandir CHECK constraints para incluir todos los tipos
+    try {
+      await pool.query(`ALTER TABLE calificaciones DROP CONSTRAINT IF EXISTS calificaciones_tipo_check;`);
+      await pool.query(`
+        ALTER TABLE calificaciones ADD CONSTRAINT calificaciones_tipo_check
+        CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'participacion', 'practica', 'final', 'general'));
+      `);
+    } catch (e) {
+      console.log('ℹ️  CHECK constraint calificaciones ya actualizado:', e.message);
+    }
+    try {
+      await pool.query(`ALTER TABLE archivos_calificaciones DROP CONSTRAINT IF EXISTS archivos_calificaciones_tipo_check;`);
+      await pool.query(`
+        ALTER TABLE archivos_calificaciones ADD CONSTRAINT archivos_calificaciones_tipo_check
+        CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'htm'));
+      `);
+    } catch (e) {
+      console.log('ℹ️  CHECK constraint archivos_calificaciones ya actualizado:', e.message);
+    }
+
+    // Agregar UNIQUE constraint para ON CONFLICT
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS calificaciones_estudiante_materia_tipo_uq
+      ON calificaciones(estudiante_id, materia_id, tipo);
+    `);
+
+    // Agregar columna updated_at si no existe
+    try {
+      await pool.query(`
+        ALTER TABLE calificaciones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      `);
+    } catch (e) {
+      console.log('ℹ️  Columna updated_at ya existe');
+    }
+
     console.log('✅ Tablas creadas/verificadas');
 
     // Insertar datos de prueba

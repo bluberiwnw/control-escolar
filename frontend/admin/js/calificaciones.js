@@ -27,13 +27,13 @@ async function cargarCalificaciones() {
     }
     const container = document.getElementById('calificacionesContainer');
     container.innerHTML = filtrosInfo + 
-        `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Actividad</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
+        `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Materia</th><th>Estudiante</th><th>Tipo</th><th>Calificación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>
             ${calificaciones.map(c => `<tr>
                 <td data-label="Materia"><span class="materia-destacada">${c.materia_nombre}</span></td>
                 <td data-label="Estudiante">${c.estudiante_nombre}</td>
-                <td data-label="Actividad">${c.actividad_titulo || c.tipo}</td>
+                <td data-label="Tipo">${c.actividad_titulo || c.tipo}</td>
                 <td data-label="Calificación">${c.calificacion}</td>
-                <td data-label="Fecha">${formatearFecha(c.fecha_registro)}</td>
+                <td data-label="Fecha">${formatearFecha(c.fecha_registro || c.created_at)}</td>
                 <td data-label="Acciones" class="table-actions">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="editarCalificacion(${c.id}, ${c.calificacion})">Editar</button>
                     <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCalificacion(${c.id})">Eliminar</button>
@@ -43,11 +43,11 @@ async function cargarCalificaciones() {
 }
 
 async function editarCalificacion(id, actual) {
-    const valor = window.prompt('Nueva calificación (5 - 10):', actual);
+    const valor = window.prompt('Nueva calificación (0 - 10):', actual);
     if (valor === null) return;
     const numero = parseFloat(valor);
-    if (Number.isNaN(numero) || numero < 5 || numero > 10) {
-        mostrarToast('La calificación debe estar entre 5 y 10', 'error');
+    if (Number.isNaN(numero) || numero < 0 || numero > 10) {
+        mostrarToast('La calificación debe estar entre 0 y 10', 'error');
         return;
     }
     await apiRequest(`/admin/calificaciones/${id}`, {

@@ -462,12 +462,27 @@ const adminController = {
     async listarCalificaciones(req, res) {
         try {
             const { materia_id } = req.query;
+
+            // Detectar columnas disponibles en la tabla calificaciones
+            const colsCheck = await pool.query(`
+                SELECT column_name FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'calificaciones'
+                AND column_name IN ('actividad_id', 'fecha_registro')
+            `);
+            const existingCols = colsCheck.rows.map(r => r.column_name);
+            const hasActividadId = existingCols.includes('actividad_id');
+            const hasFechaRegistro = existingCols.includes('fecha_registro');
+
+            const actividadSelect = hasActividadId ? ', a.titulo as actividad_titulo' : '';
+            const actividadJoin = hasActividadId ? 'LEFT JOIN actividades a ON c.actividad_id = a.id' : '';
+            const orderDate = hasFechaRegistro ? 'c.fecha_registro' : 'c.created_at';
+
             let query = `
-                SELECT c.*, m.nombre as materia_nombre, e.nombre as estudiante_nombre, a.titulo as actividad_titulo
+                SELECT c.*, m.nombre as materia_nombre, e.nombre as estudiante_nombre${actividadSelect}
                 FROM calificaciones c
                 JOIN materias m ON c.materia_id = m.id
                 JOIN estudiantes e ON c.estudiante_id = e.id
-                LEFT JOIN actividades a ON c.actividad_id = a.id
+                ${actividadJoin}
                 WHERE 1=1
             `;
             const params = [];
@@ -475,7 +490,7 @@ const adminController = {
                 query += ` AND c.materia_id = $1`;
                 params.push(materia_id);
             }
-            query += ' ORDER BY m.nombre, e.nombre, c.fecha_registro DESC';
+            query += ` ORDER BY m.nombre, e.nombre, ${orderDate} DESC`;
             const result = await pool.query(query, params);
             res.json(result.rows);
         } catch (error) {
@@ -488,8 +503,8 @@ const adminController = {
             const { id } = req.params;
             const { calificacion } = req.body;
             const valor = parseDecimalSeguro(calificacion, NaN);
-            if (Number.isNaN(valor) || valor < 5 || valor > 10) {
-                return res.status(400).json({ message: 'La calificación debe estar entre 5 y 10.' });
+            if (Number.isNaN(valor) || valor < 0 || valor > 10) {
+                return res.status(400).json({ message: 'La calificación debe estar entre 0 y 10.' });
             }
             await pool.query(
                 'UPDATE calificaciones SET calificacion = $1 WHERE id = $2',
@@ -517,17 +532,18 @@ const adminController = {
     // Reportes globales
     async getReportes(req, res) {
         try {
-            // Promedio general de calificaciones
-            const promedio = await pool.query('SELECT AVG(calificacion) as promedio FROM calificaciones');
+            // Excluir tipo 'final' para no duplicar promedios (es un valor calculado, no una nota directa)
+            const promedio = await pool.query("SELECT AVG(calificacion) as promedio FROM calificaciones WHERE tipo != 'final'");
             const rendimientoSobresaliente = await pool.query(`
                 SELECT 
                     (COUNT(CASE WHEN calificacion >= 8 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0)) as porcentaje 
-                FROM calificaciones
+                FROM calificaciones WHERE tipo != 'final'
             `);
             const materiasRendimiento = await pool.query(`
                 SELECT m.nombre, AVG(c.calificacion) as promedio
                 FROM calificaciones c
                 JOIN materias m ON c.materia_id = m.id
+                WHERE c.tipo != 'final'
                 GROUP BY m.id, m.nombre
                 ORDER BY promedio DESC
             `);
