@@ -1710,18 +1710,20 @@ const calificacionController = {
 
             const alumno_id = req.usuario.id;
             
-            // Obtener todas las materias y calificaciones del alumno
+            // Obtener todas las materias del alumno usando materias_estudiantes (inscripciones)
+            // También incluir materias donde tenga calificaciones directas
             const materiasQuery = await pool.query(`
-                SELECT m.id, m.nombre, m.clave, u.nombre as profesor,
-                       COALESCE(AVG(c.calificacion), 0) as promedio_final
+                SELECT DISTINCT m.id, m.nombre, m.clave, u.nombre as profesor
                 FROM materias m
                 LEFT JOIN usuarios u ON m.profesor_id = u.id
-                LEFT JOIN calificaciones c ON m.id = c.materia_id AND c.estudiante_id = $1
                 WHERE EXISTS (
-                    SELECT 1 FROM calificaciones 
-                    WHERE materia_id = m.id AND estudiante_id = $1
+                    SELECT 1 FROM materias_estudiantes me
+                    WHERE me.materia_id = m.id AND me.estudiante_id = $1 AND me.activo = true
                 )
-                GROUP BY m.id, m.nombre, m.clave, u.nombre
+                OR EXISTS (
+                    SELECT 1 FROM calificaciones c
+                    WHERE c.materia_id = m.id AND c.estudiante_id = $1
+                )
                 ORDER BY m.nombre
             `, [alumno_id]);
 
@@ -1733,11 +1735,33 @@ const calificacionController = {
                         [alumno_id, materia.id]
                     );
                     
-                    // Calcular calificación final con la misma fórmula que usa el profesor
+                    // Obtener ponderaciones reales de la materia
+                    const ponderacionesQuery = await pool.query(
+                        'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                        [materia.id]
+                    );
+                    
+                    const ponderaciones = {};
+                    ponderacionesQuery.rows.forEach(p => {
+                        ponderaciones[p.tipo] = parseFloat(p.peso);
+                    });
+                    
+                    // Valores por defecto si no hay ponderaciones configuradas
+                    if (Object.keys(ponderaciones).length === 0) {
+                        ponderaciones.tarea = 20;
+                        ponderaciones.examen = 30;
+                        ponderaciones.participacion = 10;
+                        ponderaciones.proyecto = 25;
+                        ponderaciones.practica = 15;
+                    }
+                    
+                    // Calcular calificación final con las ponderaciones reales
                     const calificaciones = calificacionesQuery.rows;
-                    let tareas = 0, examenes = 0, participacion = 0, proyectos = 0, practicas = 0;
+                    let tareas = null, examenes = null, participacion = null, proyectos = null, practicas = null;
+                    let tieneAlgunaCalificacion = false;
                     
                     calificaciones.forEach(cal => {
+                        tieneAlgunaCalificacion = true;
                         switch(cal.tipo) {
                             case 'tarea': tareas = parseFloat(cal.calificacion); break;
                             case 'examen': examenes = parseFloat(cal.calificacion); break;
@@ -1747,30 +1771,43 @@ const calificacionController = {
                         }
                     });
                     
-                    const calificacionFinal = (
-                        proyectos * 0.30 +
-                        examenes * 0.30 +
-                        participacion * 0.10 +
-                        tareas * 0.20 +
-                        practicas * 0.10
-                    );
+                    let calificacionFinal = 0;
+                    if (tieneAlgunaCalificacion) {
+                        calificacionFinal = (
+                            (tareas || 0) * (ponderaciones.tarea || 0) / 100 +
+                            (examenes || 0) * (ponderaciones.examen || 0) / 100 +
+                            (participacion || 0) * (ponderaciones.participacion || 0) / 100 +
+                            (proyectos || 0) * (ponderaciones.proyecto || 0) / 100 +
+                            (practicas || 0) * (ponderaciones.practica || 0) / 100
+                        );
+                        calificacionFinal = Math.max(0, Math.min(10, calificacionFinal));
+                    }
                     
-                    const calificacionFinalAjustada = Math.max(0, Math.min(10, calificacionFinal));
+                    // Verificar si hay calificacion_final almacenada directamente
+                    const finalDirecto = calificaciones.find(c => c.tipo === 'general');
+                    if (finalDirecto) {
+                        calificacionFinal = parseFloat(finalDirecto.calificacion);
+                    }
                     
                     return {
-                        ...materia,
+                        materia_id: materia.id,
+                        nombre: materia.nombre,
+                        clave: materia.clave,
+                        profesor: materia.profesor,
                         calificaciones: calificacionesQuery.rows,
                         tareas,
                         examenes,
                         participacion,
                         proyectos,
                         practicas,
-                        calificacion_final: calificacionFinalAjustada
+                        promedio_final: calificacionFinal,
+                        calificacion_final: calificacionFinal,
+                        ponderaciones
                     };
                 })
             );
 
-            // Calcular estadísticas generales usando los datos procesados
+            // Calcular estadísticas generales
             const materiasConCalificacionesValidas = materiasConCalificaciones.filter(m => 
                 m.calificacion_final !== null && m.calificacion_final !== undefined && m.calificacion_final > 0
             );
@@ -1806,9 +1843,12 @@ const calificacionController = {
             const { materia_id } = req.params;
             const alumno_id = req.usuario.id;
             
-            // Verificar que la materia exista y el alumno esté inscrito
+            // Verificar que el alumno esté inscrito (en materias_estudiantes o tenga calificaciones)
             const inscripcionCheck = await pool.query(
-                'SELECT 1 FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 LIMIT 1',
+                `SELECT 1 FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2 AND activo = true
+                 UNION
+                 SELECT 1 FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2
+                 LIMIT 1`,
                 [alumno_id, materia_id]
             );
             
@@ -1819,6 +1859,12 @@ const calificacionController = {
             // Eliminar todas las calificaciones del alumno en esa materia
             await pool.query(
                 'DELETE FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2',
+                [alumno_id, materia_id]
+            );
+
+            // Eliminar la inscripción de materias_estudiantes
+            await pool.query(
+                'DELETE FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2',
                 [alumno_id, materia_id]
             );
 

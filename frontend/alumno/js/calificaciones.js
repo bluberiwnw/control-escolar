@@ -84,7 +84,7 @@ function llenarSelectMaterias(materias) {
     // Agregar materias
     materias.forEach(materia => {
         const option = document.createElement('option');
-        option.value = materia.materia_id;
+        option.value = materia.materia_id || materia.id;
         option.textContent = `${materia.nombre} (${materia.clave || 'N/A'})`;
         materiaSelect.appendChild(option);
     });
@@ -200,9 +200,18 @@ function mostrarCalificacionesPorMateria(materias) {
     
     let html = '';
     materias.forEach(materia => {
-        const promedioFinal = parseFloat(materia.promedio_final) || 0;
+        const promedioFinal = parseFloat(materia.promedio_final) || parseFloat(materia.calificacion_final) || 0;
         const promedioColor = getCalificacionColor(promedioFinal);
         const promedioIcon = getCalificacionIcon(promedioFinal);
+        
+        // Verificar si tiene calificaciones (usando !== null para detectar valores 0 también)
+        const tieneCalificaciones = (materia.calificaciones && materia.calificaciones.length > 0) ||
+            materia.tareas !== null || materia.examenes !== null || 
+            materia.participacion !== null || materia.proyectos !== null || 
+            materia.practicas !== null;
+        
+        // Obtener ponderaciones si están disponibles
+        const pond = materia.ponderaciones || {};
         
         html += `
             <div class="panel-card" style="margin-bottom: 1.5rem;">
@@ -224,95 +233,15 @@ function mostrarCalificacionesPorMateria(materias) {
                     </div>
                 </div>
                 
-                ${(materia.calificaciones && materia.calificaciones.length > 0) || (materia.tareas || materia.examenes || materia.participacion || materia.proyectos || materia.practicas) ? `
+                ${tieneCalificaciones ? `
                     <div class="calificaciones-list">
                         <h4 style="margin: 0 0 1rem 0; color: #374151; font-size: 1rem; font-weight: 600;">Calificaciones Detalladas</h4>
                         
-                        ${materia.tareas !== undefined ? `
-                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
-                                <div>
-                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                                        <i class="fas fa-clipboard-check"></i> 📝 Tareas
-                                    </span>
-                                </div>
-                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
-                                    ${(parseFloat(materia.tareas) || 0).toFixed(1)}
-                                </span>
-                            </div>
-                        ` : ''}
-                        
-                        ${materia.examenes !== undefined ? `
-                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
-                                <div>
-                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                                        <i class="fas fa-clipboard-check"></i> 📋 Exámenes
-                                    </span>
-                                </div>
-                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
-                                    ${(parseFloat(materia.examenes) || 0).toFixed(1)}
-                                </span>
-                            </div>
-                        ` : ''}
-                        
-                        ${materia.participacion !== undefined ? `
-                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
-                                <div>
-                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                                        <i class="fas fa-clipboard-check"></i> 👥 Participación
-                                    </span>
-                                </div>
-                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
-                                    ${(parseFloat(materia.participacion) || 0).toFixed(1)}
-                                </span>
-                            </div>
-                        ` : ''}
-                        
-                        ${materia.proyectos !== undefined ? `
-                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
-                                <div>
-                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                                        <i class="fas fa-clipboard-check"></i> 🚀 Proyectos
-                                    </span>
-                                </div>
-                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
-                                    ${(parseFloat(materia.proyectos) || 0).toFixed(1)}
-                                </span>
-                            </div>
-                        ` : ''}
-                        
-                        ${materia.practicas !== undefined ? `
-                            <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
-                                <div>
-                                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                                        <i class="fas fa-clipboard-check"></i> 💻 Prácticas
-                                    </span>
-                                </div>
-                                <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
-                                    ${(parseFloat(materia.practicas) || 0).toFixed(1)}
-                                </span>
-                            </div>
-                        ` : ''}
-                        
-                        ${materia.calificaciones && materia.calificaciones.length > 0 ? `
-                            <h4 style="margin: 1rem 0 1rem 0; color: #374151; font-size: 1rem; font-weight: 600;">Otras Calificaciones</h4>
-                            ${materia.calificaciones.map(cal => `
-                                <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
-                                    <div>
-                                        <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                                            <i class="fas fa-clipboard-check"></i> ${formatearTipo(cal.tipo)}
-                                        </span>
-                                        ${cal.fecha_registro ? `
-                                            <span style="color: #94a3b8; font-size: 0.75rem; margin-left: 0.5rem;">
-                                                (${new Date(cal.fecha_registro).toLocaleDateString()})
-                                            </span>
-                                        ` : ''}
-                                    </div>
-                                    <span style="font-weight: 600; color: #1e293b; font-size: 1.125rem;">
-                                        ${(parseFloat(cal.calificacion) || 0).toFixed(1)}
-                                    </span>
-                                </div>
-                            `).join('')}
-                        ` : ''}
+                        ${renderCalificacionItem('📝 Tareas', materia.tareas, pond.tarea)}
+                        ${renderCalificacionItem('📋 Exámenes', materia.examenes, pond.examen)}
+                        ${renderCalificacionItem('👥 Participación', materia.participacion, pond.participacion)}
+                        ${renderCalificacionItem('🚀 Proyectos', materia.proyectos, pond.proyecto)}
+                        ${renderCalificacionItem('💻 Prácticas', materia.practicas, pond.practica)}
                     </div>
                 ` : `
                     <div class="empty-calificaciones" style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: 0.5rem; border: 1px dashed #cbd5e1;">
@@ -326,6 +255,26 @@ function mostrarCalificacionesPorMateria(materias) {
     });
     
     container.innerHTML = html;
+}
+
+function renderCalificacionItem(label, valor, ponderacion) {
+    if (valor === null || valor === undefined) return '';
+    const valorNum = parseFloat(valor) || 0;
+    const colorCalificacion = getCalificacionColor(valorNum);
+    const pondText = ponderacion ? ` (${ponderacion}%)` : '';
+    return `
+        <div class="calificacion-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+            <div>
+                <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                    <i class="fas fa-clipboard-check"></i> ${label}
+                </span>
+                <span style="color: #94a3b8; font-size: 0.75rem;">${pondText}</span>
+            </div>
+            <span style="font-weight: 600; color: ${colorCalificacion}; font-size: 1.125rem;">
+                ${valorNum.toFixed(1)}
+            </span>
+        </div>
+    `;
 }
 
 function getPromedioColor(promedio) {
