@@ -1182,6 +1182,7 @@ const calificacionController = {
             console.log('📡 deleteAlumno - Eliminando alumno');
             
             const { id } = req.params;
+            const materia_id = req.query.materia_id;
             
             // Verificar que el usuario exista y tenga permisos
             if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
@@ -1198,13 +1199,39 @@ const calificacionController = {
                 return res.status(404).json({ message: 'Alumno no encontrado' });
             }
             
-            // Eliminar inscripciones del alumno (se eliminarán en cascada las calificaciones)
-            await pool.query(
-                'DELETE FROM materias_estudiantes WHERE estudiante_id = $1',
-                [id]
-            );
+            // Verificar qué tablas de inscripción existen
+            const tablesCheck = await pool.query(`
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name IN ('inscripciones', 'materias_estudiantes')
+            `);
+            const existingTables = tablesCheck.rows.map(r => r.table_name);
             
-            console.log(`✅ Alumno eliminado: ${alumnoCheck.rows[0].nombre}`);
+            if (materia_id) {
+                // Eliminar de la materia específica
+                await pool.query('DELETE FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2', [id, materia_id]);
+                
+                if (existingTables.includes('materias_estudiantes')) {
+                    await pool.query('DELETE FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2', [id, materia_id]);
+                }
+                if (existingTables.includes('inscripciones')) {
+                    await pool.query('DELETE FROM inscripciones WHERE estudiante_id = $1 AND materia_id = $2', [id, materia_id]);
+                }
+                await pool.query('UPDATE estudiantes SET materia_id = NULL WHERE id = $1 AND materia_id = $2', [id, materia_id]);
+            } else {
+                // Sin materia_id, eliminar de todas las materias
+                await pool.query('DELETE FROM calificaciones WHERE estudiante_id = $1', [id]);
+                
+                if (existingTables.includes('materias_estudiantes')) {
+                    await pool.query('DELETE FROM materias_estudiantes WHERE estudiante_id = $1', [id]);
+                }
+                if (existingTables.includes('inscripciones')) {
+                    await pool.query('DELETE FROM inscripciones WHERE estudiante_id = $1', [id]);
+                }
+                await pool.query('UPDATE estudiantes SET materia_id = NULL WHERE id = $1', [id]);
+            }
+            
+            console.log(`✅ Alumno eliminado: ${alumnoCheck.rows[0].nombre}${materia_id ? ' de materia ' + materia_id : ''}`);
             
             res.json({ 
                 message: 'Alumno eliminado correctamente',
@@ -1245,22 +1272,32 @@ const calificacionController = {
             }
             
             // Contar alumnos antes de eliminar
-            const countQuery = await pool.query(
-                'SELECT COUNT(*) as total FROM materias_estudiantes WHERE materia_id = $1 AND activo = true',
-                [materiaIdNum]
-            );
-            
-            const totalAlumnos = parseInt(countQuery.rows[0].total);
+            const alumnosRows = await getEstudiantesDeMateria(materiaIdNum);
+            const totalAlumnos = alumnosRows.length;
             
             if (totalAlumnos === 0) {
                 return res.status(400).json({ message: 'No hay alumnos inscritos en esta materia' });
             }
             
-            // Eliminar todas las inscripciones de la materia (se eliminarán en cascada las calificaciones)
-            await pool.query(
-                'DELETE FROM materias_estudiantes WHERE materia_id = $1',
-                [materiaIdNum]
-            );
+            // Verificar qué tablas de inscripción existen
+            const tablesCheck = await pool.query(`
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name IN ('inscripciones', 'materias_estudiantes')
+            `);
+            const existingTables = tablesCheck.rows.map(r => r.table_name);
+            
+            // Eliminar calificaciones de la materia
+            await pool.query('DELETE FROM calificaciones WHERE materia_id = $1', [materiaIdNum]);
+            
+            // Eliminar de todas las tablas de inscripción
+            if (existingTables.includes('materias_estudiantes')) {
+                await pool.query('DELETE FROM materias_estudiantes WHERE materia_id = $1', [materiaIdNum]);
+            }
+            if (existingTables.includes('inscripciones')) {
+                await pool.query('DELETE FROM inscripciones WHERE materia_id = $1', [materiaIdNum]);
+            }
+            await pool.query('UPDATE estudiantes SET materia_id = NULL WHERE materia_id = $1', [materiaIdNum]);
             
             console.log(`✅ Eliminados ${totalAlumnos} alumnos de la materia ${materiaCheck.rows[0].nombre}`);
             

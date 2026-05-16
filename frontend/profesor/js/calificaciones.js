@@ -707,12 +707,14 @@ async function guardarAlumno(event) {
 }
 
 async function eliminarAlumno(alumnoId) {
-    if (!confirm('¿Estás seguro de eliminar este alumno? Esta acción no se puede deshacer.')) {
+    if (!confirm('¿Estás seguro de eliminar este alumno de esta materia? Esta acción no se puede deshacer.')) {
         return;
     }
 
+    const materia_id = document.getElementById('materiaSelect').value;
+
     try {
-        await apiRequest(`/calificaciones/alumnos/${alumnoId}`, {
+        await apiRequest(`/calificaciones/alumnos/${alumnoId}${materia_id ? '?materia_id=' + materia_id : ''}`, {
             method: 'DELETE'
         });
         mostrarToast('Alumno eliminado', 'success');
