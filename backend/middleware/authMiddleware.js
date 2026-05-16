@@ -17,15 +17,24 @@ const authMiddleware = async (req, res, next) => {
 
         let usuario = null;
 
-        if (tipo === 'profesor' || rol === 'profesor') {
+        if (rol === 'administrador') {
             const result = await pool.query(
                 'SELECT id, nombre, email, avatar, rol, activo FROM usuarios WHERE id = $1 AND email = $2',
                 [id, email]
             );
             if (result.rows.length > 0) {
                 usuario = result.rows[0];
-                // Asegurar que el rol sea consistente
-                usuario.rol = 'profesor';
+                usuario.rol = 'administrador';
+                usuario.tipo = 'profesor';
+            }
+        } else if (tipo === 'profesor' || rol === 'profesor') {
+            const result = await pool.query(
+                'SELECT id, nombre, email, avatar, rol, activo FROM usuarios WHERE id = $1 AND email = $2',
+                [id, email]
+            );
+            if (result.rows.length > 0) {
+                usuario = result.rows[0];
+                usuario.rol = usuario.rol === 'administrador' ? 'administrador' : 'profesor';
                 usuario.tipo = 'profesor';
             }
         } else if (tipo === 'alumno' || rol === 'alumno') {
@@ -37,16 +46,6 @@ const authMiddleware = async (req, res, next) => {
                 usuario = result.rows[0];
                 usuario.rol = 'alumno';
                 usuario.tipo = 'alumno';
-            }
-        } else if (rol === 'administrador') {
-            const result = await pool.query(
-                'SELECT id, nombre, email, avatar, rol, activo FROM usuarios WHERE id = $1 AND email = $2',
-                [id, email]
-            );
-            if (result.rows.length > 0) {
-                usuario = result.rows[0];
-                usuario.rol = 'administrador';
-                usuario.tipo = 'profesor'; // Los administradores se manejan como tipo profesor
             }
         } else {
             return res.status(401).json({ message: 'Tipo de usuario no válido' });
