@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function cargarActividades() {
     const actividades = await apiRequest('/alumno/actividades');
-    const hoy = new Date().toISOString().split('T')[0];
     const container = document.getElementById('actividadesContainer');
     if (!actividades.length) {
         container.innerHTML = '<div class="alert alert-info">No hay actividades disponibles.</div>';
@@ -15,8 +14,7 @@ async function cargarActividades() {
     }
     let html = '';
     for (const a of actividades) {
-        const fechaEntrega = a.fecha_entrega.split('T')[0];
-        const puedeCancelar = a.entregado && fechaEntrega >= hoy;
+        const puedeCancelar = a.entregado;
         html += `
             <div class="actividad-card">
                 <div class="actividad-tipo">${a.tipo.toUpperCase()}</div>
