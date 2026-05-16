@@ -34,6 +34,39 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 }).single('archivo');
 
+// Helper: obtener estudiantes inscritos en una materia desde TODAS las fuentes
+async function getEstudiantesDeMateria(materia_id, includeEmail = false) {
+    // Verificar qué tablas de inscripción existen
+    const tablesCheck = await pool.query(`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name IN ('inscripciones', 'materias_estudiantes')
+    `);
+    const existingTables = tablesCheck.rows.map(r => r.table_name);
+    
+    const emailCol = includeEmail ? ', e.email' : '';
+    let conditions = [];
+    
+    if (existingTables.includes('materias_estudiantes')) {
+        conditions.push(`EXISTS (SELECT 1 FROM materias_estudiantes me WHERE me.estudiante_id = e.id AND me.materia_id = $1 AND me.activo = true)`);
+    }
+    if (existingTables.includes('inscripciones')) {
+        conditions.push(`EXISTS (SELECT 1 FROM inscripciones i WHERE i.estudiante_id = e.id AND i.materia_id = $1)`);
+    }
+    conditions.push(`e.materia_id = $1`);
+    
+    const whereClause = conditions.join(' OR ');
+    
+    const result = await pool.query(`
+        SELECT DISTINCT e.id, e.matricula, e.nombre${emailCol}
+        FROM estudiantes e
+        WHERE ${whereClause}
+        ORDER BY e.nombre
+    `, [materia_id]);
+    
+    return result.rows;
+}
+
 // Función de redondeo personalizada: .5 o menos baja, .6 o más sube
 function redondearCalificacion(calificacion) {
     const parteEntera = Math.floor(calificacion);
@@ -963,18 +996,12 @@ const calificacionController = {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
-            // Obtener alumnos de la materia con todas sus calificaciones
-            const alumnosQuery = await pool.query(`
-                SELECT DISTINCT e.id, e.matricula, e.nombre, e.email
-                FROM estudiantes e
-                INNER JOIN materias_estudiantes me ON e.id = me.estudiante_id
-                WHERE me.materia_id = $1 AND me.activo = true
-                ORDER BY e.nombre
-            `, [materia_id]);
+            // Obtener alumnos de la materia desde todas las fuentes de inscripción
+            const alumnosRows = await getEstudiantesDeMateria(materia_id, true);
             
             // Obtener calificaciones para cada alumno
             const alumnosConCalificaciones = await Promise.all(
-                alumnosQuery.rows.map(async (alumno) => {
+                alumnosRows.map(async (alumno) => {
                     const calificacionesQuery = await pool.query(`
                         SELECT tipo, calificacion, fecha_registro
                         FROM calificaciones 
@@ -1353,19 +1380,13 @@ const calificacionController = {
             // Aplicar ponderaciones a los alumnos existentes en la materia
             console.log('🔄 Aplicando ponderaciones a alumnos existentes...');
             
-            // Obtener todos los alumnos inscritos en la materia
-            const alumnosQuery = await pool.query(`
-                SELECT DISTINCT e.id, e.matricula, e.nombre
-                FROM estudiantes e
-                INNER JOIN materias_estudiantes me ON e.id = me.estudiante_id
-                WHERE me.materia_id = $1 AND me.activo = true
-                ORDER BY e.nombre
-            `, [materia_id]);
+            // Obtener todos los alumnos inscritos en la materia desde todas las fuentes
+            const alumnosRows = await getEstudiantesDeMateria(materia_id);
             
-            console.log(`📊 Encontrados ${alumnosQuery.rows.length} alumnos en materia ${materia_id}`);
+            console.log(`📊 Encontrados ${alumnosRows.length} alumnos en materia ${materia_id}`);
             
             // Para cada alumno, asegurarse que tenga calificaciones para todos los tipos
-            for (const alumno of alumnosQuery.rows) {
+            for (const alumno of alumnosRows) {
                 for (const ponderacion of ponderacionesArray) {
                     // Verificar si el alumno ya tiene calificación para este tipo
                     const calificacionExistente = await pool.query(`
@@ -1388,7 +1409,7 @@ const calificacionController = {
             // Recalcular calificaciones finales para todos los alumnos
             console.log('🔄 Recalculando calificaciones finales...');
             
-            for (const alumno of alumnosQuery.rows) {
+            for (const alumno of alumnosRows) {
                 // Obtener todas las calificaciones del alumno con sus ponderaciones
                 const calificacionesQuery = await pool.query(`
                     SELECT c.tipo, c.calificacion, p.peso
@@ -1429,7 +1450,7 @@ const calificacionController = {
             res.json({ 
                 message: 'Ponderaciones guardadas y aplicadas correctamente',
                 ponderaciones: ponderacionesArray,
-                alumnos_actualizados: alumnosQuery.rows.length
+                alumnos_actualizados: alumnosRows.length
             });
             
         } catch (error) {
@@ -1528,25 +1549,19 @@ const calificacionController = {
             
             console.log('📊 Ponderaciones encontradas:', ponderaciones);
             
-            // Obtener todos los estudiantes de la materia
-            const estudiantesQuery = await pool.query(`
-                SELECT DISTINCT e.id, e.matricula, e.nombre
-                FROM estudiantes e
-                INNER JOIN materias_estudiantes me ON e.id = me.estudiante_id
-                WHERE me.materia_id = $1 AND me.activo = true
-                ORDER BY e.nombre
-            `, [materiaIdNum]);
+            // Obtener todos los estudiantes de la materia desde todas las fuentes
+            const estudiantesRows = await getEstudiantesDeMateria(materiaIdNum);
             
-            if (estudiantesQuery.rows.length === 0) {
+            if (estudiantesRows.length === 0) {
                 return res.json({ message: 'No hay alumnos inscritos en esta materia', calculados: 0 });
             }
             
-            console.log(`📊 Procesando ${estudiantesQuery.rows.length} estudiantes...`);
+            console.log(`📊 Procesando ${estudiantesRows.length} estudiantes...`);
             
             let calculados = 0;
             
             // Procesar cada estudiante
-            for (const estudiante of estudiantesQuery.rows) {
+            for (const estudiante of estudiantesRows) {
                 try {
                     // Obtener calificaciones del estudiante
                     const calificacionesQuery = await pool.query(`
@@ -1601,7 +1616,7 @@ const calificacionController = {
             res.json({ 
                 message: 'Calificaciones calculadas correctamente', 
                 calculados: calculados,
-                total_estudiantes: estudiantesQuery.rows.length
+                total_estudiantes: estudiantesRows.length
             });
             
         } catch (error) {
@@ -1806,8 +1821,8 @@ const calificacionController = {
                         calificacionFinal = Math.max(0, Math.min(10, calificacionFinal));
                     }
                     
-                    // Verificar si hay calificacion_final almacenada directamente
-                    const finalDirecto = calificaciones.find(c => c.tipo === 'general');
+                    // Verificar si hay calificacion_final almacenada directamente (tipo 'general' o 'final')
+                    const finalDirecto = calificaciones.find(c => c.tipo === 'general' || c.tipo === 'final');
                     if (finalDirecto) {
                         calificacionFinal = parseFloat(finalDirecto.calificacion);
                     }
