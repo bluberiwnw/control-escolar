@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const pool = require('../database/connection');
+const fileStorage = require('../helpers/fileStorage');
 
 const alumnoController = {
     // Obtener materias en las que está inscrito el alumno
@@ -51,10 +52,12 @@ const alumnoController = {
         try {
             const { actividad_id, comentario } = req.body;
             const alumnoId = req.usuario.id;
-            const archivo = req.file ? req.file.filename : null;
-            if (!archivo) {
+            if (!req.file) {
                 return res.status(400).json({ error: 'Debes adjuntar un archivo para enviar tu entrega.' });
             }
+
+            // Guardar archivo en PostgreSQL para persistencia
+            const archivo = await fileStorage.guardarArchivo(req.file);
 
             // Upsert manual sin requerir constraint UNIQUE en BD
             await pool.query(
@@ -160,15 +163,7 @@ const alumnoController = {
             }
             const archivo = result.rows[0]?.archivo;
             if (archivo) {
-                const uploadDir = path.join(__dirname, '../uploads');
-                const full = path.join(uploadDir, archivo);
-                if (fs.existsSync(full)) {
-                    try {
-                        fs.unlinkSync(full);
-                    } catch (_) {
-                        /* ignorar fallo de borrado físico */
-                    }
-                }
+                await fileStorage.eliminarArchivo(archivo);
             }
             res.json({ message: 'Entrega eliminada' });
         } catch (error) {
@@ -190,12 +185,7 @@ const alumnoController = {
             if (result.rowCount === 0 || !result.rows[0].archivo) {
                 return res.status(404).json({ error: 'No hay archivo de entrega' });
             }
-            const archivo = result.rows[0].archivo;
-            const full = path.join(__dirname, '../uploads', archivo);
-            if (!fs.existsSync(full)) {
-                return res.status(404).json({ error: 'El archivo ya no está en el servidor' });
-            }
-            return res.download(full, archivo);
+            return fileStorage.enviarArchivo(res, result.rows[0].archivo);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

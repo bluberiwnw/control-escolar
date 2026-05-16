@@ -170,6 +170,19 @@ async function initDatabase() {
       ON entregas(actividad_id, estudiante_id);
     `);
 
+    // 13. Tabla archivos_almacenados (persistencia de archivos en PostgreSQL)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS archivos_almacenados (
+        id SERIAL PRIMARY KEY,
+        nombre_archivo VARCHAR(500) NOT NULL UNIQUE,
+        nombre_original VARCHAR(500) NOT NULL,
+        contenido BYTEA NOT NULL,
+        mime_type VARCHAR(100),
+        tamano INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Migraciones: expandir CHECK constraints para incluir todos los tipos
     try {
       await pool.query(`ALTER TABLE calificaciones DROP CONSTRAINT IF EXISTS calificaciones_tipo_check;`);

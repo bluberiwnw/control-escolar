@@ -1,6 +1,7 @@
 const pool = require('../database/connection');
 const fs = require('fs');
 const path = require('path');
+const fileStorage = require('../helpers/fileStorage');
 
 function parseEnteroEntrega(v, fallback = NaN) {
     const n = Number.parseInt(v, 10);
@@ -224,12 +225,7 @@ const actividadController = {
             if (find.rowCount === 0 || !find.rows[0].archivo) {
                 return res.status(404).json({ message: 'Archivo no encontrado.' });
             }
-            const archivo = find.rows[0].archivo;
-            const full = path.join(__dirname, '../uploads', archivo);
-            if (!fs.existsSync(full)) {
-                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
-            }
-            return res.download(full, archivo);
+            return fileStorage.enviarArchivo(res, find.rows[0].archivo);
         } catch (error) {
             res.status(500).json({ message: 'No se pudo descargar el archivo.' });
         }

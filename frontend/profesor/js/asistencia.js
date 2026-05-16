@@ -943,7 +943,7 @@ async function exportarAsistencias() {
         if (materiaId) url += `materia_id=${materiaId}&`;
         if (fecha) url += `fecha=${fecha}&`;
         
-        const response = await fetch(url, {
+        const response = await fetch(buildApiUrl(url), {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
@@ -978,7 +978,7 @@ async function exportarAsistenciasExcel() {
         if (materiaId) url += `materia_id=${materiaId}&`;
         if (fecha) url += `fecha=${fecha}&`;
         
-        const response = await fetch(url, {
+        const response = await fetch(buildApiUrl(url), {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
@@ -1013,7 +1013,7 @@ async function exportarAsistenciasPDF() {
         if (materiaId) url += `materia_id=${materiaId}&`;
         if (fecha) url += `fecha=${fecha}&`;
         
-        const response = await fetch(url, {
+        const response = await fetch(buildApiUrl(url), {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }

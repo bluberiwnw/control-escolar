@@ -2,13 +2,17 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 const pool = require('../database/connection');
+const fileStorage = require('../helpers/fileStorage');
 
 // Configuración de multer para subida de archivos
 const multer = require('multer');
 
+const UPLOADS_DIR = path.join(__dirname, '../uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/');
+        cb(null, UPLOADS_DIR);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -246,6 +250,21 @@ const calificacionController = {
 
             console.log('✅ Validaciones de archivo pasadas, procesando HTML...');
             const resultado = await calificacionController.processHtmlFile(req.file.path, materiaIdNum, req.usuario.id);
+            
+            // Guardar archivo en PostgreSQL para persistencia
+            await fileStorage.guardarArchivo(req.file);
+
+            // Registrar en archivos_calificaciones
+            try {
+                await pool.query(
+                    `INSERT INTO archivos_calificaciones (profesor_id, materia_id, nombre_archivo, tipo, estado, detalles)
+                     VALUES ($1, $2, $3, 'htm', 'Procesado', $4)`,
+                    [req.usuario.id, materiaIdNum, req.file.filename,
+                     `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`]
+                );
+            } catch (regErr) {
+                console.log('⚠️ No se pudo registrar en archivos_calificaciones:', regErr.message);
+            }
             
             console.log('✅ Archivo procesado exitosamente:', resultado);
             
@@ -927,18 +946,29 @@ const calificacionController = {
 
     async getArchivos(req, res) {
         try {
-            console.log('📡 getArchivos - Obteniendo archivos');
-            
-            // Verificar que el usuario exista y tenga permisos
             if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
-            // Por ahora, retornar una lista vacía (se puede implementar el almacenamiento real después)
-            const archivos = [];
-            
-            res.json(archivos);
-            
+            let query, params;
+            if (req.usuario.rol === 'administrador') {
+                query = `SELECT a.*, m.nombre AS materia_nombre, u.nombre AS profesor_nombre
+                         FROM archivos_calificaciones a
+                         JOIN materias m ON a.materia_id = m.id
+                         JOIN usuarios u ON a.profesor_id = u.id
+                         ORDER BY a.fecha_subida DESC`;
+                params = [];
+            } else {
+                query = `SELECT a.*, m.nombre AS materia_nombre
+                         FROM archivos_calificaciones a
+                         JOIN materias m ON a.materia_id = m.id
+                         WHERE a.profesor_id = $1
+                         ORDER BY a.fecha_subida DESC`;
+                params = [req.usuario.id];
+            }
+            const result = await pool.query(query, params);
+            res.json(result.rows);
+
         } catch (error) {
             console.error('❌ Error en getArchivos:', error);
             res.status(500).json({ message: 'Error al obtener archivos', error: error.message });
@@ -947,18 +977,20 @@ const calificacionController = {
 
     async descargarArchivoCalificacion(req, res) {
         try {
-            console.log('📡 descargarArchivoCalificacion - Descargando archivo');
-            
-            // Verificar que el usuario exista y tenga permisos
             if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
             const { id } = req.params;
-            
-            // Por ahora, retornar un error de archivo no encontrado
-            res.status(404).json({ message: 'Archivo no encontrado' });
-            
+            const find = await pool.query(
+                'SELECT nombre_archivo FROM archivos_calificaciones WHERE id = $1',
+                [id]
+            );
+            if (find.rowCount === 0 || !find.rows[0].nombre_archivo) {
+                return res.status(404).json({ message: 'Archivo no encontrado' });
+            }
+            return fileStorage.enviarArchivo(res, find.rows[0].nombre_archivo);
+
         } catch (error) {
             console.error('❌ Error en descargarArchivoCalificacion:', error);
             res.status(500).json({ message: 'Error al descargar archivo', error: error.message });
@@ -967,16 +999,20 @@ const calificacionController = {
 
     async deleteArchivo(req, res) {
         try {
-            console.log('📡 deleteArchivo - Eliminando archivo');
-            
-            // Verificar que el usuario exista y tenga permisos
             if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
             const { id } = req.params;
-            
-            // Por ahora, retornar éxito simulado
+            const result = await pool.query(
+                'DELETE FROM archivos_calificaciones WHERE id = $1 RETURNING nombre_archivo',
+                [id]
+            );
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'Archivo no encontrado' });
+            }
+            const fileName = result.rows[0].nombre_archivo;
+            await fileStorage.eliminarArchivo(fileName);
             res.json({ message: 'Archivo eliminado correctamente' });
             
         } catch (error) {

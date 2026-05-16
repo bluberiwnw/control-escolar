@@ -401,10 +401,10 @@ async function exportarAsistencias() {
         if (fecha && !todasLasFechas) url += `fecha=${fecha}&`;
         
         // Descargar el archivo
-        const response = await fetch(url, {
+        const response = await fetch(buildApiUrl(url), {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
+                'Accept': 'text/csv, application/octet-stream, */*'
             }
         });
         
@@ -440,10 +440,10 @@ async function exportarAsistenciasExcel() {
         if (materiaId) url += `materia_id=${materiaId}&`;
         if (fecha && !todasLasFechas) url += `fecha=${fecha}&`;
         
-        const response = await fetch(url, {
+        const response = await fetch(buildApiUrl(url), {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
+                'Accept': 'application/vnd.ms-excel, application/octet-stream, */*'
             }
         });
         
@@ -479,10 +479,10 @@ async function exportarAsistenciasPDF() {
         if (materiaId) url += `materia_id=${materiaId}&`;
         if (fecha && !todasLasFechas) url += `fecha=${fecha}&`;
         
-        const response = await fetch(url, {
+        const response = await fetch(buildApiUrl(url), {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
+                'Accept': 'text/html, application/octet-stream, */*'
             }
         });
         

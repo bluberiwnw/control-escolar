@@ -1,6 +1,7 @@
 const pool = require('../database/connection');
 const fs = require('fs');
 const path = require('path');
+const fileStorage = require('../helpers/fileStorage');
 
 const ESTADOS_ASISTENCIA = new Set(['presente', 'ausente', 'retardo']);
 const TIPOS_CALIFICACION = new Set(['tarea', 'proyecto', 'examen']);
@@ -661,12 +662,7 @@ const adminController = {
             if (find.rowCount === 0 || !find.rows[0].nombre_archivo) {
                 return res.status(404).json({ message: 'Archivo no encontrado.' });
             }
-            const nombre = find.rows[0].nombre_archivo;
-            const full = path.join(__dirname, '../uploads', nombre);
-            if (!fs.existsSync(full)) {
-                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
-            }
-            return res.download(full, nombre);
+            return fileStorage.enviarArchivo(res, find.rows[0].nombre_archivo);
         } catch (error) {
             res.status(500).json({ message: 'No se pudo descargar el archivo.' });
         }
@@ -683,14 +679,7 @@ const adminController = {
                 return res.status(404).json({ error: 'Archivo no encontrado' });
             }
             const fileName = result.rows[0].nombre_archivo;
-            const fullPath = path.join(__dirname, '../uploads', fileName);
-            if (fs.existsSync(fullPath)) {
-                try {
-                    fs.unlinkSync(fullPath);
-                } catch (_) {
-                    /* ignorar si no se puede borrar el archivo físico */
-                }
-            }
+            await fileStorage.eliminarArchivo(fileName);
             res.json({ message: 'Archivo eliminado' });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -740,12 +729,7 @@ const adminController = {
             if (find.rowCount === 0 || !find.rows[0].archivo) {
                 return res.status(404).json({ message: 'Archivo no encontrado.' });
             }
-            const archivo = find.rows[0].archivo;
-            const full = path.join(__dirname, '../uploads', archivo);
-            if (!fs.existsSync(full)) {
-                return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
-            }
-            return res.download(full, archivo);
+            return fileStorage.enviarArchivo(res, find.rows[0].archivo);
         } catch (error) {
             res.status(500).json({ message: 'No se pudo descargar el archivo.' });
         }
@@ -784,7 +768,10 @@ const adminController = {
                 return res.status(404).json({ message: 'Entrega no encontrada.' });
             }
             const archivoAnterior = find.rows[0].archivo;
-            const nuevoArchivo = req.file ? req.file.filename : archivoAnterior;
+            let nuevoArchivo = archivoAnterior;
+            if (req.file) {
+                nuevoArchivo = await fileStorage.guardarArchivo(req.file);
+            }
             if (updateCalificacion) {
                 await pool.query(
                     'UPDATE entregas SET archivo = $1, comentario = $2, calificacion = $3 WHERE id = $4',
@@ -794,14 +781,7 @@ const adminController = {
                 await pool.query('UPDATE entregas SET archivo = $1, comentario = $2 WHERE id = $3', [nuevoArchivo, comentario, entregaId]);
             }
             if (req.file && archivoAnterior && archivoAnterior !== nuevoArchivo) {
-                const full = path.join(__dirname, '../uploads', archivoAnterior);
-                if (fs.existsSync(full)) {
-                    try {
-                        fs.unlinkSync(full);
-                    } catch (_) {
-                        /* ignore delete error */
-                    }
-                }
+                await fileStorage.eliminarArchivo(archivoAnterior);
             }
             res.json({ message: 'Entrega actualizada correctamente.' });
         } catch (error) {
@@ -829,14 +809,7 @@ const adminController = {
             }
             const archivo = result.rows[0]?.archivo;
             if (archivo) {
-                const full = path.join(__dirname, '../uploads', archivo);
-                if (fs.existsSync(full)) {
-                    try {
-                        fs.unlinkSync(full);
-                    } catch (_) {
-                        /* ignore delete error */
-                    }
-                }
+                await fileStorage.eliminarArchivo(archivo);
             }
             res.json({ message: 'Archivo de entrega eliminado correctamente.' });
         } catch (error) {
