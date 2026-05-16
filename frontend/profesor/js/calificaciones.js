@@ -950,66 +950,155 @@ async function exportarExcel() {
     }
 
     try {
-        let data;
+        // Obtener nombre de la materia
+        const materiaSelect = document.getElementById('materiaSelect');
+        const nombreMateria = materiaSelect.options[materiaSelect.selectedIndex].text || 'Materia';
+
+        // Obtener ponderaciones actuales
+        const pTarea = parseFloat(document.getElementById('ponderacionTareas').value) || 0;
+        const pExamen = parseFloat(document.getElementById('ponderacionExamenes').value) || 0;
+        const pParticipacion = parseFloat(document.getElementById('ponderacionParticipacion').value) || 0;
+        const pProyecto = parseFloat(document.getElementById('ponderacionProyectos').value) || 0;
+        const pPractica = parseFloat(document.getElementById('ponderacionPracticas').value) || 0;
+
+        // Obtener datos de alumnos (HTM procesado o BD)
+        let alumnos;
         if (window.processedData && window.processedData.rows && window.processedData.rows.length > 0) {
-            data = window.processedData.rows;
-            console.log('📊 Exportando datos procesados del archivo HTM:', data.length, 'estudiantes');
+            alumnos = window.processedData.rows;
+            console.log('📊 Exportando datos del HTM:', alumnos.length, 'estudiantes');
         } else {
-            const result = await apiRequest(`/calificaciones/materia/${materia_id}/exportar`);
-            data = result.students || result;
-            console.log('📊 Exportando datos de la base de datos:', data.length, 'estudiantes');
+            alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
+            console.log('📊 Exportando datos de la BD:', alumnos.length, 'estudiantes');
         }
 
-        if (!data || !Array.isArray(data) || data.length === 0) {
+        if (!alumnos || !Array.isArray(alumnos) || alumnos.length === 0) {
             mostrarToast('No hay datos para exportar', 'error');
             return;
         }
 
-        let csvContent = '\ufeff';
-        
-        const headers = new Set();
-        data.forEach(row => {
-            Object.keys(row).forEach(key => headers.add(key));
-        });
-        
-        const headerArray = Array.from(headers);
-        
-        csvContent += headerArray.map(header => {
-            const formattedHeader = header
-                .replace(/_/g, ' ')
-                .replace(/\b\w/g, l => l.toUpperCase());
-            return `"${formattedHeader}"`;
-        }).join(',') + '\n';
-        
-        data.forEach(row => {
-            const rowData = headerArray.map(header => {
-                const value = row[header] || '';
-                if (typeof value === 'number') {
-                    return value.toFixed(1);
-                }
-                const stringValue = String(value).replace(/"/g, '""');
-                return stringValue.includes(',') || stringValue.includes('"') ? `"${stringValue}"` : stringValue;
-            });
-            csvContent += rowData.join(',') + '\n';
+        // Construir hoja de calificaciones con TODA la info del alumno
+        const headerRow = [
+            'No.', 'Número de Registro', 'Matrícula', 'Nombre Completo',
+            'Status de Inscripción', 'Nivel', 'Créditos', 'Email',
+            `Tareas (${pTarea}%)`, `Exámenes (${pExamen}%)`,
+            `Participación (${pParticipacion}%)`, `Proyectos (${pProyecto}%)`,
+            `Prácticas (${pPractica}%)`, 'Calificación Final'
+        ];
+
+        const wsData = [];
+
+        // Info de materia
+        wsData.push(['Materia:', nombreMateria]);
+        wsData.push(['Fecha de exportación:', new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })]);
+        wsData.push([]);
+
+        // Fila de ponderaciones (alineada con las columnas de calificaciones)
+        wsData.push(['', '', '', '', '', '', '', 'Ponderación:', `${pTarea}%`, `${pExamen}%`, `${pParticipacion}%`, `${pProyecto}%`, `${pPractica}%`]);
+        wsData.push([]);
+
+        // Encabezados
+        wsData.push(headerRow);
+
+        // Fila de inicio de datos (0-indexed: fila 6 = row 7 en Excel)
+        const dataStartRow = wsData.length + 1; // +1 porque Excel es 1-indexed
+
+        alumnos.forEach((alumno, index) => {
+            const numRegistro = alumno['Número de Registro'] || alumno.numero_registro || '';
+            const matricula = alumno.matricula || alumno['ID'] || alumno['Matrícula'] || '';
+            const nombre = alumno.nombre || alumno['Nombre de Alumno'] || alumno['Nombre'] || '';
+            const status = alumno['Status de Inscripción'] || alumno.status || '';
+            const nivel = alumno['Nivel'] || alumno.nivel || '';
+            const creditos = alumno['Créditos'] || alumno.creditos || '';
+            const email = alumno.email || alumno['Email'] || '';
+            const tarea = parseFloat(alumno.tarea || alumno['Tareas'] || 0);
+            const examen = parseFloat(alumno.examen || alumno['Exámenes'] || 0);
+            const participacion = parseFloat(alumno.participacion || alumno['Participación'] || 0);
+            const proyecto = parseFloat(alumno.proyecto || alumno['Proyectos'] || 0);
+            const practica = parseFloat(alumno.practica || alumno['Prácticas'] || 0);
+
+            const excelRow = dataStartRow + index;
+            // Columnas: I=Tareas, J=Exámenes, K=Participación, L=Proyectos, M=Prácticas
+            const formula = `ROUND(I${excelRow}*${pTarea}/100 + J${excelRow}*${pExamen}/100 + K${excelRow}*${pParticipacion}/100 + L${excelRow}*${pProyecto}/100 + M${excelRow}*${pPractica}/100, 2)`;
+
+            wsData.push([
+                index + 1,
+                numRegistro,
+                matricula,
+                nombre,
+                status,
+                nivel,
+                creditos,
+                email,
+                tarea,
+                examen,
+                participacion,
+                proyecto,
+                practica,
+                { f: formula }
+            ]);
         });
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `calificaciones_materia_${materia_id}_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Fila de resumen
+        const lastDataRow = dataStartRow + alumnos.length - 1;
+        wsData.push([]);
+        wsData.push([
+            '', '', '', 'Total alumnos:', alumnos.length,
+            '', '', '', '', '', '', '', '',
+            { f: `AVERAGE(N${dataStartRow}:N${lastDataRow})` }
+        ]);
 
-        mostrarToast(`Archivo exportado correctamente: ${data.length} estudiantes`, 'success');
-        console.log('✅ Exportación completada:', {
-            estudiantes: data.length,
-            columnas: headerArray.length,
-            archivo: `calificaciones_materia_${materia_id}_${new Date().toISOString().split('T')[0]}.csv`
-        });
-        
+        // Crear workbook
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // Ajustar anchos de columna
+        ws['!cols'] = [
+            { wch: 5 },   // No.
+            { wch: 18 },  // Número de Registro
+            { wch: 15 },  // Matrícula
+            { wch: 35 },  // Nombre Completo
+            { wch: 20 },  // Status de Inscripción
+            { wch: 10 },  // Nivel
+            { wch: 10 },  // Créditos
+            { wch: 30 },  // Email
+            { wch: 14 },  // Tareas
+            { wch: 14 },  // Exámenes
+            { wch: 16 },  // Participación
+            { wch: 14 },  // Proyectos
+            { wch: 14 },  // Prácticas
+            { wch: 18 },  // Calificación Final
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Calificaciones');
+
+        // Hoja 2: Ponderaciones
+        const ponderacionesData = [
+            ['Configuración de Ponderaciones'],
+            [],
+            ['Tipo', 'Porcentaje (%)'],
+            ['Tareas', pTarea],
+            ['Exámenes', pExamen],
+            ['Participación', pParticipacion],
+            ['Proyectos', pProyecto],
+            ['Prácticas', pPractica],
+            [],
+            ['Total', { f: 'SUM(B4:B8)' }],
+            [],
+            ['Fórmula de calificación final:'],
+            [`Cal. Final = (Tareas × ${pTarea}% + Exámenes × ${pExamen}% + Participación × ${pParticipacion}% + Proyectos × ${pProyecto}% + Prácticas × ${pPractica}%) / 100`]
+        ];
+
+        const ws2 = XLSX.utils.aoa_to_sheet(ponderacionesData);
+        ws2['!cols'] = [{ wch: 20 }, { wch: 15 }];
+        XLSX.utils.book_append_sheet(wb, ws2, 'Ponderaciones');
+
+        // Descargar
+        const fileName = `calificaciones_${nombreMateria.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '').trim()}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
+        mostrarToast(`Excel exportado: ${alumnos.length} estudiantes con fórmulas`, 'success');
+        console.log('✅ Exportación Excel completada:', { estudiantes: alumnos.length, archivo: fileName });
+
     } catch (error) {
         console.error('❌ Error al exportar Excel:', error);
         mostrarToast(error.message || 'Error al exportar archivo', 'error');
