@@ -1710,22 +1710,42 @@ const calificacionController = {
 
             const alumno_id = req.usuario.id;
             
-            // Obtener todas las materias del alumno usando materias_estudiantes (inscripciones)
-            // También incluir materias donde tenga calificaciones directas
+            // Verificar qué tablas de inscripción existen en la BD
+            const tablesCheck = await pool.query(`
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name IN ('inscripciones', 'materias_estudiantes')
+            `);
+            const existingTables = tablesCheck.rows.map(r => r.table_name);
+            const hasInscripciones = existingTables.includes('inscripciones');
+            const hasMateriasEstudiantes = existingTables.includes('materias_estudiantes');
+            
+            console.log('📋 Tablas de inscripción disponibles:', existingTables);
+            
+            // Construir query dinámicamente según las tablas que existan
+            let conditions = [];
+            
+            if (hasInscripciones) {
+                conditions.push(`EXISTS (SELECT 1 FROM inscripciones i WHERE i.materia_id = m.id AND i.estudiante_id = $1)`);
+            }
+            if (hasMateriasEstudiantes) {
+                conditions.push(`EXISTS (SELECT 1 FROM materias_estudiantes me WHERE me.materia_id = m.id AND me.estudiante_id = $1 AND me.activo = true)`);
+            }
+            // Siempre buscar por materia_id directo en estudiantes y calificaciones
+            conditions.push(`EXISTS (SELECT 1 FROM estudiantes e WHERE e.id = $1 AND e.materia_id = m.id)`);
+            conditions.push(`EXISTS (SELECT 1 FROM calificaciones c WHERE c.materia_id = m.id AND c.estudiante_id = $1)`);
+            
+            const whereClause = conditions.join(' OR ');
+            
             const materiasQuery = await pool.query(`
                 SELECT DISTINCT m.id, m.nombre, m.clave, u.nombre as profesor
                 FROM materias m
                 LEFT JOIN usuarios u ON m.profesor_id = u.id
-                WHERE EXISTS (
-                    SELECT 1 FROM materias_estudiantes me
-                    WHERE me.materia_id = m.id AND me.estudiante_id = $1 AND me.activo = true
-                )
-                OR EXISTS (
-                    SELECT 1 FROM calificaciones c
-                    WHERE c.materia_id = m.id AND c.estudiante_id = $1
-                )
+                WHERE ${whereClause}
                 ORDER BY m.nombre
             `, [alumno_id]);
+            
+            console.log(`📊 Materias encontradas para alumno ${alumno_id}: ${materiasQuery.rows.length}`);
 
             // Obtener calificaciones detalladas por materia
             const materiasConCalificaciones = await Promise.all(
@@ -1735,16 +1755,19 @@ const calificacionController = {
                         [alumno_id, materia.id]
                     );
                     
-                    // Obtener ponderaciones reales de la materia
-                    const ponderacionesQuery = await pool.query(
-                        'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
-                        [materia.id]
-                    );
-                    
+                    // Obtener ponderaciones reales de la materia (si la tabla existe)
                     const ponderaciones = {};
-                    ponderacionesQuery.rows.forEach(p => {
-                        ponderaciones[p.tipo] = parseFloat(p.peso);
-                    });
+                    try {
+                        const ponderacionesQuery = await pool.query(
+                            'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                            [materia.id]
+                        );
+                        ponderacionesQuery.rows.forEach(p => {
+                            ponderaciones[p.tipo] = parseFloat(p.peso);
+                        });
+                    } catch (e) {
+                        console.log('⚠️ Tabla ponderaciones no disponible, usando valores por defecto');
+                    }
                     
                     // Valores por defecto si no hay ponderaciones configuradas
                     if (Object.keys(ponderaciones).length === 0) {
@@ -1843,28 +1866,63 @@ const calificacionController = {
             const { materia_id } = req.params;
             const alumno_id = req.usuario.id;
             
-            // Verificar que el alumno esté inscrito (en materias_estudiantes o tenga calificaciones)
-            const inscripcionCheck = await pool.query(
-                `SELECT 1 FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2 AND activo = true
-                 UNION
-                 SELECT 1 FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2
-                 LIMIT 1`,
-                [alumno_id, materia_id]
-            );
+            // Verificar qué tablas existen
+            const tablesCheck = await pool.query(`
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name IN ('inscripciones', 'materias_estudiantes')
+            `);
+            const existingTables = tablesCheck.rows.map(r => r.table_name);
             
-            if (inscripcionCheck.rows.length === 0) {
+            // Verificar inscripción en cualquier tabla disponible
+            let isEnrolled = false;
+            
+            if (existingTables.includes('inscripciones')) {
+                const check = await pool.query('SELECT 1 FROM inscripciones WHERE estudiante_id = $1 AND materia_id = $2 LIMIT 1', [alumno_id, materia_id]);
+                if (check.rows.length > 0) isEnrolled = true;
+            }
+            if (!isEnrolled && existingTables.includes('materias_estudiantes')) {
+                const check = await pool.query('SELECT 1 FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2 LIMIT 1', [alumno_id, materia_id]);
+                if (check.rows.length > 0) isEnrolled = true;
+            }
+            if (!isEnrolled) {
+                const check = await pool.query('SELECT 1 FROM estudiantes WHERE id = $1 AND materia_id = $2 LIMIT 1', [alumno_id, materia_id]);
+                if (check.rows.length > 0) isEnrolled = true;
+            }
+            if (!isEnrolled) {
+                const check = await pool.query('SELECT 1 FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2 LIMIT 1', [alumno_id, materia_id]);
+                if (check.rows.length > 0) isEnrolled = true;
+            }
+            
+            if (!isEnrolled) {
                 return res.status(404).json({ message: 'No estás inscrito en esta materia' });
             }
 
-            // Eliminar todas las calificaciones del alumno en esa materia
+            // Eliminar calificaciones del alumno en esa materia
             await pool.query(
                 'DELETE FROM calificaciones WHERE estudiante_id = $1 AND materia_id = $2',
                 [alumno_id, materia_id]
             );
 
-            // Eliminar la inscripción de materias_estudiantes
+            // Eliminar de inscripciones (si la tabla existe)
+            if (existingTables.includes('inscripciones')) {
+                await pool.query(
+                    'DELETE FROM inscripciones WHERE estudiante_id = $1 AND materia_id = $2',
+                    [alumno_id, materia_id]
+                );
+            }
+
+            // Eliminar de materias_estudiantes (si la tabla existe)
+            if (existingTables.includes('materias_estudiantes')) {
+                await pool.query(
+                    'DELETE FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2',
+                    [alumno_id, materia_id]
+                );
+            }
+
+            // Limpiar la referencia directa en estudiantes si aplica
             await pool.query(
-                'DELETE FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2',
+                'UPDATE estudiantes SET materia_id = NULL WHERE id = $1 AND materia_id = $2',
                 [alumno_id, materia_id]
             );
 
