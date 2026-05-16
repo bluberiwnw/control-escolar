@@ -4,6 +4,27 @@ const path = require('path');
 
 const UPLOADS_DIR = path.join(__dirname, '../uploads');
 
+let tableReady = false;
+async function ensureTable() {
+    if (tableReady) return;
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS archivos_almacenados (
+                id SERIAL PRIMARY KEY,
+                nombre_archivo VARCHAR(500) NOT NULL UNIQUE,
+                nombre_original VARCHAR(500) NOT NULL,
+                contenido BYTEA NOT NULL,
+                mime_type VARCHAR(100),
+                tamano INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        tableReady = true;
+    } catch (e) {
+        console.error('⚠️ No se pudo crear tabla archivos_almacenados:', e.message);
+    }
+}
+
 const fileStorage = {
     /**
      * Save an uploaded file (from multer) to both disk and PostgreSQL.
@@ -11,6 +32,7 @@ const fileStorage = {
      */
     async guardarArchivo(multerFile) {
         if (!multerFile) return null;
+        await ensureTable();
         const { filename, originalname, mimetype, size } = multerFile;
         const filePath = path.join(UPLOADS_DIR, filename);
         let contenido = null;
@@ -33,6 +55,7 @@ const fileStorage = {
      * Returns the filename.
      */
     async guardarContenido(filename, contenido, mimeType, nombreOriginal) {
+        await ensureTable();
         const buffer = Buffer.isBuffer(contenido) ? contenido : Buffer.from(contenido, 'utf-8');
         await pool.query(
             `INSERT INTO archivos_almacenados (nombre_archivo, nombre_original, contenido, mime_type, tamano)
@@ -59,10 +82,17 @@ const fileStorage = {
         }
 
         // Fall back to PostgreSQL
-        const result = await pool.query(
-            'SELECT contenido, mime_type, nombre_original FROM archivos_almacenados WHERE nombre_archivo = $1',
-            [nombreArchivo]
-        );
+        await ensureTable();
+        let result;
+        try {
+            result = await pool.query(
+                'SELECT contenido, mime_type, nombre_original FROM archivos_almacenados WHERE nombre_archivo = $1',
+                [nombreArchivo]
+            );
+        } catch (dbErr) {
+            console.error('⚠️ Error consultando archivos_almacenados:', dbErr.message);
+            return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
+        }
         if (result.rowCount === 0 || !result.rows[0].contenido) {
             return res.status(404).json({ message: 'El archivo ya no está en el servidor.' });
         }
