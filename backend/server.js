@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const authController = require('./controllers/authController');
-const pool = require('./database/db');
+const pool = require('./database/connection');
 
 require('dotenv').config();
 
