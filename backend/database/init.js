@@ -188,7 +188,7 @@ async function initDatabase() {
       await pool.query(`ALTER TABLE calificaciones DROP CONSTRAINT IF EXISTS calificaciones_tipo_check;`);
       await pool.query(`
         ALTER TABLE calificaciones ADD CONSTRAINT calificaciones_tipo_check
-        CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'participacion', 'practica', 'final', 'general'));
+        CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'participacion', 'practica', 'final', 'final_sin_redondeo', 'general'));
       `);
     } catch (e) {
       console.log('ℹ️  CHECK constraint calificaciones ya actualizado:', e.message);

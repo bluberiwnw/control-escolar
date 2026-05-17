@@ -83,6 +83,22 @@ function redondearCalificacion(calificacion) {
     }
 }
 
+// Normalizar calificación a escala 0-10
+// 100, 10, 1 = 10 (máxima); 80, 8, 0.8 = 8; etc.
+function normalizarCalificacion(valor) {
+    const num = parseFloat(valor);
+    if (isNaN(num)) return 0;
+    if (num > 10) {
+        // Escala 0-100 → dividir entre 10
+        return Math.min(num / 10, 10);
+    } else if (num <= 1 && num > 0) {
+        // Escala 0-1 → multiplicar por 10
+        return num * 10;
+    }
+    // Ya está en escala 0-10
+    return Math.min(num, 10);
+}
+
 const calificacionController = {
     async uploadFile(req, res) {
         console.log('🔍 uploadFile - INICIO COMPLETO');
@@ -417,20 +433,19 @@ const calificacionController = {
                         console.log(`✅ Nuevo estudiante ${estudiante['Nombre de Alumno']} creado y asociado a materia`);
                     }
                     
-                    // Guardar calificaciones aplicando ponderaciones
+                    // Guardar calificaciones aplicando ponderaciones y normalización
                     const calificaciones = [
-                        { tipo: 'tarea', calificacion: parseFloat(estudiante.Tareas) || 0 },
-                        { tipo: 'examen', calificacion: parseFloat(estudiante['Exámenes'] || estudiante.Examenes) || 0 },
-                        { tipo: 'participacion', calificacion: parseFloat(estudiante['Participación'] || estudiante.Participacion) || 0 },
-                        { tipo: 'proyecto', calificacion: parseFloat(estudiante.Proyectos) || 0 },
-                        { tipo: 'practica', calificacion: parseFloat(estudiante['Prácticas'] || estudiante.Practicas) || 0 }
+                        { tipo: 'tarea', calificacion: normalizarCalificacion(estudiante.Tareas || 0) },
+                        { tipo: 'examen', calificacion: normalizarCalificacion(estudiante['Exámenes'] || estudiante.Examenes || 0) },
+                        { tipo: 'participacion', calificacion: normalizarCalificacion(estudiante['Participación'] || estudiante.Participacion || 0) },
+                        { tipo: 'proyecto', calificacion: normalizarCalificacion(estudiante.Proyectos || 0) },
+                        { tipo: 'practica', calificacion: normalizarCalificacion(estudiante['Prácticas'] || estudiante.Practicas || 0) }
                     ];
                     
                     let calificacionFinal = 0;
                     let totalPeso = 0;
                     
                     for (const cal of calificaciones) {
-                        // Guardar cada calificación individual
                         await pool.query(`
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, $3, $4, NOW())
@@ -438,7 +453,6 @@ const calificacionController = {
                             DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
                         `, [estudianteId, materiaIdNum, cal.tipo, cal.calificacion]);
                         
-                        // Calcular contribución a la calificación final usando ponderaciones
                         const peso = ponderaciones[cal.tipo] || 0;
                         if (peso > 0) {
                             calificacionFinal += (cal.calificacion * peso) / 100;
@@ -448,25 +462,31 @@ const calificacionController = {
                         console.log(`✅ Calificación guardada: ${estudiante['Nombre de Alumno']} - ${cal.tipo}: ${cal.calificacion} (peso: ${peso}%)`);
                     }
                     
-                    // Calcular y guardar calificación final
+                    // Calcular y guardar calificación final (sin redondeo) y calificación redondeada
                     if (totalPeso > 0) {
-                        // Normalizar si el total de pesos no es 100
                         if (totalPeso !== 100) {
                             calificacionFinal = (calificacionFinal * 100) / totalPeso;
                         }
                         
-                        // Redondear usando la función personalizada (.5 baja, .6 sube)
-                        calificacionFinal = redondearCalificacion(calificacionFinal);
+                        // Guardar calificación final SIN redondeo (promedio ponderado exacto)
+                        const calFinalSinRedondeo = parseFloat(calificacionFinal.toFixed(2));
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                            VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        `, [estudianteId, materiaIdNum, calFinalSinRedondeo]);
                         
-                        // Guardar calificación final
+                        // Guardar calificación CON redondeo (.5 baja, .6 sube)
+                        const calFinalRedondeada = redondearCalificacion(calificacionFinal);
                         await pool.query(`
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, 'final', $3, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
                             DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
-                        `, [estudianteId, materiaIdNum, calificacionFinal]);
+                        `, [estudianteId, materiaIdNum, calFinalRedondeada]);
                         
-                        console.log(`✅ Calificación final calculada: ${estudiante['Nombre de Alumno']} - ${calificacionFinal}`);
+                        console.log(`✅ Calificación: ${estudiante['Nombre de Alumno']} - Sin redondeo: ${calFinalSinRedondeo}, Redondeada: ${calFinalRedondeada}`);
                     }
                     
                     procesados++;
@@ -783,7 +803,7 @@ const calificacionController = {
                 
                 const calificacionesQuery = await pool.query(
                     `SELECT tipo, calificacion FROM calificaciones 
-                     WHERE estudiante_id = $1 AND materia_id = $2 AND tipo != 'final'`,
+                     WHERE estudiante_id = $1 AND materia_id = $2 AND tipo NOT IN ('final', 'final_sin_redondeo')`,
                     [estudianteIdNum, materiaIdNum]
                 );
                 
@@ -793,7 +813,7 @@ const calificacionController = {
                 calificacionesQuery.rows.forEach(cal => {
                     const peso = ponderacionesMap[cal.tipo] || 0;
                     if (peso > 0) {
-                        calificacionFinal += (parseFloat(cal.calificacion) * peso) / 100;
+                        calificacionFinal += (normalizarCalificacion(cal.calificacion) * peso) / 100;
                         totalPeso += peso;
                     }
                 });
@@ -802,17 +822,27 @@ const calificacionController = {
                     calificacionFinal = (calificacionFinal * 100) / totalPeso;
                 }
                 
-                calificacionFinal = redondearCalificacion(calificacionFinal);
+                // Guardar calificación sin redondeo
+                const calFinalSinRedondeo = parseFloat(calificacionFinal.toFixed(2));
+                await pool.query(
+                    `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                     VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
+                     ON CONFLICT (estudiante_id, materia_id, tipo) 
+                     DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()`,
+                    [estudianteIdNum, materiaIdNum, calFinalSinRedondeo]
+                );
                 
+                // Guardar calificación redondeada
+                const calFinalRedondeada = redondearCalificacion(calificacionFinal);
                 await pool.query(
                     `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                      VALUES ($1, $2, 'final', $3, NOW())
                      ON CONFLICT (estudiante_id, materia_id, tipo) 
                      DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()`,
-                    [estudianteIdNum, materiaIdNum, calificacionFinal]
+                    [estudianteIdNum, materiaIdNum, calFinalRedondeada]
                 );
                 
-                console.log(`📊 Calificación final recalculada: ${calificacionFinal}`);
+                console.log(`📊 Calificación recalculada: sin redondeo=${calFinalSinRedondeo}, redondeada=${calFinalRedondeada}`);
             }
             
             res.json({ message: 'Calificación actualizada correctamente' });
@@ -1072,17 +1102,30 @@ const calificacionController = {
                                 calificacionesObj.practica = parseFloat(c.calificacion);
                                 break;
                             case 'final':
+                                calificacionesObj.calificacion_redondeada = parseFloat(c.calificacion);
+                                break;
+                            case 'final_sin_redondeo':
                                 calificacionesObj.calificacion_final = parseFloat(c.calificacion);
                                 break;
                             default:
-                                // Para cualquier otro tipo, usar el nombre del tipo directamente
                                 calificacionesObj[c.tipo] = parseFloat(c.calificacion);
                         }
                     });
                     
-                    // Si no hay calificación final en los tipos, usar el promedio calculado
-                    if (!calificacionesObj.calificacion_final) {
-                        calificacionesObj.calificacion_final = promedioFinal;
+                    // Si no hay calificación redondeada pero hay final, usarla
+                    if (calificacionesObj.calificacion_redondeada == null && calificacionesObj.calificacion_final != null) {
+                        calificacionesObj.calificacion_redondeada = redondearCalificacion(calificacionesObj.calificacion_final);
+                    }
+                    // Si no hay calificación final sin redondeo, calcular desde promedio
+                    if (calificacionesObj.calificacion_final == null) {
+                        // Excluir 'final' y 'final_sin_redondeo' del promedio
+                        const calsSinFinal = calificaciones.filter(c => c.tipo !== 'final' && c.tipo !== 'final_sin_redondeo');
+                        calificacionesObj.calificacion_final = calsSinFinal.length > 0 
+                            ? parseFloat((calsSinFinal.reduce((sum, c) => sum + parseFloat(c.calificacion), 0) / calsSinFinal.length).toFixed(2))
+                            : 0;
+                    }
+                    if (calificacionesObj.calificacion_redondeada == null) {
+                        calificacionesObj.calificacion_redondeada = redondearCalificacion(calificacionesObj.calificacion_final);
                     }
                     
                     return {
@@ -1492,29 +1535,37 @@ const calificacionController = {
                 `, [alumno.id, materia_id]);
                 
                 if (calificacionesQuery.rows.length > 0) {
-                    // Calcular calificación final
                     let calificacionFinal = 0;
                     let totalPeso = 0;
                     
                     calificacionesQuery.rows.forEach(cal => {
-                        calificacionFinal += (cal.calificacion * cal.peso) / 100;
+                        calificacionFinal += (normalizarCalificacion(cal.calificacion) * cal.peso) / 100;
                         totalPeso += cal.peso;
                     });
                     
-                    // Normalizar si el total de pesos no es 100
                     if (totalPeso > 0 && totalPeso !== 100) {
                         calificacionFinal = (calificacionFinal * 100) / totalPeso;
                     }
                     
-                    // Actualizar o insertar calificación final
+                    // Guardar sin redondeo
+                    const calSinRedondeo = parseFloat(calificacionFinal.toFixed(2));
+                    await pool.query(`
+                        INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion)
+                        VALUES ($1, $2, 'final_sin_redondeo', $3)
+                        ON CONFLICT (estudiante_id, materia_id, tipo) 
+                        DO UPDATE SET calificacion = $3
+                    `, [alumno.id, materia_id, calSinRedondeo]);
+                    
+                    // Guardar redondeada
+                    const calRedondeada = redondearCalificacion(calificacionFinal);
                     await pool.query(`
                         INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion)
                         VALUES ($1, $2, 'final', $3)
                         ON CONFLICT (estudiante_id, materia_id, tipo) 
                         DO UPDATE SET calificacion = $3
-                    `, [alumno.id, materia_id, redondearCalificacion(calificacionFinal)]);
+                    `, [alumno.id, materia_id, calRedondeada]);
                     
-                    console.log(`✅ Calificación final actualizada: ${alumno.nombre} - ${redondearCalificacion(calificacionFinal)}`);
+                    console.log(`✅ Calificación actualizada: ${alumno.nombre} - sin redondeo: ${calSinRedondeo}, redondeada: ${calRedondeada}`);
                 }
             }
             
@@ -1640,7 +1691,7 @@ const calificacionController = {
                     const calificacionesQuery = await pool.query(`
                         SELECT tipo, calificacion
                         FROM calificaciones 
-                        WHERE estudiante_id = $1 AND materia_id = $2 AND tipo != 'final'
+                        WHERE estudiante_id = $1 AND materia_id = $2 AND tipo NOT IN ('final', 'final_sin_redondeo')
                     `, [estudiante.id, materiaIdNum]);
                     
                     if (calificacionesQuery.rows.length === 0) {
@@ -1648,35 +1699,40 @@ const calificacionController = {
                         continue;
                     }
                     
-                    // Calcular calificación final aplicando ponderaciones
                     let calificacionFinal = 0;
                     let totalPeso = 0;
                     
                     calificacionesQuery.rows.forEach(cal => {
                         const peso = ponderaciones[cal.tipo] || 0;
                         if (peso > 0) {
-                            calificacionFinal += (parseFloat(cal.calificacion) * peso) / 100;
+                            calificacionFinal += (normalizarCalificacion(cal.calificacion) * peso) / 100;
                             totalPeso += peso;
                         }
                     });
                     
-                    // Normalizar si el total de pesos no es 100
                     if (totalPeso > 0 && totalPeso !== 100) {
                         calificacionFinal = (calificacionFinal * 100) / totalPeso;
                     }
                     
-                    // Redondear usando la función personalizada (.5 baja, .6 sube)
-                    calificacionFinal = redondearCalificacion(calificacionFinal);
+                    // Guardar sin redondeo
+                    const calSinRedondeo = parseFloat(calificacionFinal.toFixed(2));
+                    await pool.query(`
+                        INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                        VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
+                        ON CONFLICT (estudiante_id, materia_id, tipo) 
+                        DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                    `, [estudiante.id, materiaIdNum, calSinRedondeo]);
                     
-                    // Actualizar o insertar calificación final
+                    // Guardar redondeada
+                    const calRedondeada = redondearCalificacion(calificacionFinal);
                     await pool.query(`
                         INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                         VALUES ($1, $2, 'final', $3, NOW())
                         ON CONFLICT (estudiante_id, materia_id, tipo) 
                         DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
-                    `, [estudiante.id, materiaIdNum, calificacionFinal]);
+                    `, [estudiante.id, materiaIdNum, calRedondeada]);
                     
-                    console.log(`✅ Calificación final calculada: ${estudiante.nombre} - ${calificacionFinal}`);
+                    console.log(`✅ Calificación calculada: ${estudiante.nombre} - sin redondeo: ${calSinRedondeo}, redondeada: ${calRedondeada}`);
                     calculados++;
                     
                 } catch (error) {
@@ -1894,10 +1950,21 @@ const calificacionController = {
                         calificacionFinal = Math.max(0, Math.min(10, calificacionFinal));
                     }
                     
-                    // Verificar si hay calificacion_final almacenada directamente (tipo 'general' o 'final')
-                    const finalDirecto = calificaciones.find(c => c.tipo === 'general' || c.tipo === 'final');
-                    if (finalDirecto) {
-                        calificacionFinal = parseFloat(finalDirecto.calificacion);
+                    // Usar calificaciones almacenadas si existen
+                    const finalRedondeado = calificaciones.find(c => c.tipo === 'final');
+                    const finalSinRedondeo = calificaciones.find(c => c.tipo === 'final_sin_redondeo');
+                    const finalGeneral = calificaciones.find(c => c.tipo === 'general');
+                    
+                    let calFinalSinRedondeo = calificacionFinal;
+                    let calRedondeada = redondearCalificacion(calificacionFinal);
+                    
+                    if (finalSinRedondeo) {
+                        calFinalSinRedondeo = parseFloat(finalSinRedondeo.calificacion);
+                    }
+                    if (finalRedondeado) {
+                        calRedondeada = parseFloat(finalRedondeado.calificacion);
+                    } else if (finalGeneral) {
+                        calRedondeada = parseFloat(finalGeneral.calificacion);
                     }
                     
                     return {
@@ -1911,8 +1978,9 @@ const calificacionController = {
                         participacion,
                         proyectos,
                         practicas,
-                        promedio_final: calificacionFinal,
-                        calificacion_final: calificacionFinal,
+                        calificacion_redondeada: calRedondeada,
+                        promedio_final: calFinalSinRedondeo,
+                        calificacion_final: calFinalSinRedondeo,
                         ponderaciones
                     };
                 })
@@ -2356,18 +2424,17 @@ const calificacionController = {
                     
                     // Guardar calificaciones aplicando ponderaciones
                     const calificaciones = [
-                        { tipo: 'tarea', calificacion: estudiante.tareas },
-                        { tipo: 'examen', calificacion: estudiante.examenes },
-                        { tipo: 'participacion', calificacion: estudiante.participacion },
-                        { tipo: 'proyecto', calificacion: estudiante.proyectos },
-                        { tipo: 'practica', calificacion: estudiante.practicas }
+                        { tipo: 'tarea', calificacion: normalizarCalificacion(estudiante.tareas || 0) },
+                        { tipo: 'examen', calificacion: normalizarCalificacion(estudiante.examenes || 0) },
+                        { tipo: 'participacion', calificacion: normalizarCalificacion(estudiante.participacion || 0) },
+                        { tipo: 'proyecto', calificacion: normalizarCalificacion(estudiante.proyectos || 0) },
+                        { tipo: 'practica', calificacion: normalizarCalificacion(estudiante.practicas || 0) }
                     ];
                     
                     let calificacionFinal = 0;
                     let totalPeso = 0;
                     
                     for (const cal of calificaciones) {
-                        // Guardar cada calificación individual
                         await pool.query(`
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, $3, $4, NOW())
@@ -2375,7 +2442,6 @@ const calificacionController = {
                             DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
                         `, [estudianteId, materiaId, cal.tipo, cal.calificacion]);
                         
-                        // Calcular contribución a la calificación final usando ponderaciones
                         const peso = ponderaciones[cal.tipo] || 0;
                         if (peso > 0) {
                             calificacionFinal += (cal.calificacion * peso) / 100;
@@ -2385,25 +2451,30 @@ const calificacionController = {
                         console.log(`✅ Calificación guardada: ${estudiante.nombre} - ${cal.tipo}: ${cal.calificacion} (peso: ${peso}%)`);
                     }
                     
-                    // Calcular y guardar calificación final
                     if (totalPeso > 0) {
-                        // Normalizar si el total de pesos no es 100
                         if (totalPeso !== 100) {
                             calificacionFinal = (calificacionFinal * 100) / totalPeso;
                         }
                         
-                        // Redondear usando la función personalizada (.5 baja, .6 sube)
-                        calificacionFinal = redondearCalificacion(calificacionFinal);
+                        // Guardar sin redondeo
+                        const calSinRedondeo = parseFloat(calificacionFinal.toFixed(2));
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                            VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        `, [estudianteId, materiaId, calSinRedondeo]);
                         
-                        // Guardar calificación final
+                        // Guardar redondeada
+                        const calRedondeada = redondearCalificacion(calificacionFinal);
                         await pool.query(`
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, 'final', $3, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
                             DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
-                        `, [estudianteId, materiaId, calificacionFinal]);
+                        `, [estudianteId, materiaId, calRedondeada]);
                         
-                        console.log(`✅ Calificación final calculada: ${estudiante.nombre} - ${calificacionFinal}`);
+                        console.log(`✅ Calificación: ${estudiante.nombre} - sin redondeo: ${calSinRedondeo}, redondeada: ${calRedondeada}`);
                     }
                     
                 } catch (error) {
@@ -2474,16 +2545,15 @@ const calificacionController = {
                 return res.status(404).json({ message: 'Materia no encontrada' });
             }
             
-            // Calificaciones a guardar
+            // Calificaciones a guardar (normalizadas a escala 0-10)
             const calificaciones = [
-                { tipo: 'tarea', calificacion: parseFloat(tareas) || 0 },
-                { tipo: 'examen', calificacion: parseFloat(examenes) || 0 },
-                { tipo: 'participacion', calificacion: parseFloat(participacion) || 0 },
-                { tipo: 'proyecto', calificacion: parseFloat(proyectos) || 0 },
-                { tipo: 'practica', calificacion: parseFloat(practicas) || 0 }
+                { tipo: 'tarea', calificacion: normalizarCalificacion(tareas || 0) },
+                { tipo: 'examen', calificacion: normalizarCalificacion(examenes || 0) },
+                { tipo: 'participacion', calificacion: normalizarCalificacion(participacion || 0) },
+                { tipo: 'proyecto', calificacion: normalizarCalificacion(proyectos || 0) },
+                { tipo: 'practica', calificacion: normalizarCalificacion(practicas || 0) }
             ];
             
-            // Guardar cada calificación
             for (const cal of calificaciones) {
                 if (cal.calificacion >= 0 && cal.calificacion <= 10) {
                     await pool.query(`
@@ -2495,26 +2565,38 @@ const calificacionController = {
                 }
             }
             
-            // Calcular y guardar calificación final
-            const calificacionFinal = this.calcularFinal({
-                tareas: parseFloat(tareas) || 0,
-                examenes: parseFloat(examenes) || 0,
-                participacion: parseFloat(participacion) || 0,
-                proyectos: parseFloat(proyectos) || 0,
-                practicas: parseFloat(practicas) || 0
+            // Calcular calificación final
+            const calFinalRaw = this.calcularFinal({
+                tareas: normalizarCalificacion(tareas || 0),
+                examenes: normalizarCalificacion(examenes || 0),
+                participacion: normalizarCalificacion(participacion || 0),
+                proyectos: normalizarCalificacion(proyectos || 0),
+                practicas: normalizarCalificacion(practicas || 0)
             });
             
+            // Guardar sin redondeo
+            const calSinRedondeo = parseFloat(calFinalRaw.toFixed(2));
+            await pool.query(`
+                INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
+                ON CONFLICT (estudiante_id, materia_id, tipo) 
+                DO UPDATE SET calificacion = $3, updated_at = NOW()
+            `, [estudianteIdNum, materiaIdNum, calSinRedondeo]);
+            
+            // Guardar redondeada
+            const calRedondeada = redondearCalificacion(calFinalRaw);
             await pool.query(`
                 INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                 VALUES ($1, $2, 'final', $3, NOW())
                 ON CONFLICT (estudiante_id, materia_id, tipo) 
                 DO UPDATE SET calificacion = $3, updated_at = NOW()
-            `, [estudianteIdNum, materiaIdNum, calificacionFinal]);
+            `, [estudianteIdNum, materiaIdNum, calRedondeada]);
             
             console.log('✅ Calificaciones guardadas para estudiante:', estudianteIdNum);
             res.json({ 
                 message: 'Calificaciones guardadas correctamente',
-                calificacion_final: calificacionFinal
+                calificacion_redondeada: calRedondeada,
+                calificacion_final: calSinRedondeo
             });
             
         } catch (error) {

@@ -1,3 +1,18 @@
+// Redondeo personalizado: .5 o menos baja, .6 o más sube
+function redondearCalificacion(cal) {
+    const parteEntera = Math.floor(cal);
+    return (cal - parteEntera) >= 0.6 ? parteEntera + 1 : parteEntera;
+}
+
+// Normalizar calificación a escala 0-10 (100=10, 1=10, 0.8=8, etc.)
+function normalizarCalificacion(valor) {
+    const num = parseFloat(valor);
+    if (isNaN(num)) return 0;
+    if (num > 10) return Math.min(num / 10, 10);
+    if (num <= 1 && num > 0) return num * 10;
+    return Math.min(num, 10);
+}
+
 let eventoChangeAgregado = false;
 document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion();
@@ -562,6 +577,7 @@ async function cargarAlumnos() {
                                 <th>Participación</th>
                                 <th>Proyectos</th>
                                 <th>Prácticas</th>
+                                <th>Calificación</th>
                                 <th>Calificación Final</th>
                                 <th>Acciones</th>
                             </tr>
@@ -572,7 +588,7 @@ async function cargarAlumnos() {
         if (alumnos.length === 0) {
             html += `
                 <tr>
-                    <td colspan="10" style="text-align: center; padding: 2rem; color: #64748b;">
+                    <td colspan="11" style="text-align: center; padding: 2rem; color: #64748b;">
                         <i class="fas fa-user-plus" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
                         <div>Usa el botón "Agregar Alumno" para comenzar a registrar calificaciones</div>
                     </td>
@@ -582,8 +598,10 @@ async function cargarAlumnos() {
             console.log('🔄 cargarAlumnos - Procesando alumnos:', alumnos.length);
             alumnos.forEach((alumno, index) => {
                 console.log(`🔄 cargarAlumnos - Procesando alumno ${index + 1}:`, alumno);
-                const calificacionColor = alumno.calificacion_final >= 9 ? 'success' : 
-                                        alumno.calificacion_final >= 7 ? 'warning' : 'danger';
+                const calRedondeada = alumno.calificacion_redondeada != null ? alumno.calificacion_redondeada : (alumno.calificacion_final != null ? redondearCalificacion(alumno.calificacion_final) : 0);
+                const calFinal = alumno.calificacion_final != null ? alumno.calificacion_final : 0;
+                const calificacionColor = calRedondeada >= 9 ? 'success' : 
+                                        calRedondeada >= 7 ? 'warning' : 'danger';
                 
                 html += `
                     <tr>
@@ -641,7 +659,10 @@ async function cargarAlumnos() {
                                    onchange="actualizarCalificacion(${alumno.id}, 'practica', this.value)">
                         </td>
                         <td>
-                            <span class="badge badge-${calificacionColor}" id="final_${alumno.id}">${alumno.calificacion_final || 0}</span>
+                            <span class="badge badge-${calificacionColor}" id="redondeada_${alumno.id}">${calRedondeada}</span>
+                        </td>
+                        <td>
+                            <span id="final_${alumno.id}">${calFinal}</span>
                         </td>
                         <td>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="editarAlumno(${alumno.id})">
@@ -904,7 +925,7 @@ async function actualizarCalificacion(estudianteId, tipo, valor) {
             estudiante_id: estudianteId,
             materia_id: materia_id,
             tipo: tipo,
-            calificacion: parseFloat(valor) || 0
+            calificacion: normalizarCalificacion(valor)
         };
         
         await apiRequest('/calificaciones/actualizar', {
@@ -921,18 +942,6 @@ async function actualizarCalificacion(estudianteId, tipo, valor) {
     }
 }
 
-// Función de redondeo personalizada: .5 o menos baja, .6 o más sube
-function redondearCalificacion(calificacion) {
-    const parteEntera = Math.floor(calificacion);
-    const decimal = calificacion - parteEntera;
-    
-    if (decimal >= 0.6) {
-        return parteEntera + 1;
-    } else {
-        return parteEntera;
-    }
-}
-
 async function recalcularCalificacionFinal(estudianteId, materia_id) {
     try {
         const tareaElement = document.getElementById(`tarea_${estudianteId}`);
@@ -941,13 +950,12 @@ async function recalcularCalificacionFinal(estudianteId, materia_id) {
         const proyectoElement = document.getElementById(`proyecto_${estudianteId}`);
         const practicaElement = document.getElementById(`practica_${estudianteId}`);
         
-        const tarea = (tareaElement && tareaElement.value) ? parseFloat(tareaElement.value) || 0 : 0;
-        const examen = (examenElement && examenElement.value) ? parseFloat(examenElement.value) || 0 : 0;
-        const participacion = (participacionElement && participacionElement.value) ? parseFloat(participacionElement.value) || 0 : 0;
-        const proyecto = (proyectoElement && proyectoElement.value) ? parseFloat(proyectoElement.value) || 0 : 0;
-        const practica = (practicaElement && practicaElement.value) ? parseFloat(practicaElement.value) || 0 : 0;
+        const tarea = normalizarCalificacion((tareaElement && tareaElement.value) ? tareaElement.value : 0);
+        const examen = normalizarCalificacion((examenElement && examenElement.value) ? examenElement.value : 0);
+        const participacion = normalizarCalificacion((participacionElement && participacionElement.value) ? participacionElement.value : 0);
+        const proyecto = normalizarCalificacion((proyectoElement && proyectoElement.value) ? proyectoElement.value : 0);
+        const practica = normalizarCalificacion((practicaElement && practicaElement.value) ? practicaElement.value : 0);
         
-        // Obtener ponderaciones del formulario
         const pesoTarea = (parseFloat(document.getElementById('ponderacionTareas').value) || 20) / 100;
         const pesoExamen = (parseFloat(document.getElementById('ponderacionExamenes').value) || 30) / 100;
         const pesoParticipacion = (parseFloat(document.getElementById('ponderacionParticipacion').value) || 10) / 100;
@@ -962,30 +970,33 @@ async function recalcularCalificacionFinal(estudianteId, materia_id) {
             (practica * pesoPractica)          
         );
         
-        const calificacionFinalAjustada = Math.max(0, Math.min(10, calificacionFinal));
+        const calFinalSinRedondeo = Math.max(0, Math.min(10, calificacionFinal));
+        const calFinalRedondeada = redondearCalificacion(calFinalSinRedondeo);
         
-        // Aplicar redondeo personalizado (.5 baja, .6 sube)
-        const calificacionFinalRedondeada = redondearCalificacion(calificacionFinalAjustada);
-        
-        const finalElement = document.getElementById(`final_${estudianteId}`);
-        if (finalElement) {
-            finalElement.textContent = calificacionFinalRedondeada.toFixed(2);
+        // Actualizar columna "Calificación" (redondeada)
+        const redondeadaElement = document.getElementById(`redondeada_${estudianteId}`);
+        if (redondeadaElement) {
+            redondeadaElement.textContent = calFinalRedondeada;
             
             let colorClass = 'badge-danger';
-            if (calificacionFinalRedondeada >= 9) colorClass = 'badge-success';
-            else if (calificacionFinalRedondeada >= 8) colorClass = 'badge-primary';
-            else if (calificacionFinalRedondeada >= 7) colorClass = 'badge-warning';
-            else if (calificacionFinalRedondeada >= 6) colorClass = 'badge-info';
+            if (calFinalRedondeada >= 9) colorClass = 'badge-success';
+            else if (calFinalRedondeada >= 8) colorClass = 'badge-primary';
+            else if (calFinalRedondeada >= 7) colorClass = 'badge-warning';
+            else if (calFinalRedondeada >= 6) colorClass = 'badge-info';
             
-            finalElement.className = `badge ${colorClass}`;
+            redondeadaElement.className = `badge ${colorClass}`;
         }
         
-        console.log(`Calificación final recalculada para estudiante ${estudianteId}: ${calificacionFinalRedondeada.toFixed(2)}`);
-        console.log(`Componentes: Tarea(${tarea}*${(pesoTarea*100).toFixed(0)}%) + Examen(${examen}*${(pesoExamen*100).toFixed(0)}%) + Participación(${participacion}*${(pesoParticipacion*100).toFixed(0)}%) + Proyecto(${proyecto}*${(pesoProyecto*100).toFixed(0)}%) + Práctica(${practica}*${(pesoPractica*100).toFixed(0)}%)`);
+        // Actualizar columna "Calificación Final" (sin redondeo)
+        const finalElement = document.getElementById(`final_${estudianteId}`);
+        if (finalElement) {
+            finalElement.textContent = calFinalSinRedondeo.toFixed(2);
+        }
+        
+        console.log(`Calificación recalculada: sin redondeo=${calFinalSinRedondeo.toFixed(2)}, redondeada=${calFinalRedondeada}`);
         
     } catch (error) {
         console.error('Error al recalcular calificación final:', error);
-        console.error('Stack trace:', error.stack);
     }
 }
 
@@ -1056,7 +1067,7 @@ async function exportarExcel() {
             'Status de Inscripción', 'Nivel', 'Créditos', 'Email',
             `Tareas (${pTarea}%)`, `Exámenes (${pExamen}%)`,
             `Participación (${pParticipacion}%)`, `Proyectos (${pProyecto}%)`,
-            `Prácticas (${pPractica}%)`, 'Calificación Final'
+            `Prácticas (${pPractica}%)`, 'Calificación', 'Calificación Final'
         ];
 
         const wsData = [];
@@ -1067,7 +1078,7 @@ async function exportarExcel() {
         wsData.push([]);
 
         // Fila de ponderaciones (alineada con las columnas de calificaciones)
-        wsData.push(['', '', '', '', '', '', '', 'Ponderación:', `${pTarea}%`, `${pExamen}%`, `${pParticipacion}%`, `${pProyecto}%`, `${pPractica}%`]);
+        wsData.push(['', '', '', '', '', '', '', 'Ponderación:', `${pTarea}%`, `${pExamen}%`, `${pParticipacion}%`, `${pProyecto}%`, `${pPractica}%`, '', '']);
         wsData.push([]);
 
         // Encabezados
@@ -1084,15 +1095,18 @@ async function exportarExcel() {
             const nivel = alumno['Nivel'] || alumno.nivel || '';
             const creditos = alumno['Créditos'] || alumno.creditos || '';
             const email = alumno.email || alumno['Email'] || '';
-            const tarea = parseFloat(alumno.tarea || alumno['Tareas'] || 0);
-            const examen = parseFloat(alumno.examen || alumno['Exámenes'] || 0);
-            const participacion = parseFloat(alumno.participacion || alumno['Participación'] || 0);
-            const proyecto = parseFloat(alumno.proyecto || alumno['Proyectos'] || 0);
-            const practica = parseFloat(alumno.practica || alumno['Prácticas'] || 0);
+            const tarea = normalizarCalificacion(alumno.tarea || alumno['Tareas'] || 0);
+            const examen = normalizarCalificacion(alumno.examen || alumno['Exámenes'] || 0);
+            const participacion = normalizarCalificacion(alumno.participacion || alumno['Participación'] || 0);
+            const proyecto = normalizarCalificacion(alumno.proyecto || alumno['Proyectos'] || 0);
+            const practica = normalizarCalificacion(alumno.practica || alumno['Prácticas'] || 0);
 
             const excelRow = dataStartRow + index;
             // Columnas: I=Tareas, J=Exámenes, K=Participación, L=Proyectos, M=Prácticas
-            const formula = `ROUND(I${excelRow}*${pTarea}/100 + J${excelRow}*${pExamen}/100 + K${excelRow}*${pParticipacion}/100 + L${excelRow}*${pProyecto}/100 + M${excelRow}*${pPractica}/100, 2)`;
+            // N=Calificación (redondeada), O=Calificación Final (sin redondeo)
+            const formulaFinal = `ROUND(I${excelRow}*${pTarea}/100 + J${excelRow}*${pExamen}/100 + K${excelRow}*${pParticipacion}/100 + L${excelRow}*${pProyecto}/100 + M${excelRow}*${pPractica}/100, 2)`;
+            // Redondeo personalizado: .5 baja, .6 sube → IF(O-INT(O)>=0.6, INT(O)+1, INT(O))
+            const formulaRedondeo = `IF(O${excelRow}-INT(O${excelRow})>=0.6, INT(O${excelRow})+1, INT(O${excelRow}))`;
 
             wsData.push([
                 index + 1,
@@ -1108,7 +1122,8 @@ async function exportarExcel() {
                 participacion,
                 proyecto,
                 practica,
-                { f: formula }
+                { f: formulaRedondeo },
+                { f: formulaFinal }
             ]);
         });
 
@@ -1118,7 +1133,8 @@ async function exportarExcel() {
         wsData.push([
             '', '', '', 'Total alumnos:', alumnos.length,
             '', '', '', '', '', '', '', '',
-            { f: `AVERAGE(N${dataStartRow}:N${lastDataRow})` }
+            { f: `AVERAGE(N${dataStartRow}:N${lastDataRow})` },
+            { f: `AVERAGE(O${dataStartRow}:O${lastDataRow})` }
         ]);
 
         // Crear workbook
@@ -1140,7 +1156,8 @@ async function exportarExcel() {
             { wch: 16 },  // Participación
             { wch: 14 },  // Proyectos
             { wch: 14 },  // Prácticas
-            { wch: 18 },  // Calificación Final
+            { wch: 16 },  // Calificación (redondeada)
+            { wch: 18 },  // Calificación Final (sin redondeo)
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, 'Calificaciones');

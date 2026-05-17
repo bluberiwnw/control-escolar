@@ -1,3 +1,9 @@
+// Redondeo personalizado: .5 o menos baja, .6 o más sube
+function redondearCalificacionAlumno(cal) {
+    const parteEntera = Math.floor(cal);
+    return (cal - parteEntera) >= 0.6 ? parteEntera + 1 : parteEntera;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion(); 
     mostrarInfoUsuario(); 
@@ -201,8 +207,9 @@ function mostrarCalificacionesPorMateria(materias) {
     let html = '';
     materias.forEach(materia => {
         const promedioFinal = parseFloat(materia.promedio_final) || parseFloat(materia.calificacion_final) || 0;
-        const promedioColor = getCalificacionColor(promedioFinal);
-        const promedioIcon = getCalificacionIcon(promedioFinal);
+        const calRedondeada = materia.calificacion_redondeada != null ? parseFloat(materia.calificacion_redondeada) : redondearCalificacionAlumno(promedioFinal);
+        const promedioColor = getCalificacionColor(calRedondeada);
+        const promedioIcon = getCalificacionIcon(calRedondeada);
         
         // Verificar si tiene calificaciones (usando !== null para detectar valores 0 también)
         const tieneCalificaciones = (materia.calificaciones && materia.calificaciones.length > 0) ||
@@ -227,9 +234,12 @@ function mostrarCalificacionesPorMateria(materias) {
                             </span>
                         </div>
                     </div>
-                    <div class="promedio-badge" style="background: ${promedioColor}; color: white; padding: 0.75rem 1.25rem; border-radius: 2rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.25rem;">${promedioFinal.toFixed(1)}</span>
-                        <span style="font-size: 1rem;">${promedioIcon}</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
+                        <div class="promedio-badge" style="background: ${promedioColor}; color: white; padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.25rem;">${calRedondeada}</span>
+                            <span style="font-size: 1rem;">${promedioIcon}</span>
+                        </div>
+                        <span style="color: #94a3b8; font-size: 0.75rem;">Sin redondeo: ${promedioFinal.toFixed(2)}</span>
                     </div>
                 </div>
                 
@@ -310,7 +320,8 @@ function formatearTipo(tipo) {
         'practica': '💻 Prácticas',
         'actividad': '📚 Actividades',
         'general': '📊 General',
-        'final': '🎯 Calificación Final'
+        'final': '🎯 Calificación',
+        'final_sin_redondeo': '📐 Calificación Final'
     };
     return tipos[tipo] || `📌 ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
 }
