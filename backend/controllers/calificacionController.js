@@ -419,11 +419,11 @@ const calificacionController = {
                     
                     // Guardar calificaciones aplicando ponderaciones
                     const calificaciones = [
-                        { tipo: 'tarea', calificacion: estudiante.Tareas || 0 },
-                        { tipo: 'examen', calificacion: estudiante.Exámenes || 0 },
-                        { tipo: 'participacion', calificacion: estudiante['Participación'] || 0 },
-                        { tipo: 'proyecto', calificacion: estudiante.Proyectos || 0 },
-                        { tipo: 'practica', calificacion: estudiante.Prácticas || 0 }
+                        { tipo: 'tarea', calificacion: parseFloat(estudiante.Tareas) || 0 },
+                        { tipo: 'examen', calificacion: parseFloat(estudiante['Exámenes'] || estudiante.Examenes) || 0 },
+                        { tipo: 'participacion', calificacion: parseFloat(estudiante['Participación'] || estudiante.Participacion) || 0 },
+                        { tipo: 'proyecto', calificacion: parseFloat(estudiante.Proyectos) || 0 },
+                        { tipo: 'practica', calificacion: parseFloat(estudiante['Prácticas'] || estudiante.Practicas) || 0 }
                     ];
                     
                     let calificacionFinal = 0;

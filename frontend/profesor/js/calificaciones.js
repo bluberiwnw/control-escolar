@@ -450,6 +450,28 @@ async function confirmarSubida() {
         return;
     }
 
+    // Auto-aplicar mapeo de columnas extra antes de enviar
+    const mappings = document.querySelectorAll('.extra-col-mapping');
+    if (mappings.length > 0) {
+        const campoMap = {};
+        mappings.forEach(select => {
+            const colIndex = parseInt(select.dataset.colIndex);
+            const campo = select.value;
+            if (campo !== '-- No asociar --') {
+                campoMap[colIndex] = campo;
+            }
+        });
+        
+        if (Object.keys(campoMap).length > 0) {
+            window.processedData.rows.forEach(row => {
+                Object.entries(campoMap).forEach(([colIndex, campo]) => {
+                    const val = row[`extra_${colIndex}`] || 0;
+                    row[campo] = val;
+                });
+            });
+        }
+    }
+
     // Enviar los datos procesados en lugar del archivo original
     const payload = {
         materia_id: materia_id,
@@ -458,28 +480,42 @@ async function confirmarSubida() {
     };
 
     console.log('📤 Enviando datos procesados:', payload);
-
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${window.API_URL}/calificaciones/procesar-datos`, {
-        method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+    console.log('📤 Calificaciones del primer estudiante:', {
+        Tareas: payload.estudiantes[0]?.Tareas,
+        Exámenes: payload.estudiantes[0]?.['Exámenes'],
+        Participación: payload.estudiantes[0]?.['Participación'],
+        Proyectos: payload.estudiantes[0]?.Proyectos,
+        Prácticas: payload.estudiantes[0]?.['Prácticas']
     });
-    const data = await res.json();
-    if (res.ok) {
-        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
-        cargarHistorial();
-        await cargarAlumnos();
-        document.getElementById('previewTable').innerHTML = '';
-        window.tempFile = null;
-        document.getElementById('fileInput').value = '';
-        mostrarToast('Archivo HTM procesado correctamente', 'success');
-    } else {
-        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al procesar archivo HTM'}</div>`;
-        mostrarToast(data.message || 'Error al procesar archivo', 'error');
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${window.API_URL}/calificaciones/procesar-datos`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
+            cargarHistorial();
+            await cargarAlumnos();
+            document.getElementById('previewTable').innerHTML = '';
+            window.tempFile = null;
+            document.getElementById('fileInput').value = '';
+            mostrarToast('Archivo HTM procesado correctamente', 'success');
+        } else {
+            console.error('❌ Error del servidor:', data);
+            document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al procesar archivo HTM'}</div>`;
+            mostrarToast(data.message || 'Error al procesar archivo', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error al enviar datos:', error);
+        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">Error de conexión al procesar el archivo: ${error.message}</div>`;
+        mostrarToast('Error de conexión al procesar archivo', 'error');
     }
 }
 
