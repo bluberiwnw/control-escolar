@@ -147,6 +147,45 @@ const generarQR = async (req, res) => {
 };
 
 const registrarAsistenciaQR = async (req, res) => {
+  // Verificar que el usuario sea un alumno registrado
+  if (!req.usuario || !req.usuario.id) {
+    return res.status(401).json({ 
+      error: 'No autorizado', 
+      message: '❌ Debes iniciar sesión como alumno para registrar asistencia.' 
+    });
+  }
+
+  // Verificar que sea rol alumno (no profesor ni administrador)
+  if (req.usuario.rol !== 'alumno') {
+    return res.status(403).json({ 
+      error: 'Rol no permitido', 
+      message: '❌ Solo los alumnos registrados pueden escanear el código QR de asistencia.' 
+    });
+  }
+
+  // Verificar que el alumno exista en la base de datos
+  try {
+    const alumnoCheck = await pool.query(
+      'SELECT id, activo FROM estudiantes WHERE id = $1',
+      [req.usuario.id]
+    );
+    if (alumnoCheck.rows.length === 0) {
+      return res.status(403).json({ 
+        error: 'Alumno no registrado', 
+        message: '❌ No estás registrado como alumno en el sistema. Contacta al administrador.' 
+      });
+    }
+    if (!alumnoCheck.rows[0].activo) {
+      return res.status(403).json({ 
+        error: 'Cuenta inactiva', 
+        message: '❌ Tu cuenta de alumno está inactiva. Contacta al administrador.' 
+      });
+    }
+  } catch (error) {
+    console.error('Error verificando alumno:', error);
+    return res.status(500).json({ error: 'Error del servidor', message: 'Error al verificar el alumno.' });
+  }
+
   const codigo = extractTokenFromPayload(req.body);
   if (!codigo) {
     return res.status(400).json({ error: 'QR inválido', message: '❌ No se pudo leer el código del QR.' });
