@@ -1459,19 +1459,21 @@ const calificacionController = {
     async guardarPonderaciones(req, res) {
         try {
             console.log('📡 guardarPonderaciones - Guardando ponderaciones');
-            console.log('📡 guardarPonderaciones - Body recibido:', JSON.stringify(req.body));
             
             // Verificar que el usuario exista y tenga permisos
             if (!req.usuario || !['profesor', 'administrador'].includes(req.usuario.rol)) {
                 return res.status(403).json({ message: 'No tienes permisos para acceder a esta función' });
             }
 
-            const { materia_id } = req.body;
+            const materia_id = parseInt(req.body.materia_id);
+            
+            if (!materia_id || isNaN(materia_id)) {
+                return res.status(400).json({ message: 'materia_id es requerido y debe ser un número válido' });
+            }
             
             // Aceptar ponderaciones como objeto anidado O como campos planos en el body
             let ponderaciones = req.body.ponderaciones;
             if (!ponderaciones) {
-                // Extraer de campos planos (compatibilidad con frontend)
                 const { tarea, tareas, examen, examenes, participacion, proyecto, proyectos, practica, practicas } = req.body;
                 if (tarea !== undefined || tareas !== undefined || examen !== undefined || examenes !== undefined || participacion !== undefined) {
                     ponderaciones = {
@@ -1483,7 +1485,6 @@ const calificacionController = {
                     };
                 }
             } else {
-                // Normalizar keys a singular si vienen en plural
                 const normalized = {};
                 for (const [key, value] of Object.entries(ponderaciones)) {
                     const normalizedKey = key === 'tareas' ? 'tarea' : key === 'examenes' ? 'examen' : key === 'proyectos' ? 'proyecto' : key === 'practicas' ? 'practica' : key;
@@ -1492,129 +1493,97 @@ const calificacionController = {
                 ponderaciones = normalized;
             }
             
-            if (!materia_id || !ponderaciones) {
-                return res.status(400).json({ 
-                    message: 'Faltan parámetros requeridos',
-                    required: ['materia_id', 'ponderaciones (o campos: tarea, examen, participacion, proyecto, practica)'],
-                    received: req.body
-                });
+            if (!ponderaciones) {
+                return res.status(400).json({ message: 'Faltan ponderaciones' });
             }
 
             // Verificar que la materia exista
-            const materiaCheck = await pool.query(
-                'SELECT id FROM materias WHERE id = $1',
-                [materia_id]
-            );
-
+            const materiaCheck = await pool.query('SELECT id FROM materias WHERE id = $1', [materia_id]);
             if (materiaCheck.rows.length === 0) {
                 return res.status(404).json({ message: 'Materia no encontrada' });
             }
 
-            // Eliminar ponderaciones existentes para esta materia
-            await pool.query(
-                'DELETE FROM ponderaciones WHERE materia_id = $1',
-                [materia_id]
-            );
+            // Eliminar ponderaciones existentes e insertar nuevas
+            await pool.query('DELETE FROM ponderaciones WHERE materia_id = $1', [materia_id]);
 
-            // Insertar nuevas ponderaciones
             const ponderacionesArray = Object.entries(ponderaciones).map(([tipo, peso]) => ({
-                materia_id: parseInt(materia_id),
+                materia_id,
                 tipo,
                 peso: parseFloat(peso)
             }));
 
             for (const ponderacion of ponderacionesArray) {
                 await pool.query(
-                    `INSERT INTO ponderaciones (materia_id, tipo, peso) 
-                     VALUES ($1, $2, $3)`,
+                    'INSERT INTO ponderaciones (materia_id, tipo, peso) VALUES ($1, $2, $3)',
                     [ponderacion.materia_id, ponderacion.tipo, ponderacion.peso]
                 );
             }
 
             console.log('✅ Ponderaciones guardadas:', ponderacionesArray);
             
-            // Aplicar ponderaciones a los alumnos existentes en la materia
-            console.log('🔄 Aplicando ponderaciones a alumnos existentes...');
-            
-            // Obtener todos los alumnos inscritos en la materia desde todas las fuentes
-            const alumnosRows = await getEstudiantesDeMateria(materia_id);
-            
-            console.log(`📊 Encontrados ${alumnosRows.length} alumnos en materia ${materia_id}`);
-            
-            // Para cada alumno, asegurarse que tenga calificaciones para todos los tipos
-            for (const alumno of alumnosRows) {
-                for (const ponderacion of ponderacionesArray) {
-                    // Verificar si el alumno ya tiene calificación para este tipo
-                    const calificacionExistente = await pool.query(`
-                        SELECT id FROM calificaciones 
-                        WHERE estudiante_id = $1 AND materia_id = $2 AND tipo = $3
-                    `, [alumno.id, materia_id, ponderacion.tipo]);
-                    
-                    if (calificacionExistente.rows.length === 0) {
-                        // Insertar calificación inicial con valor 0
-                        await pool.query(`
-                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion)
-                            VALUES ($1, $2, $3, 0)
-                        `, [alumno.id, materia_id, ponderacion.tipo]);
-                        
-                        console.log(`✅ Calificación inicial creada: ${alumno.nombre} - ${ponderacion.tipo}: 0`);
-                    }
-                }
-            }
-            
-            // Recalcular calificaciones finales para todos los alumnos
-            console.log('🔄 Recalculando calificaciones finales...');
-            
-            for (const alumno of alumnosRows) {
-                // Obtener todas las calificaciones del alumno con sus ponderaciones
-                const calificacionesQuery = await pool.query(`
-                    SELECT c.tipo, c.calificacion, p.peso
-                    FROM calificaciones c
-                    INNER JOIN ponderaciones p ON c.tipo = p.tipo AND p.materia_id = c.materia_id
-                    WHERE c.estudiante_id = $1 AND c.materia_id = $2
-                `, [alumno.id, materia_id]);
+            // Recalcular calificaciones finales para alumnos existentes
+            let alumnosRecalculados = 0;
+            try {
+                const alumnosRows = await getEstudiantesDeMateria(materia_id);
+                console.log(`📊 Encontrados ${alumnosRows.length} alumnos en materia ${materia_id}`);
                 
-                if (calificacionesQuery.rows.length > 0) {
-                    let calificacionFinal = 0;
-                    let totalPeso = 0;
-                    
-                    calificacionesQuery.rows.forEach(cal => {
-                        calificacionFinal += (normalizarCalificacion(cal.calificacion) * cal.peso) / 100;
-                        totalPeso += cal.peso;
-                    });
-                    
-                    if (totalPeso > 0 && totalPeso !== 100) {
-                        calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                for (const alumno of alumnosRows) {
+                    try {
+                        // Obtener calificaciones parciales del alumno
+                        const calificacionesQuery = await pool.query(`
+                            SELECT tipo, calificacion
+                            FROM calificaciones 
+                            WHERE estudiante_id = $1 AND materia_id = $2 AND tipo NOT IN ('final', 'final_sin_redondeo')
+                        `, [alumno.id, materia_id]);
+                        
+                        let calificacionFinal = 0;
+                        let totalPeso = 0;
+                        
+                        if (calificacionesQuery.rows.length > 0) {
+                            calificacionesQuery.rows.forEach(cal => {
+                                const peso = ponderaciones[cal.tipo] || 0;
+                                if (peso > 0) {
+                                    calificacionFinal += (normalizarCalificacion(cal.calificacion) * peso) / 100;
+                                    totalPeso += peso;
+                                }
+                            });
+                        }
+                        
+                        if (totalPeso > 0 && totalPeso !== 100) {
+                            calificacionFinal = (calificacionFinal * 100) / totalPeso;
+                        }
+                        
+                        const calSinRedondeo = parseFloat(calificacionFinal.toFixed(2));
+                        const calRedondeada = redondearCalificacion(calificacionFinal);
+                        
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                            VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        `, [alumno.id, materia_id, calSinRedondeo]);
+                        
+                        await pool.query(`
+                            INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                            VALUES ($1, $2, 'final', $3, NOW())
+                            ON CONFLICT (estudiante_id, materia_id, tipo) 
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        `, [alumno.id, materia_id, calRedondeada]);
+                        
+                        alumnosRecalculados++;
+                        console.log(`✅ ${alumno.nombre}: sin redondeo=${calSinRedondeo}, redondeada=${calRedondeada}`);
+                    } catch (alumnoError) {
+                        console.error(`❌ Error recalculando para ${alumno.nombre}:`, alumnoError.message);
                     }
-                    
-                    // Guardar sin redondeo
-                    const calSinRedondeo = parseFloat(calificacionFinal.toFixed(2));
-                    await pool.query(`
-                        INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion)
-                        VALUES ($1, $2, 'final_sin_redondeo', $3)
-                        ON CONFLICT (estudiante_id, materia_id, tipo) 
-                        DO UPDATE SET calificacion = $3
-                    `, [alumno.id, materia_id, calSinRedondeo]);
-                    
-                    // Guardar redondeada
-                    const calRedondeada = redondearCalificacion(calificacionFinal);
-                    await pool.query(`
-                        INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion)
-                        VALUES ($1, $2, 'final', $3)
-                        ON CONFLICT (estudiante_id, materia_id, tipo) 
-                        DO UPDATE SET calificacion = $3
-                    `, [alumno.id, materia_id, calRedondeada]);
-                    
-                    console.log(`✅ Calificación actualizada: ${alumno.nombre} - sin redondeo: ${calSinRedondeo}, redondeada: ${calRedondeada}`);
                 }
+            } catch (recalcError) {
+                console.error('⚠️ Error en recálculo (ponderaciones sí se guardaron):', recalcError.message);
             }
-            
-            console.log('✅ Ponderaciones aplicadas correctamente a todos los alumnos');
             
             res.json({ 
                 message: 'Ponderaciones guardadas y aplicadas correctamente',
                 ponderaciones: ponderacionesArray,
-                alumnos_actualizados: alumnosRows.length
+                alumnos_actualizados: alumnosRecalculados
             });
             
         } catch (error) {
@@ -1740,24 +1709,21 @@ const calificacionController = {
                         WHERE estudiante_id = $1 AND materia_id = $2 AND tipo NOT IN ('final', 'final_sin_redondeo')
                     `, [estudiante.id, materiaIdNum]);
                     
-                    if (calificacionesQuery.rows.length === 0) {
-                        console.log(`⚠️ Estudiante ${estudiante.nombre} no tiene calificaciones parciales`);
-                        continue;
-                    }
-                    
                     let calificacionFinal = 0;
                     let totalPeso = 0;
                     
-                    calificacionesQuery.rows.forEach(cal => {
-                        const peso = ponderaciones[cal.tipo] || 0;
-                        if (peso > 0) {
-                            calificacionFinal += (normalizarCalificacion(cal.calificacion) * peso) / 100;
-                            totalPeso += peso;
+                    if (calificacionesQuery.rows.length > 0) {
+                        calificacionesQuery.rows.forEach(cal => {
+                            const peso = ponderaciones[cal.tipo] || 0;
+                            if (peso > 0) {
+                                calificacionFinal += (normalizarCalificacion(cal.calificacion) * peso) / 100;
+                                totalPeso += peso;
+                            }
+                        });
+                        
+                        if (totalPeso > 0 && totalPeso !== 100) {
+                            calificacionFinal = (calificacionFinal * 100) / totalPeso;
                         }
-                    });
-                    
-                    if (totalPeso > 0 && totalPeso !== 100) {
-                        calificacionFinal = (calificacionFinal * 100) / totalPeso;
                     }
                     
                     // Guardar sin redondeo

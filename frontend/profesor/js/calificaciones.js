@@ -867,12 +867,16 @@ async function guardarPonderaciones() {
         });
         
         mostrarToast(`Ponderaciones guardadas y calificaciones recalculadas (${resultado.alumnos_actualizados || 0} alumnos)`, 'success');
-        
-        // Recargar alumnos para mostrar las calificaciones actualizadas con las nuevas ponderaciones
-        await cargarAlumnos();
     } catch (error) {
         console.error('Error al guardar ponderaciones:', error);
         mostrarToast(error.message || 'Error al guardar ponderaciones', 'error');
+    }
+    
+    // Recargar alumnos para mostrar las calificaciones actualizadas
+    try {
+        await cargarAlumnos();
+    } catch (e) {
+        console.error('Error al recargar alumnos:', e);
     }
 }
 
