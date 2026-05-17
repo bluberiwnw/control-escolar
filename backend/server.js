@@ -2,11 +2,45 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const authController = require('./controllers/authController');
+const pool = require('./database/db');
 
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 8000;
+
+// Migraciones automáticas al iniciar el servidor
+async function runMigrations() {
+    try {
+        // Actualizar CHECK constraint para soportar los 7 tipos de calificación
+        await pool.query(`ALTER TABLE calificaciones DROP CONSTRAINT IF EXISTS calificaciones_tipo_check`);
+        await pool.query(`
+            ALTER TABLE calificaciones ADD CONSTRAINT calificaciones_tipo_check
+            CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'participacion', 'practica', 'final', 'final_sin_redondeo'))
+        `);
+        
+        // Eliminar duplicados antes de crear el UNIQUE index
+        await pool.query(`
+            DELETE FROM calificaciones a USING calificaciones b
+            WHERE a.id < b.id 
+            AND a.estudiante_id = b.estudiante_id 
+            AND a.materia_id = b.materia_id 
+            AND a.tipo = b.tipo
+        `);
+        
+        // Crear UNIQUE index para ON CONFLICT en calificaciones
+        await pool.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_calificaciones_unique 
+            ON calificaciones(estudiante_id, materia_id, tipo)
+        `);
+        
+        console.log('✅ Migraciones de BD aplicadas correctamente');
+    } catch (error) {
+        console.error('⚠️ Error en migraciones (no crítico):', error.message);
+    }
+}
+
+runMigrations();
 
 // Middlewares básicos (que no autentican)
 app.use(cors({

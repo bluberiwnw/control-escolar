@@ -290,6 +290,9 @@ async function previsualizarArchivo(input) {
             const idAlumno = idSpan?.textContent.trim() || cells[2]?.textContent.trim() || '';
             rowData['ID'] = idAlumno;
             
+            const statusSpan = cells[3]?.querySelector('.fieldmediumtext');
+            rowData['Status de Inscripción'] = statusSpan?.textContent.trim() || cells[3]?.textContent.trim() || '';
+            
             const nivelSpan = cells[4]?.querySelector('.fieldmediumtext');
             rowData['Nivel'] = nivelSpan?.textContent.trim() || cells[4]?.textContent.trim() || '';
             
@@ -1067,7 +1070,7 @@ async function exportarExcel() {
 
         // Construir hoja de calificaciones con TODA la info del alumno
         const headerRow = [
-            'No.', 'Número de Registro', 'Matrícula', 'Nombre Completo',
+            'No.', 'Matrícula', 'Nombre Completo',
             'Status de Inscripción', 'Nivel', 'Créditos', 'Email',
             `Tareas (${pTarea}%)`, `Exámenes (${pExamen}%)`,
             `Participación (${pParticipacion}%)`, `Proyectos (${pProyecto}%)`,
@@ -1082,7 +1085,7 @@ async function exportarExcel() {
         wsData.push([]);
 
         // Fila de ponderaciones (alineada con las columnas de calificaciones)
-        wsData.push(['', '', '', '', '', '', '', 'Ponderación:', `${pTarea}%`, `${pExamen}%`, `${pParticipacion}%`, `${pProyecto}%`, `${pPractica}%`, '', '']);
+        wsData.push(['', '', '', '', '', '', 'Ponderación:', `${pTarea}%`, `${pExamen}%`, `${pParticipacion}%`, `${pProyecto}%`, `${pPractica}%`, '', '']);
         wsData.push([]);
 
         // Encabezados
@@ -1092,7 +1095,6 @@ async function exportarExcel() {
         const dataStartRow = wsData.length + 1; // +1 porque Excel es 1-indexed
 
         alumnos.forEach((alumno, index) => {
-            const numRegistro = alumno['Número de Registro'] || alumno.numero_registro || '';
             const matricula = alumno.matricula || alumno['ID'] || alumno['Matrícula'] || '';
             const nombre = alumno.nombre || alumno['Nombre de Alumno'] || alumno['Nombre'] || '';
             const status = alumno['Status de Inscripción'] || alumno.status || '';
@@ -1106,15 +1108,13 @@ async function exportarExcel() {
             const practica = normalizarCalificacion(alumno.practica || alumno['Prácticas'] || 0);
 
             const excelRow = dataStartRow + index;
-            // Columnas: I=Tareas, J=Exámenes, K=Participación, L=Proyectos, M=Prácticas
-            // N=Calificación (sin redondeo), O=Calificación Final (redondeada)
-            const formulaSinRedondeo = `ROUND(I${excelRow}*${pTarea}/100 + J${excelRow}*${pExamen}/100 + K${excelRow}*${pParticipacion}/100 + L${excelRow}*${pProyecto}/100 + M${excelRow}*${pPractica}/100, 2)`;
-            // Redondeo personalizado: .5 baja, .6 sube → IF(N-INT(N)>=0.6, INT(N)+1, INT(N))
-            const formulaRedondeo = `IF(N${excelRow}-INT(N${excelRow})>=0.6, INT(N${excelRow})+1, INT(N${excelRow}))`;
+            // Columnas: H=Tareas, I=Exámenes, J=Participación, K=Proyectos, L=Prácticas
+            // M=Calificación (sin redondeo), N=Calificación Final (redondeada)
+            const formulaSinRedondeo = `ROUND(H${excelRow}*${pTarea}/100 + I${excelRow}*${pExamen}/100 + J${excelRow}*${pParticipacion}/100 + K${excelRow}*${pProyecto}/100 + L${excelRow}*${pPractica}/100, 2)`;
+            const formulaRedondeo = `IF(M${excelRow}-INT(M${excelRow})>=0.6, INT(M${excelRow})+1, INT(M${excelRow}))`;
 
             wsData.push([
                 index + 1,
-                numRegistro,
                 matricula,
                 nombre,
                 status,
@@ -1135,10 +1135,10 @@ async function exportarExcel() {
         const lastDataRow = dataStartRow + alumnos.length - 1;
         wsData.push([]);
         wsData.push([
-            '', '', '', 'Total alumnos:', alumnos.length,
+            '', '', 'Total alumnos:', alumnos.length,
             '', '', '', '', '', '', '', '',
-            { f: `AVERAGE(N${dataStartRow}:N${lastDataRow})` },
-            { f: `AVERAGE(O${dataStartRow}:O${lastDataRow})` }
+            { f: `AVERAGE(M${dataStartRow}:M${lastDataRow})` },
+            { f: `AVERAGE(N${dataStartRow}:N${lastDataRow})` }
         ]);
 
         // Crear workbook
@@ -1148,7 +1148,6 @@ async function exportarExcel() {
         // Ajustar anchos de columna
         ws['!cols'] = [
             { wch: 5 },   // No.
-            { wch: 18 },  // Número de Registro
             { wch: 15 },  // Matrícula
             { wch: 35 },  // Nombre Completo
             { wch: 20 },  // Status de Inscripción
