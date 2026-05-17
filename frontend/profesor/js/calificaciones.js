@@ -577,8 +577,8 @@ async function cargarAlumnos() {
                                 <th>Participación</th>
                                 <th>Proyectos</th>
                                 <th>Prácticas</th>
-                                <th>Calificación Final</th>
                                 <th>Calificación</th>
+                                <th>Calificación Final</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -1067,7 +1067,7 @@ async function exportarExcel() {
             'Status de Inscripción', 'Nivel', 'Créditos', 'Email',
             `Tareas (${pTarea}%)`, `Exámenes (${pExamen}%)`,
             `Participación (${pParticipacion}%)`, `Proyectos (${pProyecto}%)`,
-            `Prácticas (${pPractica}%)`, 'Calificación Final', 'Calificación'
+            `Prácticas (${pPractica}%)`, 'Calificación', 'Calificación Final'
         ];
 
         const wsData = [];
@@ -1103,8 +1103,8 @@ async function exportarExcel() {
 
             const excelRow = dataStartRow + index;
             // Columnas: I=Tareas, J=Exámenes, K=Participación, L=Proyectos, M=Prácticas
-            // N=Calificación Final (sin redondeo), O=Calificación (redondeada)
-            const formulaFinal = `ROUND(I${excelRow}*${pTarea}/100 + J${excelRow}*${pExamen}/100 + K${excelRow}*${pParticipacion}/100 + L${excelRow}*${pProyecto}/100 + M${excelRow}*${pPractica}/100, 2)`;
+            // N=Calificación (sin redondeo), O=Calificación Final (redondeada)
+            const formulaSinRedondeo = `ROUND(I${excelRow}*${pTarea}/100 + J${excelRow}*${pExamen}/100 + K${excelRow}*${pParticipacion}/100 + L${excelRow}*${pProyecto}/100 + M${excelRow}*${pPractica}/100, 2)`;
             // Redondeo personalizado: .5 baja, .6 sube → IF(N-INT(N)>=0.6, INT(N)+1, INT(N))
             const formulaRedondeo = `IF(N${excelRow}-INT(N${excelRow})>=0.6, INT(N${excelRow})+1, INT(N${excelRow}))`;
 
@@ -1122,7 +1122,7 @@ async function exportarExcel() {
                 participacion,
                 proyecto,
                 practica,
-                { f: formulaFinal },
+                { f: formulaSinRedondeo },
                 { f: formulaRedondeo }
             ]);
         });
@@ -1156,8 +1156,8 @@ async function exportarExcel() {
             { wch: 16 },  // Participación
             { wch: 14 },  // Proyectos
             { wch: 14 },  // Prácticas
-            { wch: 18 },  // Calificación Final (sin redondeo)
-            { wch: 16 },  // Calificación (redondeada)
+            { wch: 16 },  // Calificación (sin redondeo)
+            { wch: 18 },  // Calificación Final (redondeada)
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, 'Calificaciones');
