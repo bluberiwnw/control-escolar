@@ -377,11 +377,21 @@ const calificacionController = {
             );
             
             const ponderaciones = {};
-            ponderacionesQuery.rows.forEach(row => {
-                ponderaciones[row.tipo] = row.peso;
-            });
+            if (ponderacionesQuery.rows.length > 0) {
+                ponderacionesQuery.rows.forEach(row => {
+                    ponderaciones[row.tipo] = row.peso;
+                });
+            } else {
+                // Usar ponderaciones por defecto si no hay guardadas
+                ponderaciones.tarea = 20;
+                ponderaciones.examen = 30;
+                ponderaciones.participacion = 10;
+                ponderaciones.proyecto = 20;
+                ponderaciones.practica = 20;
+                console.log('⚠️ Sin ponderaciones guardadas, usando valores por defecto');
+            }
             
-            console.log('📊 Ponderaciones encontradas para materia:', ponderaciones);
+            console.log('📊 Ponderaciones para materia:', ponderaciones);
             
             // Procesar cada estudiante
             for (const estudiante of estudiantes) {
@@ -795,11 +805,19 @@ const calificacionController = {
                 [materiaIdNum]
             );
             
-            if (ponderacionesQuery.rows.length > 0) {
+            {
                 const ponderacionesMap = {};
-                ponderacionesQuery.rows.forEach(row => {
-                    ponderacionesMap[row.tipo] = parseFloat(row.peso);
-                });
+                if (ponderacionesQuery.rows.length > 0) {
+                    ponderacionesQuery.rows.forEach(row => {
+                        ponderacionesMap[row.tipo] = parseFloat(row.peso);
+                    });
+                } else {
+                    ponderacionesMap.tarea = 20;
+                    ponderacionesMap.examen = 30;
+                    ponderacionesMap.participacion = 10;
+                    ponderacionesMap.proyecto = 20;
+                    ponderacionesMap.practica = 20;
+                }
                 
                 const calificacionesQuery = await pool.query(
                     `SELECT tipo, calificacion FROM calificaciones 
@@ -1065,6 +1083,25 @@ const calificacionController = {
             // Obtener alumnos de la materia desde todas las fuentes de inscripción
             const alumnosRows = await getEstudiantesDeMateria(materia_id, true);
             
+            // Obtener ponderaciones de la materia
+            const ponderacionesQuery = await pool.query(
+                'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+                [materia_id]
+            );
+            
+            const ponderacionesMap = {};
+            if (ponderacionesQuery.rows.length > 0) {
+                ponderacionesQuery.rows.forEach(row => {
+                    ponderacionesMap[row.tipo] = parseFloat(row.peso);
+                });
+            } else {
+                ponderacionesMap.tarea = 20;
+                ponderacionesMap.examen = 30;
+                ponderacionesMap.participacion = 10;
+                ponderacionesMap.proyecto = 20;
+                ponderacionesMap.practica = 20;
+            }
+
             // Obtener calificaciones para cada alumno
             const alumnosConCalificaciones = await Promise.all(
                 alumnosRows.map(async (alumno) => {
@@ -1075,16 +1112,11 @@ const calificacionController = {
                         ORDER BY tipo
                     `, [alumno.id, materia_id]);
                     
-                    // Calcular promedio final
                     const calificaciones = calificacionesQuery.rows;
-                    const promedioFinal = calificaciones.length > 0 
-                        ? calificaciones.reduce((sum, c) => sum + parseFloat(c.calificacion), 0) / calificaciones.length
-                        : 0;
                     
                     // Construir objeto con todas las calificaciones - mapeo de tipos a nombres de campos
                     const calificacionesObj = {};
                     calificaciones.forEach(c => {
-                        // Mapear tipos a nombres de campos que espera el frontend
                         switch(c.tipo) {
                             case 'tarea':
                                 calificacionesObj.tarea = parseFloat(c.calificacion);
@@ -1112,18 +1144,26 @@ const calificacionController = {
                         }
                     });
                     
-                    // Si no hay calificación redondeada pero hay final, usarla
-                    if (calificacionesObj.calificacion_redondeada == null && calificacionesObj.calificacion_final != null) {
-                        calificacionesObj.calificacion_redondeada = redondearCalificacion(calificacionesObj.calificacion_final);
-                    }
-                    // Si no hay calificación final sin redondeo, calcular desde promedio
+                    // Si no hay calificación final, calcular promedio ponderado con ponderaciones
                     if (calificacionesObj.calificacion_final == null) {
-                        // Excluir 'final' y 'final_sin_redondeo' del promedio
-                        const calsSinFinal = calificaciones.filter(c => c.tipo !== 'final' && c.tipo !== 'final_sin_redondeo');
-                        calificacionesObj.calificacion_final = calsSinFinal.length > 0 
-                            ? parseFloat((calsSinFinal.reduce((sum, c) => sum + parseFloat(c.calificacion), 0) / calsSinFinal.length).toFixed(2))
-                            : 0;
+                        let calFinal = 0;
+                        let totalPeso = 0;
+                        const tipos = ['tarea', 'examen', 'participacion', 'proyecto', 'practica'];
+                        tipos.forEach(tipo => {
+                            const peso = ponderacionesMap[tipo] || 0;
+                            const valor = calificacionesObj[tipo] || 0;
+                            if (peso > 0) {
+                                calFinal += (valor * peso) / 100;
+                                totalPeso += peso;
+                            }
+                        });
+                        if (totalPeso > 0 && totalPeso !== 100) {
+                            calFinal = (calFinal * 100) / totalPeso;
+                        }
+                        calificacionesObj.calificacion_final = parseFloat(calFinal.toFixed(2));
                     }
+                    
+                    // Si no hay calificación redondeada, calcular desde final
                     if (calificacionesObj.calificacion_redondeada == null) {
                         calificacionesObj.calificacion_redondeada = redondearCalificacion(calificacionesObj.calificacion_final);
                     }
@@ -1662,16 +1702,22 @@ const calificacionController = {
                 [materiaIdNum]
             );
             
-            if (ponderacionesQuery.rows.length === 0) {
-                return res.status(400).json({ message: 'No hay ponderaciones configuradas para esta materia' });
+            const ponderaciones = {};
+            if (ponderacionesQuery.rows.length > 0) {
+                ponderacionesQuery.rows.forEach(row => {
+                    ponderaciones[row.tipo] = row.peso;
+                });
+            } else {
+                // Usar ponderaciones por defecto
+                ponderaciones.tarea = 20;
+                ponderaciones.examen = 30;
+                ponderaciones.participacion = 10;
+                ponderaciones.proyecto = 20;
+                ponderaciones.practica = 20;
+                console.log('⚠️ Sin ponderaciones guardadas, usando valores por defecto');
             }
             
-            const ponderaciones = {};
-            ponderacionesQuery.rows.forEach(row => {
-                ponderaciones[row.tipo] = row.peso;
-            });
-            
-            console.log('📊 Ponderaciones encontradas:', ponderaciones);
+            console.log('📊 Ponderaciones para cálculo:', ponderaciones);
             
             // Obtener todos los estudiantes de la materia desde todas las fuentes
             const estudiantesRows = await getEstudiantesDeMateria(materiaIdNum);

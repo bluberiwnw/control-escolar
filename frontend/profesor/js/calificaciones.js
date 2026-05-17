@@ -858,7 +858,7 @@ async function guardarPonderaciones() {
     };
     
     try {
-        await apiRequest('/calificaciones/ponderaciones', {
+        const resultado = await apiRequest('/calificaciones/ponderaciones', {
             method: 'POST',
             body: JSON.stringify({
                 materia_id: materia_id,
@@ -866,13 +866,13 @@ async function guardarPonderaciones() {
             })
         });
         
-        mostrarToast('Ponderaciones guardadas correctamente', 'success');
+        mostrarToast(`Ponderaciones guardadas y calificaciones recalculadas (${resultado.alumnos_actualizados || 0} alumnos)`, 'success');
         
         // Recargar alumnos para mostrar las calificaciones actualizadas con las nuevas ponderaciones
         await cargarAlumnos();
     } catch (error) {
-        console.log('No hay ponderaciones guardadas, usando valores por defecto');
-        validarPonderaciones();
+        console.error('Error al guardar ponderaciones:', error);
+        mostrarToast(error.message || 'Error al guardar ponderaciones', 'error');
     }
 }
 
