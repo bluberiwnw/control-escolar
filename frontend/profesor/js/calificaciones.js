@@ -577,8 +577,8 @@ async function cargarAlumnos() {
                                 <th>Participación</th>
                                 <th>Proyectos</th>
                                 <th>Prácticas</th>
-                                <th>Calificación</th>
                                 <th>Calificación Final</th>
+                                <th>Calificación</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -659,10 +659,10 @@ async function cargarAlumnos() {
                                    onchange="actualizarCalificacion(${alumno.id}, 'practica', this.value)">
                         </td>
                         <td>
-                            <span class="badge badge-${calificacionColor}" id="redondeada_${alumno.id}">${calRedondeada}</span>
+                            <span id="final_${alumno.id}">${calFinal}</span>
                         </td>
                         <td>
-                            <span id="final_${alumno.id}">${calFinal}</span>
+                            <span class="badge badge-${calificacionColor}" id="redondeada_${alumno.id}">${calRedondeada}</span>
                         </td>
                         <td>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="editarAlumno(${alumno.id})">
@@ -1067,7 +1067,7 @@ async function exportarExcel() {
             'Status de Inscripción', 'Nivel', 'Créditos', 'Email',
             `Tareas (${pTarea}%)`, `Exámenes (${pExamen}%)`,
             `Participación (${pParticipacion}%)`, `Proyectos (${pProyecto}%)`,
-            `Prácticas (${pPractica}%)`, 'Calificación', 'Calificación Final'
+            `Prácticas (${pPractica}%)`, 'Calificación Final', 'Calificación'
         ];
 
         const wsData = [];
@@ -1103,10 +1103,10 @@ async function exportarExcel() {
 
             const excelRow = dataStartRow + index;
             // Columnas: I=Tareas, J=Exámenes, K=Participación, L=Proyectos, M=Prácticas
-            // N=Calificación (redondeada), O=Calificación Final (sin redondeo)
+            // N=Calificación Final (sin redondeo), O=Calificación (redondeada)
             const formulaFinal = `ROUND(I${excelRow}*${pTarea}/100 + J${excelRow}*${pExamen}/100 + K${excelRow}*${pParticipacion}/100 + L${excelRow}*${pProyecto}/100 + M${excelRow}*${pPractica}/100, 2)`;
-            // Redondeo personalizado: .5 baja, .6 sube → IF(O-INT(O)>=0.6, INT(O)+1, INT(O))
-            const formulaRedondeo = `IF(O${excelRow}-INT(O${excelRow})>=0.6, INT(O${excelRow})+1, INT(O${excelRow}))`;
+            // Redondeo personalizado: .5 baja, .6 sube → IF(N-INT(N)>=0.6, INT(N)+1, INT(N))
+            const formulaRedondeo = `IF(N${excelRow}-INT(N${excelRow})>=0.6, INT(N${excelRow})+1, INT(N${excelRow}))`;
 
             wsData.push([
                 index + 1,
@@ -1122,8 +1122,8 @@ async function exportarExcel() {
                 participacion,
                 proyecto,
                 practica,
-                { f: formulaRedondeo },
-                { f: formulaFinal }
+                { f: formulaFinal },
+                { f: formulaRedondeo }
             ]);
         });
 
@@ -1156,8 +1156,8 @@ async function exportarExcel() {
             { wch: 16 },  // Participación
             { wch: 14 },  // Proyectos
             { wch: 14 },  // Prácticas
-            { wch: 16 },  // Calificación (redondeada)
             { wch: 18 },  // Calificación Final (sin redondeo)
+            { wch: 16 },  // Calificación (redondeada)
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, 'Calificaciones');
