@@ -460,7 +460,7 @@ const calificacionController = {
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, $3, $4, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
-                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion
                         `, [estudianteId, materiaIdNum, cal.tipo, cal.calificacion]);
                         
                         const peso = ponderaciones[cal.tipo] || 0;
@@ -484,7 +484,7 @@ const calificacionController = {
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
-                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion
                         `, [estudianteId, materiaIdNum, calFinalSinRedondeo]);
                         
                         // Guardar calificación CON redondeo (.5 baja, .6 sube)
@@ -493,7 +493,7 @@ const calificacionController = {
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, 'final', $3, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
-                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion
                         `, [estudianteId, materiaIdNum, calFinalRedondeada]);
                         
                         console.log(`✅ Calificación: ${estudiante['Nombre de Alumno']} - Sin redondeo: ${calFinalSinRedondeo}, Redondeada: ${calFinalRedondeada}`);
@@ -782,7 +782,7 @@ const calificacionController = {
                 // Actualizar calificación existente
                 await pool.query(
                     `UPDATE calificaciones 
-                     SET calificacion = $1, updated_at = NOW()
+                     SET calificacion = $1
                      WHERE estudiante_id = $2 AND materia_id = $3 AND tipo = $4`,
                     [calificacionNum, estudianteIdNum, materiaIdNum, tipo]
                 );
@@ -846,7 +846,7 @@ const calificacionController = {
                     `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                      VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
                      ON CONFLICT (estudiante_id, materia_id, tipo) 
-                     DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()`,
+                     DO UPDATE SET calificacion = EXCLUDED.calificacion`,
                     [estudianteIdNum, materiaIdNum, calFinalSinRedondeo]
                 );
                 
@@ -856,7 +856,7 @@ const calificacionController = {
                     `INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                      VALUES ($1, $2, 'final', $3, NOW())
                      ON CONFLICT (estudiante_id, materia_id, tipo) 
-                     DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()`,
+                     DO UPDATE SET calificacion = EXCLUDED.calificacion`,
                     [estudianteIdNum, materiaIdNum, calFinalRedondeada]
                 );
                 
@@ -1560,14 +1560,14 @@ const calificacionController = {
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
-                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion
                         `, [alumno.id, materia_id, calSinRedondeo]);
                         
                         await pool.query(`
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, 'final', $3, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
-                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion
                         `, [alumno.id, materia_id, calRedondeada]);
                         
                         alumnosRecalculados++;
@@ -1732,7 +1732,7 @@ const calificacionController = {
                         INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                         VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
                         ON CONFLICT (estudiante_id, materia_id, tipo) 
-                        DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        DO UPDATE SET calificacion = EXCLUDED.calificacion
                     `, [estudiante.id, materiaIdNum, calSinRedondeo]);
                     
                     // Guardar redondeada
@@ -1741,7 +1741,7 @@ const calificacionController = {
                         INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                         VALUES ($1, $2, 'final', $3, NOW())
                         ON CONFLICT (estudiante_id, materia_id, tipo) 
-                        DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                        DO UPDATE SET calificacion = EXCLUDED.calificacion
                     `, [estudiante.id, materiaIdNum, calRedondeada]);
                     
                     console.log(`✅ Calificación calculada: ${estudiante.nombre} - sin redondeo: ${calSinRedondeo}, redondeada: ${calRedondeada}`);
@@ -2451,7 +2451,7 @@ const calificacionController = {
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, $3, $4, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
-                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion
                         `, [estudianteId, materiaId, cal.tipo, cal.calificacion]);
                         
                         const peso = ponderaciones[cal.tipo] || 0;
@@ -2474,7 +2474,7 @@ const calificacionController = {
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
-                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion
                         `, [estudianteId, materiaId, calSinRedondeo]);
                         
                         // Guardar redondeada
@@ -2483,7 +2483,7 @@ const calificacionController = {
                             INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                             VALUES ($1, $2, 'final', $3, NOW())
                             ON CONFLICT (estudiante_id, materia_id, tipo) 
-                            DO UPDATE SET calificacion = EXCLUDED.calificacion, updated_at = NOW()
+                            DO UPDATE SET calificacion = EXCLUDED.calificacion
                         `, [estudianteId, materiaId, calRedondeada]);
                         
                         console.log(`✅ Calificación: ${estudiante.nombre} - sin redondeo: ${calSinRedondeo}, redondeada: ${calRedondeada}`);
@@ -2572,7 +2572,7 @@ const calificacionController = {
                         INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                         VALUES ($1, $2, $3, $4, NOW())
                         ON CONFLICT (estudiante_id, materia_id, tipo) 
-                        DO UPDATE SET calificacion = $4, updated_at = NOW()
+                        DO UPDATE SET calificacion = $4
                     `, [estudianteIdNum, materiaIdNum, cal.tipo, cal.calificacion]);
                 }
             }
@@ -2592,7 +2592,7 @@ const calificacionController = {
                 INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                 VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
                 ON CONFLICT (estudiante_id, materia_id, tipo) 
-                DO UPDATE SET calificacion = $3, updated_at = NOW()
+                DO UPDATE SET calificacion = $3
             `, [estudianteIdNum, materiaIdNum, calSinRedondeo]);
             
             // Guardar redondeada
@@ -2601,7 +2601,7 @@ const calificacionController = {
                 INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
                 VALUES ($1, $2, 'final', $3, NOW())
                 ON CONFLICT (estudiante_id, materia_id, tipo) 
-                DO UPDATE SET calificacion = $3, updated_at = NOW()
+                DO UPDATE SET calificacion = $3
             `, [estudianteIdNum, materiaIdNum, calRedondeada]);
             
             console.log('✅ Calificaciones guardadas para estudiante:', estudianteIdNum);
