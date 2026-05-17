@@ -158,10 +158,6 @@ async function previsualizarArchivo(input) {
         return;
     }
     window.tempFile = file;
-    if (ext === '.pdf') {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-info">Archivo PDF listo para subir. No requiere vista previa.</div>';
-        return;
-    }
 
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -211,165 +207,152 @@ async function previsualizarArchivo(input) {
         const headerRow = rows[0];
         const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
         
-        const headers = headerCells.map((cell, index) => {
-            let header = cell.textContent.trim();
-            console.log(`🔍 Procesando encabezado ${index}: "${header}"`);
-            
-            let mappedHeader = '';
-            
-            if (header.includes('Número de Registro') || header.includes('Número de<br>Registro') || header.includes('Registro')) {
-                mappedHeader = 'Número de Registro';
-            } else if (header.includes('Nombre de Alumno') || header.includes('Nombre')) {
-                mappedHeader = 'Nombre de Alumno';
-            } else if (header.includes('ID') || header.includes('Identificación')) {
-                mappedHeader = 'ID';
-            } else if (header.includes('Status de Inscripción') || header.includes('Status')) {
-                mappedHeader = 'Status de Inscripción';
-            } else if (header.includes('Nivel')) {
-                mappedHeader = 'Nivel';
-            } else if (header.includes('Créditos')) {
-                mappedHeader = 'Créditos';
-            } else if (header.includes('Detalle de Calificaciones') || header.includes('Calificaciones')) {
-                mappedHeader = 'Email';
-            } else if (header && header.trim()) {
-                mappedHeader = header.trim();
-            } else {
-                mappedHeader = `Columna ${index + 1}`;
+        // Identificar columnas vacías/dddead para excluirlas
+        const skipColumns = new Set();
+        headerCells.forEach((cell, index) => {
+            const cls = cell.className || '';
+            const text = cell.textContent.trim();
+            if (cls.includes('dddead') || (!text && !cell.querySelector('a'))) {
+                skipColumns.add(index);
             }
-            
-            console.log(`🔍 Encabezado mapeado: "${header}" -> "${mappedHeader}"`);
-            return mappedHeader;
         });
         
-        console.log('📋 Encabezados detectados:', headers);
+        // Columnas base conocidas del HTM BUAP
+        const knownColumns = ['Número de Registro', 'Nombre de Alumno', 'ID', 'Status de Inscripción', 'Nivel', 'Créditos', 'Email'];
+        const displayColumns = ['Número de Registro', 'Nombre de Alumno', 'ID', 'Nivel', 'Créditos', 'Email'];
+        
+        // Detectar columnas extra con datos numéricos (posibles calificaciones)
+        const extraColumns = [];
+        headerCells.forEach((cell, index) => {
+            if (skipColumns.has(index)) return;
+            const header = cell.textContent.trim();
+            const mapped = mapHeader(header);
+            if (mapped && !knownColumns.includes(mapped)) {
+                extraColumns.push({ index, originalHeader: header });
+            }
+        });
+        
+        function mapHeader(header) {
+            if (!header) return null;
+            if (header.includes('Número de Registro') || header.includes('Registro')) return 'Número de Registro';
+            if (header.includes('Nombre de Alumno') || header.includes('Nombre')) return 'Nombre de Alumno';
+            if (header.includes('ID') || header.includes('Identificación')) return 'ID';
+            if (header.includes('Status de Inscripción') || header.includes('Status')) return 'Status de Inscripción';
+            if (header.includes('Nivel')) return 'Nivel';
+            if (header.includes('Créditos')) return 'Créditos';
+            if (header.includes('Detalle de Calificaciones') || header.includes('Calificaciones')) return 'Email';
+            return header.trim() || null;
+        }
+        
+        // Verificar si las columnas extra tienen datos numéricos (calificaciones)
+        const firstDataRow = rows[1] ? Array.from(rows[1].querySelectorAll('td')) : [];
+        const extraColumnsWithData = extraColumns.filter(col => {
+            const cellText = firstDataRow[col.index]?.textContent.trim() || '';
+            const num = parseFloat(cellText);
+            return !isNaN(num) && cellText.length > 0;
+        });
         
         const dataRows = [];
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const cells = Array.from(row.querySelectorAll('td'));
             
-            if (cells.length < 7) {
-                console.log(`⚠️ Fila ${i} ignorada: muy pocas celdas (${cells.length})`);
-                continue;
-            }
+            if (cells.length < 3) continue;
+            
+            // Verificar que no sea una fila dddead completa
+            const allDead = cells.every(c => (c.className || '').includes('dddead') || !c.textContent.trim());
+            if (allDead) continue;
             
             const rowData = {};
             
-            const numeroRegistro = cells[0]?.textContent.trim() || '';
-            rowData['Número de Registro'] = numeroRegistro;
+            rowData['Número de Registro'] = cells[0]?.textContent.trim() || '';
             
-            const nombreCell = cells[1];
-            const nombreSpan = nombreCell?.querySelector('.fieldmediumtext');
-            const nombreAlumno = nombreSpan?.textContent.trim() || nombreCell?.textContent.trim() || '';
+            const nombreSpan = cells[1]?.querySelector('.fieldmediumtext');
+            const nombreAlumno = nombreSpan?.textContent.trim() || cells[1]?.textContent.trim() || '';
             rowData['Nombre de Alumno'] = nombreAlumno;
             
-            const idCell = cells[2];
-            const idSpan = idCell?.querySelector('.fieldmediumtext');
-            const idAlumno = idSpan?.textContent.trim() || idCell?.textContent.trim() || '';
+            const idSpan = cells[2]?.querySelector('.fieldmediumtext');
+            const idAlumno = idSpan?.textContent.trim() || cells[2]?.textContent.trim() || '';
             rowData['ID'] = idAlumno;
             
-            const statusCell = cells[3];
-            const statusSpan = statusCell?.querySelector('.fieldmediumtext');
-            const statusInscripcion = statusSpan?.textContent.trim() || statusCell?.textContent.trim() || '';
-            rowData['Status de Inscripción'] = statusInscripcion;
+            const nivelSpan = cells[4]?.querySelector('.fieldmediumtext');
+            rowData['Nivel'] = nivelSpan?.textContent.trim() || cells[4]?.textContent.trim() || '';
             
-            const nivelCell = cells[4];
-            const nivelSpan = nivelCell?.querySelector('.fieldmediumtext');
-            const nivel = nivelSpan?.textContent.trim() || nivelCell?.textContent.trim() || '';
-            rowData['Nivel'] = nivel;
+            const creditosSpan = cells[5]?.querySelector('.fieldmediumtext');
+            rowData['Créditos'] = creditosSpan?.textContent.trim() || cells[5]?.textContent.trim() || '';
             
-            const creditosCell = cells[5];
-            const creditosSpan = creditosCell?.querySelector('.fieldmediumtext');
-            const creditos = creditosSpan?.textContent.trim() || creditosCell?.textContent.trim() || '';
-            rowData['Créditos'] = creditos;
-            
+            // Extraer email desde enlace mailto
             let email = '';
-            for (let j = 6; j < cells.length; j++) {
-                const emailCell = cells[j];
-                const emailLink = emailCell?.querySelector('a[href^="mailto:"]');
+            for (let j = 0; j < cells.length; j++) {
+                const emailLink = cells[j]?.querySelector('a[href^="mailto:"]');
                 if (emailLink) {
                     email = emailLink.getAttribute('href').replace('mailto:', '');
                     break;
                 }
             }
             rowData['Email'] = email;
-            
             rowData['Matrícula'] = idAlumno;
             rowData['Nombre'] = nombreAlumno;
             
-            // Extraer calificaciones de las celdas restantes
-            let calificacionIndex = 7; // Empezar después de las columnas básicas
-            rowData['Tareas'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Exámenes'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Participación'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Proyectos'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Prácticas'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
-            calificacionIndex++;
-            rowData['Calificación Final'] = parseFloat(cells[calificacionIndex]?.textContent.trim()) || 0;
+            // Extraer datos de columnas extra
+            extraColumnsWithData.forEach(col => {
+                const val = cells[col.index]?.textContent.trim() || '0';
+                rowData[`extra_${col.index}`] = parseFloat(val) || 0;
+            });
+            
+            // Calificaciones por defecto en 0
+            rowData['Tareas'] = 0;
+            rowData['Exámenes'] = 0;
+            rowData['Participación'] = 0;
+            rowData['Proyectos'] = 0;
+            rowData['Prácticas'] = 0;
             
             if (idAlumno || nombreAlumno) {
                 dataRows.push(rowData);
-                console.log(`✅ Fila ${i} procesada:`, {
-                    'Número de Registro': numeroRegistro,
-                    'Nombre de Alumno': nombreAlumno,
-                    'ID': idAlumno,
-                    'Email': email,
-                    'Status': statusInscripcion,
-                    'Nivel': nivel,
-                    'Créditos': creditos,
-                    'Tareas': rowData['Tareas'],
-                    'Exámenes': rowData['Exámenes'],
-                    'Participación': rowData['Participación'],
-                    'Proyectos': rowData['Proyectos'],
-                    'Prácticas': rowData['Prácticas'],
-                    'Calificación Final': rowData['Calificación Final'],
-                    'Total celdas': cells.length
-                });
-            } else {
-                console.log(`⚠️ Fila ${i} ignorada: no tiene ID ni nombre válidos`);
-                console.log(`🔍 Contenido de celdas ignoradas:`, cells.map(cell => cell.textContent.trim()));
             }
         }
-        
-        console.log(`📊 Total de filas procesadas: ${dataRows.length} de ${rows.length - 1} filas de datos`);
         
         if (dataRows.length === 0) {
             document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se encontraron datos válidos en la tabla.</div>';
             return;
         }
         
-        const calificacionesHeaders = ['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas', 'Calificación Final', 'Acciones'];
-        const allHeaders = [...headers, ...calificacionesHeaders];
+        // Mapeo de columnas extra a campos de calificación
+        const camposCalificacion = ['-- No asociar --', 'Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas'];
         
-        let html = `<h4>Vista previa (primeros 10 registros)</h4>
+        let mappingHtml = '';
+        if (extraColumnsWithData.length > 0) {
+            mappingHtml = `<div class="alert alert-info" style="margin-bottom: 15px;">
+                <strong>Se detectaron ${extraColumnsWithData.length} columna(s) con datos numéricos adicionales.</strong><br>
+                Puedes asociar cada columna a un campo de calificación:
+                <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px;">`;
+            extraColumnsWithData.forEach(col => {
+                mappingHtml += `<div style="display: flex; align-items: center; gap: 5px;">
+                    <label>"${col.originalHeader}":</label>
+                    <select id="mapCol_${col.index}" class="extra-col-mapping" data-col-index="${col.index}" style="padding: 4px 8px;">
+                        ${camposCalificacion.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+                </div>`;
+            });
+            mappingHtml += `</div>
+                <button type="button" class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="aplicarMapeoColumnas()">Aplicar asociación</button>
+            </div>`;
+        }
+        
+        const calificacionesHeaders = ['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas'];
+        const previewHeaders = [...displayColumns, ...calificacionesHeaders];
+        
+        let html = mappingHtml + `<h4>Vista previa (primeros 10 registros)</h4>
                     <table class="asistencia-tabla">
-                        <thead><tr>${allHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                        <thead><tr>${previewHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
                         <tbody>`;
         
         dataRows.slice(0, 10).forEach(row => {
             html += '<tr>';
-            allHeaders.forEach(header => {
+            previewHeaders.forEach(header => {
                 if (calificacionesHeaders.includes(header)) {
-                    if (header === 'Acciones') {
-                        html += `<td>
-                            <button type="button" class="btn btn-sm btn-secondary" disabled>
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger" disabled>
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>`;
-                    } else if (header === 'Calificación Final') {
-                        const valorFinal = row[header] || 0;
-                        html += `<td><span class="badge badge-info">${parseFloat(valorFinal).toFixed(2)}</span></td>`;
-                    } else {
-                        const valorCalificacion = row[header] || 0;
-                        html += `<td><input type="number" value="${parseFloat(valorCalificacion).toFixed(1)}" min="0" max="10" step="0.1" disabled style="width: 80px;"></td>`;
-                    }
+                    const val = row[header] || 0;
+                    html += `<td><input type="number" value="${parseFloat(val).toFixed(1)}" min="0" max="10" step="0.1" disabled style="width: 80px;"></td>`;
                 } else {
                     html += `<td>${row[header] || ''}</td>`;
                 }
@@ -392,8 +375,9 @@ async function previsualizarArchivo(input) {
                    </div>`;
         
         window.processedData = {
-            headers: headers,
-            rows: dataRows
+            headers: displayColumns,
+            rows: dataRows,
+            extraColumnsWithData: extraColumnsWithData
         };
         
         document.getElementById('previewTable').innerHTML = html;
@@ -401,6 +385,58 @@ async function previsualizarArchivo(input) {
     };
     
     reader.readAsText(file);
+}
+
+function aplicarMapeoColumnas() {
+    if (!window.processedData) return;
+    
+    const mappings = document.querySelectorAll('.extra-col-mapping');
+    const campoMap = {};
+    
+    mappings.forEach(select => {
+        const colIndex = parseInt(select.dataset.colIndex);
+        const campo = select.value;
+        if (campo !== '-- No asociar --') {
+            campoMap[colIndex] = campo;
+        }
+    });
+    
+    // Aplicar mapeo a los datos procesados
+    window.processedData.rows.forEach(row => {
+        Object.entries(campoMap).forEach(([colIndex, campo]) => {
+            const val = row[`extra_${colIndex}`] || 0;
+            row[campo] = val;
+        });
+    });
+    
+    // Guardar mapeo para usarlo al enviar
+    window.processedData.columnMapping = campoMap;
+    
+    // Regenerar la tabla de preview con los valores actualizados
+    const calificacionesHeaders = ['Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas'];
+    const displayColumns = ['Número de Registro', 'Nombre de Alumno', 'ID', 'Nivel', 'Créditos', 'Email'];
+    const previewHeaders = [...displayColumns, ...calificacionesHeaders];
+    
+    const tableEl = document.querySelector('#previewTable .asistencia-tabla');
+    if (tableEl) {
+        const tbody = tableEl.querySelector('tbody');
+        tbody.innerHTML = '';
+        window.processedData.rows.slice(0, 10).forEach(row => {
+            let rowHtml = '<tr>';
+            previewHeaders.forEach(header => {
+                if (calificacionesHeaders.includes(header)) {
+                    const val = row[header] || 0;
+                    rowHtml += `<td><input type="number" value="${parseFloat(val).toFixed(1)}" min="0" max="10" step="0.1" disabled style="width: 80px;"></td>`;
+                } else {
+                    rowHtml += `<td>${row[header] || ''}</td>`;
+                }
+            });
+            rowHtml += '</tr>';
+            tbody.innerHTML += rowHtml;
+        });
+    }
+    
+    mostrarToast('Columnas asociadas correctamente', 'success');
 }
 
 async function confirmarSubida() {
