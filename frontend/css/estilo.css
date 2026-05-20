@@ -132,6 +132,60 @@ body {
     transform: scale(1.02);
 }
 
+.upload-actions-stable {
+    margin-top: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    min-height: 44px;
+}
+
+.process-upload-btn {
+    min-width: 172px;
+    min-height: 40px;
+    transform: none !important;
+}
+
+.process-upload-btn.is-loading,
+.process-upload-btn:disabled {
+    opacity: 0.78;
+    cursor: wait;
+}
+
+.stats-grid-profesor--compact {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin: 0 0 20px;
+}
+
+.stat-card-profesor--compact {
+    border-radius: 8px;
+    padding: 14px;
+    min-height: 76px;
+}
+
+.stat-card-profesor--compact:hover {
+    transform: none !important;
+}
+
+.stat-card-profesor--compact .stat-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    margin-bottom: 6px;
+}
+
+.stat-card-profesor--compact strong {
+    color: var(--text-primary);
+    font-size: 1.35rem;
+    line-height: 1.1;
+}
+
+.panel-card--stable:hover {
+    transform: none !important;
+}
+
 /*     LOGIN (sin cambios, ya tenía sus propios estilos)     */
 /* ... mantén los estilos de login que ya tenías (no los repito) ... */
 

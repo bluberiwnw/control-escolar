@@ -99,12 +99,32 @@ CREATE TABLE IF NOT EXISTS archivos_calificaciones (
     profesor_id INTEGER NOT NULL,
     materia_id INTEGER NOT NULL,
     nombre_archivo VARCHAR(255) NOT NULL,
-    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'htm')),
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'htm', 'excel')),
     estado VARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'procesado', 'error')),
     detalles TEXT,
     fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (profesor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
     FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS estudiantes_materia_info (
+    id SERIAL PRIMARY KEY,
+    materia_id INTEGER NOT NULL REFERENCES materias(id) ON DELETE CASCADE,
+    estudiante_id INTEGER NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+    status_inscripcion VARCHAR(100),
+    nivel VARCHAR(100),
+    creditos VARCHAR(50),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(materia_id, estudiante_id)
+);
+
+CREATE TABLE IF NOT EXISTS materias_estudiantes (
+    id SERIAL PRIMARY KEY,
+    materia_id INTEGER NOT NULL REFERENCES materias(id) ON DELETE CASCADE,
+    estudiante_id INTEGER NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+    fecha_inscripcion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    activo BOOLEAN DEFAULT TRUE,
+    UNIQUE(materia_id, estudiante_id)
 );
 
 -- 9. TABLA DE CALIFICACIONES

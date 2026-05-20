@@ -166,6 +166,30 @@ async function initDatabase() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS materias_estudiantes (
+        id SERIAL PRIMARY KEY,
+        materia_id INTEGER NOT NULL REFERENCES materias(id) ON DELETE CASCADE,
+        estudiante_id INTEGER NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+        fecha_inscripcion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        activo BOOLEAN DEFAULT TRUE,
+        UNIQUE(materia_id, estudiante_id)
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS estudiantes_materia_info (
+        id SERIAL PRIMARY KEY,
+        materia_id INTEGER NOT NULL REFERENCES materias(id) ON DELETE CASCADE,
+        estudiante_id INTEGER NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+        status_inscripcion VARCHAR(100),
+        nivel VARCHAR(100),
+        creditos VARCHAR(50),
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(materia_id, estudiante_id)
+      );
+    `);
+
+    await pool.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS entregas_actividad_estudiante_uq
       ON entregas(actividad_id, estudiante_id);
     `);
@@ -197,7 +221,7 @@ async function initDatabase() {
       await pool.query(`ALTER TABLE archivos_calificaciones DROP CONSTRAINT IF EXISTS archivos_calificaciones_tipo_check;`);
       await pool.query(`
         ALTER TABLE archivos_calificaciones ADD CONSTRAINT archivos_calificaciones_tipo_check
-        CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'htm'));
+        CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'htm', 'excel'));
       `);
     } catch (e) {
       console.log('ℹ️  CHECK constraint archivos_calificaciones ya actualizado:', e.message);

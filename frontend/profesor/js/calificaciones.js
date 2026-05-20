@@ -4,7 +4,7 @@ function redondearCalificacion(cal) {
     return (cal - parteEntera) >= 0.6 ? parteEntera + 1 : parteEntera;
 }
 
-// Normalizar calificación a escala 0-10 (100=10, 1=10, 0.8=8, etc.)
+// Normalizar calificación a escala 0-10 (100=10, 10=10, 1=10, 0.8=8, 80=8, .1=1, etc.)
 function normalizarCalificacion(valor) {
     const num = parseFloat(valor);
     if (isNaN(num)) return 0;
@@ -14,12 +14,14 @@ function normalizarCalificacion(valor) {
 }
 
 let eventoChangeAgregado = false;
+let cargaEnProceso = false;
 document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion();
     mostrarInfoUsuario();
     mostrarFechaActual();
     await cargarMaterias();
     await cargarHistorial();
+    await cargarEstadisticasGlobales();
     // No cargar alumnos automáticamente al inicio, esperar a que seleccione materia
 });
 
@@ -34,6 +36,7 @@ async function cargarMaterias() {
         if (materia_id) {
             await cargarPonderaciones(materia_id);
             await cargarAlumnos();
+            await cargarEstadisticasGlobales();
         } else {
             // Limpiar campos de ponderación si no hay materia seleccionada
             document.getElementById('ponderacionTareas').value = 20;
@@ -43,6 +46,48 @@ async function cargarMaterias() {
             document.getElementById('ponderacionPracticas').value = 20;
         }
     });
+}
+
+async function cargarEstadisticasGlobales() {
+    const container = document.getElementById('estadisticasGlobalesCalificaciones');
+    if (!container) return;
+
+    try {
+        const materia_id = document.getElementById('materiaSelect')?.value;
+        const [globales, alumnosMateria] = await Promise.all([
+            apiRequest('/profesor/estadisticas').catch(() => ({})),
+            materia_id ? apiRequest(`/calificaciones/materia/${materia_id}/alumnos`).catch(() => []) : Promise.resolve([])
+        ]);
+
+        const alumnos = Array.isArray(alumnosMateria) ? alumnosMateria : [];
+        const finales = alumnos
+            .map(a => parseFloat(a.calificacion_final ?? a.calificacion_redondeada ?? 0))
+            .filter(v => !Number.isNaN(v) && v > 0);
+        const promedioMateria = finales.length
+            ? (finales.reduce((sum, val) => sum + val, 0) / finales.length).toFixed(2)
+            : '0.00';
+        const aprobados = finales.filter(v => v >= 6).length;
+
+        container.innerHTML = `
+            <div class="stat-card-profesor stat-card-profesor--compact">
+                <span class="stat-label">Materias</span>
+                <strong>${globales.totalMaterias ?? 0}</strong>
+            </div>
+            <div class="stat-card-profesor stat-card-profesor--compact">
+                <span class="stat-label">Alumnos globales</span>
+                <strong>${globales.totalEstudiantes ?? alumnos.length}</strong>
+            </div>
+            <div class="stat-card-profesor stat-card-profesor--compact">
+                <span class="stat-label">Promedio materia</span>
+                <strong>${promedioMateria}</strong>
+            </div>
+            <div class="stat-card-profesor stat-card-profesor--compact">
+                <span class="stat-label">Aprobados materia</span>
+                <strong>${aprobados}/${finales.length || alumnos.length || 0}</strong>
+            </div>`;
+    } catch (error) {
+        container.innerHTML = '';
+    }
 }
 async function cargarPonderaciones(materia_id) {
     try {
@@ -83,22 +128,48 @@ async function subirArchivo(input) {
     const materia_id = document.getElementById('materiaSelect').value;
     if (!materia_id) { mostrarToast('Selecciona una materia', 'error'); return; }
     if (!file) { mostrarToast('Selecciona un archivo', 'error'); return; }
+    if (cargaEnProceso) return;
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (ext === '.xlsx' || ext === '.xls') {
+        const alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
+        if (!Array.isArray(alumnos) || alumnos.length === 0) {
+            mostrarToast('Primero carga el HTM de la lista de clase y despues el Excel.', 'error');
+            document.getElementById('resultadoUpload').innerHTML = '<div class="alert alert-error">Primero carga y procesa el archivo HTM de la lista de clase para esta materia. Despues sube el Excel.</div>';
+            input.value = '';
+            window.tempFile = null;
+            window.processedData = null;
+            return;
+        }
+    }
+    cargaEnProceso = true;
+    setBotonProcesarArchivo(true);
     const formData = new FormData();
     formData.append('archivo', file);
     formData.append('materia_id', materia_id);
     const token = localStorage.getItem('token');
-    const res = await fetch(`${window.API_URL}/calificaciones/upload`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
-    });
-    const data = await res.json();
-    if (res.ok) {
-        mostrarToast(data.message || 'Archivo HTM procesado', 'success');
-        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
-        cargarHistorial();
-        await cargarAlumnos();
-    } else {
-        mostrarToast(data.message || 'Error al subir archivo', 'error');
-        document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir archivo'}</div>`;
+    try {
+        const res = await fetch(`${window.API_URL}/calificaciones/upload`, {
+            method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+            mostrarToast(data.message || 'Archivo procesado', 'success');
+            document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-success">${data.message}<br>${data.archivo?.detalles || ''}</div>`;
+            window.tempFile = null;
+            window.processedData = null;
+            input.value = '';
+            cargarHistorial();
+            await cargarAlumnos();
+        } else {
+            mostrarToast(data.message || 'Error al subir archivo', 'error');
+            const detalles = Array.isArray(data.noEncontrados) && data.noEncontrados.length
+                ? `<table class="asistencia-tabla"><thead><tr><th>Excel</th><th>HTM / motivo</th></tr></thead><tbody>${data.noEncontrados.map(e => `<tr><td>${e.excel || e || ''}</td><td>${e.htm || e.motivo || ''}</td></tr>`).join('')}</tbody></table>`
+                : '';
+            document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al subir archivo'}</div>${detalles}`;
+        }
+    } finally {
+        cargaEnProceso = false;
+        setBotonProcesarArchivo(false);
     }
 }
 
@@ -162,17 +233,248 @@ async function eliminarArchivo(id) {
     await cargarHistorial();
 }
 
+function normalizarTextoClave(valor) {
+    return String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+function normalizarNombrePersona(valor) {
+    return normalizarTextoClave(String(valor || '').replace(/,/g, ' '))
+        .split(' ')
+        .filter(Boolean)
+        .sort()
+        .join(' ');
+}
+
+function buscarValorFila(row, etiquetas) {
+    const etiquetasNorm = etiquetas.map(normalizarTextoClave);
+    for (const [key, value] of Object.entries(row || {})) {
+        const keyNorm = normalizarTextoClave(key);
+        if (etiquetasNorm.some(etiqueta => keyNorm === etiqueta || keyNorm.includes(etiqueta))) {
+            return value;
+        }
+    }
+    return '';
+}
+
+function validarExcelContraAlumnos(dataRows, alumnos) {
+    const alumnosPorMatricula = new Map();
+    const alumnosPorNombre = new Map();
+    const nombresDuplicados = new Set();
+
+    (alumnos || []).forEach(alumno => {
+        const matriculaKey = normalizarTextoClave(alumno.matricula || alumno.ID || alumno['Matrícula']);
+        if (matriculaKey) alumnosPorMatricula.set(matriculaKey, alumno);
+
+        const nombreKey = normalizarNombrePersona(alumno.nombre || alumno['Nombre de Alumno'] || alumno['Nombre']);
+        if (!nombreKey) return;
+        if (alumnosPorNombre.has(nombreKey)) {
+            nombresDuplicados.add(nombreKey);
+            return;
+        }
+        alumnosPorNombre.set(nombreKey, alumno);
+    });
+
+    const errores = [];
+    dataRows.forEach(row => {
+        const matricula = String(row.ID || row['Matrícula'] || '').trim();
+        const nombre = String(row['Nombre de Alumno'] || row.Nombre || '').trim();
+        const matriculaKey = normalizarTextoClave(matricula);
+        const nombreKey = normalizarNombrePersona(nombre);
+
+        if (matriculaKey) {
+            const alumno = alumnosPorMatricula.get(matriculaKey);
+            if (!alumno) {
+                errores.push({ excel: `${nombre || 'Sin nombre'} (${matricula})`, htm: 'Matrícula no encontrada en HTM' });
+                return;
+            }
+            const nombreHtm = alumno.nombre || alumno['Nombre de Alumno'] || '';
+            if (nombre && normalizarNombrePersona(nombreHtm) !== nombreKey) {
+                errores.push({ excel: `${nombre} (${matricula})`, htm: `${nombreHtm} (${alumno.matricula || ''})` });
+            }
+            return;
+        }
+
+        if (!nombreKey) {
+            errores.push({ excel: row.Email || 'Fila sin nombre ni matrícula', htm: 'Sin datos para comparar' });
+            return;
+        }
+        if (nombresDuplicados.has(nombreKey)) {
+            errores.push({ excel: nombre, htm: 'Nombre duplicado en HTM' });
+            return;
+        }
+        if (!alumnosPorNombre.has(nombreKey)) {
+            errores.push({ excel: nombre, htm: 'Nombre no encontrado en HTM' });
+        }
+    });
+
+    return errores;
+}
+
+function numeroSeguro(valor) {
+    const num = parseFloat(String(valor ?? '').replace(',', '.'));
+    return Number.isNaN(num) ? null : num;
+}
+
+function setBotonProcesarArchivo(procesando) {
+    const btn = document.getElementById('btnProcesarArchivo');
+    if (!btn) return;
+    btn.disabled = procesando;
+    btn.classList.toggle('is-loading', procesando);
+    btn.innerHTML = procesando
+        ? '<i class="fas fa-spinner fa-spin"></i> Procesando...'
+        : '<i class="fas fa-upload"></i> Procesar archivo';
+}
+
+function previsualizarExcel(file, alumnosMateria = []) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const workbook = XLSX.read(e.target.result, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+            const headerIndex = rawRows.findIndex(row =>
+                row.some(cell => normalizarTextoClave(cell) === 'nombre completo') &&
+                row.some(cell => normalizarTextoClave(cell).includes('direccion de correo'))
+            );
+            const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false, range: headerIndex >= 0 ? headerIndex : 0 });
+            const agrupados = new Map();
+
+            rows.forEach((row, index) => {
+                const email = buscarValorFila(row, ['Dirección de correo', 'Direccion de correo', 'Email', 'Correo']);
+                const nombreCompleto = buscarValorFila(row, ['Nombre completo', 'Nombre de Alumno']);
+                const nombre = buscarValorFila(row, ['Nombre']);
+                const apellidos = buscarValorFila(row, ['Apellidos']);
+                const id = buscarValorFila(row, ['Matrícula', 'Matricula', 'ID']);
+                const key = normalizarTextoClave(email || id || nombreCompleto || `${nombre} ${apellidos}` || `fila ${index}`);
+                if (!key) return;
+
+                const porcentaje = numeroSeguro(buscarValorFila(row, ['Porcentaje']));
+                const puntos = numeroSeguro(buscarValorFila(row, ['Puntos']));
+                const puntosMaximos = numeroSeguro(buscarValorFila(row, ['Puntos máximos', 'Puntos maximos']));
+                let calificacion = null;
+                if (porcentaje !== null) calificacion = porcentaje <= 1 ? porcentaje * 10 : porcentaje;
+                else if (puntos !== null && puntosMaximos && puntosMaximos > 0) calificacion = (puntos / puntosMaximos) * 10;
+                else calificacion = numeroSeguro(buscarValorFila(row, ['Calificación', 'Calificacion']));
+
+                if (!agrupados.has(key)) {
+                    agrupados.set(key, {
+                        'Número de Registro': index + 1,
+                        'Nombre de Alumno': nombreCompleto || `${nombre} ${apellidos}`.trim(),
+                        ID: id,
+                        'Status de Inscripción': buscarValorFila(row, ['Status de Inscripción', 'Status']),
+                        Nivel: buscarValorFila(row, ['Nivel']),
+                        'Créditos': buscarValorFila(row, ['Créditos', 'Creditos']),
+                        Email: email,
+                        Tareas: 0,
+                        'Exámenes': 0,
+                        'Participación': 0,
+                        Proyectos: 0,
+                        'Prácticas': 0,
+                        _valores: []
+                    });
+                }
+                if (calificacion !== null) agrupados.get(key)._valores.push(normalizarCalificacion(calificacion));
+            });
+
+            const dataRows = Array.from(agrupados.values()).map(row => {
+                if (row._valores.length) {
+                    row.Tareas = parseFloat((row._valores.reduce((a, b) => a + b, 0) / row._valores.length).toFixed(2));
+                }
+                delete row._valores;
+                return row;
+            }).filter(row => row.Email || row.ID || row['Nombre de Alumno']);
+
+            if (dataRows.length === 0) {
+                document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se encontraron alumnos o calificaciones en el Excel.</div>';
+                return;
+            }
+
+            const erroresCoincidencia = validarExcelContraAlumnos(dataRows, alumnosMateria);
+            if (erroresCoincidencia.length > 0) {
+                const filasError = erroresCoincidencia.slice(0, 20).map(e =>
+                    `<tr><td>${e.excel || ''}</td><td>${e.htm || ''}</td></tr>`
+                ).join('');
+                document.getElementById('previewTable').innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>El Excel no coincide con el HTM procesado.</strong><br>
+                        Revisa que el nombre y la matrícula correspondan en ambos archivos.
+                    </div>
+                    <table class="asistencia-tabla">
+                        <thead><tr><th>Excel</th><th>HTM / motivo</th></tr></thead>
+                        <tbody>${filasError}</tbody>
+                    </table>`;
+                window.processedData = null;
+                return;
+            }
+
+            const headers = ['Nombre de Alumno', 'Email', 'Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas'];
+            let html = `<div class="alert alert-info">
+                    <strong>Excel detectado correctamente.</strong><br>
+                    Se asociaran ${dataRows.length} alumnos por matricula, correo o nombre. Si ya subiste el HTM, se conservaran Status de Inscripción, Nivel y Créditos.
+                </div>
+                <h4>Vista previa del Excel (primeros 10 alumnos)</h4>
+                <table class="asistencia-tabla">
+                    <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                    <tbody>`;
+            dataRows.slice(0, 10).forEach(row => {
+                html += `<tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>`;
+            });
+            html += `</tbody></table>
+                <div class="upload-actions-stable">
+                    <button id="btnProcesarArchivo" type="button" class="btn btn-primary process-upload-btn" onclick="subirArchivo(document.getElementById('fileInput'))">
+                        <i class="fas fa-upload"></i> Procesar archivo
+                    </button>
+                    <button type="button" class="btn btn-secondary process-upload-btn" onclick="cancelarProcesoHTM()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>`;
+
+            window.processedData = { headers, rows: dataRows, tipo: 'excel' };
+            document.getElementById('previewTable').innerHTML = html;
+        } catch (error) {
+            console.error('Error al leer Excel:', error);
+            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">No se pudo leer el Excel. Verifica que sea .xlsx o .xls.</div>';
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 async function previsualizarArchivo(input) {
     const file = input.files[0];
     if (!file) return;
 
-    const validExt = ['.htm', '.html'];
+    const validExt = ['.htm', '.html', '.xlsx', '.xls'];
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!validExt.includes(ext)) {
-        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos HTM/HTML (.htm, .html).</div>';
+        document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Solo se permiten archivos HTM/HTML o Excel (.htm, .html, .xlsx, .xls).</div>';
         return;
     }
     window.tempFile = file;
+
+    if (ext === '.xlsx' || ext === '.xls') {
+        const materia_id = document.getElementById('materiaSelect').value;
+        if (!materia_id) {
+            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Selecciona una materia antes de cargar el Excel.</div>';
+            input.value = '';
+            return;
+        }
+        const alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
+        if (!Array.isArray(alumnos) || alumnos.length === 0) {
+            document.getElementById('previewTable').innerHTML = '<div class="alert alert-error">Primero carga y procesa el HTM de la lista de clase. El Excel solo se acepta despues para asociar calificaciones.</div>';
+            mostrarToast('Primero carga el HTM y despues el Excel', 'error');
+            input.value = '';
+            window.tempFile = null;
+            window.processedData = null;
+            return;
+        }
+        previsualizarExcel(file, alumnos);
+        return;
+    }
 
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -383,11 +685,11 @@ async function previsualizarArchivo(input) {
                        <strong>Se encontraron ${dataRows.length} estudiantes en el archivo.</strong><br>
                        Los alumnos serán importados con calificaciones iniciales en 0. Podrás editar las calificaciones después de procesar el archivo.
                    </div>
-                   <div style="margin-top: 15px; display: flex; gap: 10px;">
-                       <button class="btn-login-buap" onclick="confirmarSubida()">
-                           <i class="fas fa-upload"></i> Procesar Archivo
+                   <div class="upload-actions-stable">
+                       <button id="btnProcesarArchivo" type="button" class="btn btn-primary process-upload-btn" onclick="confirmarSubida()">
+                           <i class="fas fa-upload"></i> Procesar archivo
                        </button>
-                       <button class="btn-secondary" onclick="cancelarProcesoHTM()">
+                       <button type="button" class="btn btn-secondary process-upload-btn" onclick="cancelarProcesoHTM()">
                            <i class="fas fa-times"></i> Cancelar
                        </button>
                    </div>`;
@@ -467,6 +769,9 @@ async function confirmarSubida() {
         mostrarToast('Seleccione una materia', 'error');
         return;
     }
+    if (cargaEnProceso) return;
+    cargaEnProceso = true;
+    setBotonProcesarArchivo(true);
 
     // Auto-aplicar mapeo de columnas extra antes de enviar
     const mappings = document.querySelectorAll('.extra-col-mapping');
@@ -523,17 +828,24 @@ async function confirmarSubida() {
             await cargarAlumnos();
             document.getElementById('previewTable').innerHTML = '';
             window.tempFile = null;
+            window.processedData = null;
             document.getElementById('fileInput').value = '';
-            mostrarToast('Archivo HTM procesado correctamente', 'success');
+            mostrarToast('Archivo procesado correctamente', 'success');
         } else {
             console.error('❌ Error del servidor:', data);
-            document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al procesar archivo HTM'}</div>`;
+            const detalles = Array.isArray(data.noEncontrados) && data.noEncontrados.length
+                ? `<table class="asistencia-tabla"><thead><tr><th>Excel</th><th>HTM / motivo</th></tr></thead><tbody>${data.noEncontrados.map(e => `<tr><td>${e.excel || e || ''}</td><td>${e.htm || e.motivo || ''}</td></tr>`).join('')}</tbody></table>`
+                : '';
+            document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">${data.message || 'Error al procesar archivo HTM'}</div>${detalles}`;
             mostrarToast(data.message || 'Error al procesar archivo', 'error');
         }
     } catch (error) {
         console.error('❌ Error al enviar datos:', error);
         document.getElementById('resultadoUpload').innerHTML = `<div class="alert alert-error">Error de conexión al procesar el archivo: ${error.message}</div>`;
         mostrarToast('Error de conexión al procesar archivo', 'error');
+    } finally {
+        cargaEnProceso = false;
+        setBotonProcesarArchivo(false);
     }
 }
 
@@ -690,6 +1002,7 @@ async function cargarAlumnos() {
         console.log('🔄 cargarAlumnos - HTML generado:', html.length, 'caracteres');
         document.getElementById('alumnosTable').innerHTML = html;
         console.log('✅ cargarAlumnos - HTML actualizado en DOM');
+        await cargarEstadisticasGlobales();
     } catch (error) {
         console.error('Error al cargar alumnos:', error);
         document.getElementById('alumnosTable').innerHTML = '<div class="alert alert-error">Error al cargar alumnos.</div>';
@@ -1053,15 +1366,8 @@ async function exportarExcel() {
         const pProyecto = parseFloat(document.getElementById('ponderacionProyectos').value) || 0;
         const pPractica = parseFloat(document.getElementById('ponderacionPracticas').value) || 0;
 
-        // Obtener datos de alumnos (HTM procesado o BD)
-        let alumnos;
-        if (window.processedData && window.processedData.rows && window.processedData.rows.length > 0) {
-            alumnos = window.processedData.rows;
-            console.log('📊 Exportando datos del HTM:', alumnos.length, 'estudiantes');
-        } else {
-            alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
-            console.log('📊 Exportando datos de la BD:', alumnos.length, 'estudiantes');
-        }
+        const alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
+        console.log('📊 Exportando datos de la BD:', alumnos.length, 'estudiantes');
 
         if (!alumnos || !Array.isArray(alumnos) || alumnos.length === 0) {
             mostrarToast('No hay datos para exportar', 'error');
@@ -1097,9 +1403,9 @@ async function exportarExcel() {
         alumnos.forEach((alumno, index) => {
             const matricula = alumno.matricula || alumno['ID'] || alumno['Matrícula'] || '';
             const nombre = alumno.nombre || alumno['Nombre de Alumno'] || alumno['Nombre'] || '';
-            const status = alumno['Status de Inscripción'] || alumno.status || '';
-            const nivel = alumno['Nivel'] || alumno.nivel || '';
-            const creditos = alumno['Créditos'] || alumno.creditos || '';
+            const status = buscarValorFila(alumno, ['Status de Inscripción', 'Status', 'status_inscripcion', 'status']);
+            const nivel = buscarValorFila(alumno, ['Nivel', 'nivel']);
+            const creditos = buscarValorFila(alumno, ['Créditos', 'Creditos', 'creditos']);
             const email = alumno.email || alumno['Email'] || '';
             const tarea = normalizarCalificacion(alumno.tarea || alumno['Tareas'] || 0);
             const examen = normalizarCalificacion(alumno.examen || alumno['Exámenes'] || 0);

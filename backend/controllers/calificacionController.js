@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
+const XLSX = require('xlsx');
 const pool = require('../database/connection');
 const fileStorage = require('../helpers/fileStorage');
 
@@ -21,14 +22,19 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['text/html', 'text/htm'];
-    const allowedExtensions = ['.htm', '.html'];
+    const allowedTypes = [
+        'text/html',
+        'text/htm',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+    ];
+    const allowedExtensions = ['.htm', '.html', '.xlsx', '.xls'];
     const fileExtension = path.extname(file.originalname).toLowerCase();
     
     if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
         cb(null, true);
     } else {
-        cb(new Error('Tipo de archivo no permitido. Solo archivos HTM/HTML'), false);
+        cb(new Error('Tipo de archivo no permitido. Solo archivos HTM/HTML o Excel'), false);
     }
 };
 
@@ -38,8 +44,153 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 }).single('archivo');
 
+const EXCEL_EXTENSIONS = ['.xlsx', '.xls'];
+const HTML_EXTENSIONS = ['.htm', '.html'];
+const INFO_COLUMNS = {
+    status: 'Status de Inscripción',
+    nivel: 'Nivel',
+    creditos: 'Créditos'
+};
+const GRADE_TYPES = [
+    { tipo: 'tarea', labels: ['Tareas', 'Tarea'] },
+    { tipo: 'examen', labels: ['Exámenes', 'Examenes', 'Examen'] },
+    { tipo: 'participacion', labels: ['Participación', 'Participacion'] },
+    { tipo: 'proyecto', labels: ['Proyectos', 'Proyecto'] },
+    { tipo: 'practica', labels: ['Prácticas', 'Practicas', 'Practica'] }
+];
+
+function normalizeKey(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+function normalizePersonName(value) {
+    const normalized = normalizeKey(String(value || '').replace(/,/g, ' '));
+    return normalized.split(' ').filter(Boolean).sort().join(' ');
+}
+
+function samePersonName(left, right) {
+    const a = normalizePersonName(left);
+    const b = normalizePersonName(right);
+    return !!a && !!b && a === b;
+}
+
+function getValueByLabels(row, labels) {
+    if (!row || typeof row !== 'object') return '';
+    const entries = Object.entries(row);
+    const normalizedLabels = labels.map(normalizeKey);
+    for (const [key, value] of entries) {
+        const normalizedKey = normalizeKey(key);
+        if (normalizedLabels.some(label => normalizedKey === label || normalizedKey.includes(label))) {
+            return value;
+        }
+    }
+    return '';
+}
+
+function getStudentPayloadValue(student, labels) {
+    for (const label of labels) {
+        if (student[label] !== undefined && student[label] !== null && student[label] !== '') {
+            return student[label];
+        }
+    }
+    const normalizedLabels = labels.map(normalizeKey);
+    for (const [key, value] of Object.entries(student || {})) {
+        const normalizedKey = normalizeKey(key);
+        if (normalizedLabels.some(label => normalizedKey === label || normalizedKey.includes(label))) {
+            return value;
+        }
+    }
+    return '';
+}
+
+function getNumericPayloadValue(student, labels) {
+    const raw = getStudentPayloadValue(student, labels);
+    const num = Number.parseFloat(String(raw ?? '').replace(',', '.'));
+    return Number.isNaN(num) ? null : num;
+}
+
+function parseGradeFromStudent(student, labels) {
+    const value = getStudentPayloadValue(student, labels);
+    return normalizarCalificacion(value || 0);
+}
+
+function buildNombreCompleto(nombre, apellidos) {
+    const nombreLimpio = String(nombre || '').replace(/\s+/g, ' ').trim();
+    const apellidosLimpio = String(apellidos || '').replace(/\s+/g, ' ').trim();
+    return [nombreLimpio, apellidosLimpio].filter(Boolean).join(' ').trim();
+}
+
+function detectArchivoTipo(file) {
+    const ext = path.extname(file.originalname || file.filename || '').toLowerCase();
+    if (EXCEL_EXTENSIONS.includes(ext)) return 'excel';
+    if (HTML_EXTENSIONS.includes(ext)) return 'htm';
+    return 'desconocido';
+}
+
+async function ensureInfoInscripcionTable() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS materias_estudiantes (
+            id SERIAL PRIMARY KEY,
+            materia_id INTEGER NOT NULL REFERENCES materias(id) ON DELETE CASCADE,
+            estudiante_id INTEGER NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+            fecha_inscripcion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            activo BOOLEAN DEFAULT TRUE,
+            UNIQUE(materia_id, estudiante_id)
+        );
+    `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS estudiantes_materia_info (
+            id SERIAL PRIMARY KEY,
+            materia_id INTEGER NOT NULL REFERENCES materias(id) ON DELETE CASCADE,
+            estudiante_id INTEGER NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+            status_inscripcion VARCHAR(100),
+            nivel VARCHAR(100),
+            creditos VARCHAR(50),
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(materia_id, estudiante_id)
+        );
+    `);
+}
+
+async function ensureArchivosCalificacionesExcel() {
+    try {
+        await pool.query(`ALTER TABLE archivos_calificaciones DROP CONSTRAINT IF EXISTS archivos_calificaciones_tipo_check;`);
+        await pool.query(`
+            ALTER TABLE archivos_calificaciones
+            ADD CONSTRAINT archivos_calificaciones_tipo_check
+            CHECK (tipo IN ('tarea', 'proyecto', 'examen', 'htm', 'excel'))
+        `);
+    } catch (error) {
+        console.log('⚠️ No se pudo actualizar el constraint de archivos_calificaciones:', error.message);
+    }
+}
+
+async function upsertInfoInscripcion(materiaId, estudianteId, student) {
+    const status = getStudentPayloadValue(student, [INFO_COLUMNS.status, 'Status', 'status_inscripcion', 'status']);
+    const nivel = getStudentPayloadValue(student, [INFO_COLUMNS.nivel, 'nivel']);
+    const creditos = getStudentPayloadValue(student, [INFO_COLUMNS.creditos, 'Creditos', 'creditos']);
+    if (status === '' && nivel === '' && creditos === '') return;
+    await ensureInfoInscripcionTable();
+    await pool.query(`
+        INSERT INTO estudiantes_materia_info (materia_id, estudiante_id, status_inscripcion, nivel, creditos, updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (materia_id, estudiante_id)
+        DO UPDATE SET
+            status_inscripcion = COALESCE(NULLIF(EXCLUDED.status_inscripcion, ''), estudiantes_materia_info.status_inscripcion),
+            nivel = COALESCE(NULLIF(EXCLUDED.nivel, ''), estudiantes_materia_info.nivel),
+            creditos = COALESCE(NULLIF(EXCLUDED.creditos, ''), estudiantes_materia_info.creditos),
+            updated_at = NOW()
+    `, [materiaId, estudianteId, String(status || ''), String(nivel || ''), String(creditos || '')]);
+}
+
 // Helper: obtener estudiantes inscritos en una materia desde TODAS las fuentes
 async function getEstudiantesDeMateria(materia_id, includeEmail = false) {
+    await ensureInfoInscripcionTable();
     // Verificar qué tablas de inscripción existen
     const tablesCheck = await pool.query(`
         SELECT table_name FROM information_schema.tables 
@@ -47,6 +198,13 @@ async function getEstudiantesDeMateria(materia_id, includeEmail = false) {
         AND table_name IN ('inscripciones', 'materias_estudiantes')
     `);
     const existingTables = tablesCheck.rows.map(r => r.table_name);
+    const columnsCheck = await pool.query(`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'estudiantes'
+          AND column_name = 'materia_id'
+    `);
+    const hasMateriaIdColumn = columnsCheck.rows.length > 0;
     
     const emailCol = includeEmail ? ', e.email' : '';
     let conditions = [];
@@ -57,13 +215,22 @@ async function getEstudiantesDeMateria(materia_id, includeEmail = false) {
     if (existingTables.includes('inscripciones')) {
         conditions.push(`EXISTS (SELECT 1 FROM inscripciones i WHERE i.estudiante_id = e.id AND i.materia_id = $1)`);
     }
-    conditions.push(`e.materia_id = $1`);
+    if (hasMateriaIdColumn) {
+        conditions.push(`e.materia_id = $1`);
+    }
+
+    if (conditions.length === 0) {
+        return [];
+    }
     
     const whereClause = conditions.join(' OR ');
     
     const result = await pool.query(`
-        SELECT DISTINCT e.id, e.matricula, e.nombre${emailCol}
+        SELECT DISTINCT e.id, e.matricula, e.nombre${emailCol},
+               emi.status_inscripcion, emi.nivel, emi.creditos
         FROM estudiantes e
+        LEFT JOIN estudiantes_materia_info emi
+          ON emi.estudiante_id = e.id AND emi.materia_id = $1
         WHERE ${whereClause}
         ORDER BY e.nombre
     `, [materia_id]);
@@ -153,9 +320,14 @@ const calificacionController = {
                 });
             }
             
-            // Validar que el archivo sea HTM/HTML
-            const allowedMimes = ['text/html', 'text/htm'];
-            const allowedExtensions = ['.htm', '.html'];
+            // Validar que el archivo sea HTM/HTML o Excel
+            const allowedMimes = [
+                'text/html',
+                'text/htm',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-excel'
+            ];
+            const allowedExtensions = ['.htm', '.html', '.xlsx', '.xls'];
             const fileExtension = path.extname(req.file.originalname).toLowerCase();
             
             if (!allowedMimes.includes(req.file.mimetype) && !allowedExtensions.includes(fileExtension)) {
@@ -171,7 +343,7 @@ const calificacionController = {
                 }
                 
                 return res.status(400).json({ 
-                    message: 'Solo se permiten archivos HTM/HTML',
+                    message: 'Solo se permiten archivos HTM/HTML o Excel (.xlsx, .xls)',
                     received: {
                         mimetype: req.file.mimetype,
                         extension: fileExtension
@@ -264,19 +436,40 @@ const calificacionController = {
 
             console.log('✅ Materia verificada:', materiaCheck.rows[0].nombre);
 
-            console.log('✅ Validaciones de archivo pasadas, procesando HTML...');
-            const resultado = await calificacionController.processHtmlFile(req.file.path, materiaIdNum, req.usuario.id);
+            const tipoArchivo = detectArchivoTipo(req.file);
+            console.log(`✅ Validaciones de archivo pasadas, procesando ${tipoArchivo}...`);
+            if (tipoArchivo === 'excel') {
+                const alumnosMateria = await getEstudiantesDeMateria(materiaIdNum, true);
+                if (alumnosMateria.length === 0) {
+                    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                    return res.status(400).json({
+                        message: 'Primero carga y procesa el archivo HTM de la lista de clase para esta materia. Despues sube el Excel para asociar calificaciones.'
+                    });
+                }
+            }
+            const resultado = tipoArchivo === 'excel'
+                ? await calificacionController.processExcelFile(req.file.path, materiaIdNum, req.usuario.id)
+                : await calificacionController.processHtmlFile(req.file.path, materiaIdNum, req.usuario.id);
             
+            if (tipoArchivo === 'excel' && resultado.procesados === 0 && resultado.noEncontrados?.length) {
+                if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                return res.status(400).json({
+                    message: 'El Excel no coincide con la lista HTM procesada. Revisa matrícula y nombre en ambos archivos.',
+                    noEncontrados: resultado.noEncontrados.slice(0, 20)
+                });
+            }
+
             // Guardar archivo en PostgreSQL para persistencia
             await fileStorage.guardarArchivo(req.file);
 
             // Registrar en archivos_calificaciones
             try {
+                await ensureArchivosCalificacionesExcel();
                 await pool.query(
                     `INSERT INTO archivos_calificaciones (profesor_id, materia_id, nombre_archivo, tipo, estado, detalles)
-                     VALUES ($1, $2, $3, 'htm', 'Procesado', $4)`,
-                    [req.usuario.id, materiaIdNum, req.file.filename,
-                     `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`]
+                     VALUES ($1, $2, $3, $4, 'Procesado', $5)`,
+                    [req.usuario.id, materiaIdNum, req.file.filename, tipoArchivo === 'excel' ? 'excel' : 'htm',
+                     `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}${resultado.noEncontrados?.length ? `, No encontrados en HTM: ${resultado.noEncontrados.length}` : ''}`]
                 );
             } catch (regErr) {
                 console.log('⚠️ No se pudo registrar en archivos_calificaciones:', regErr.message);
@@ -289,7 +482,7 @@ const calificacionController = {
                 resultado,
                 fileName: req.file.filename,
                 archivo: {
-                    detalles: `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}`
+                    detalles: `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}${resultado.noEncontrados?.length ? `, No encontrados en HTM: ${resultado.noEncontrados.length}` : ''}`
                 }
             });
             
@@ -393,15 +586,21 @@ const calificacionController = {
             
             console.log('📊 Ponderaciones para materia:', ponderaciones);
             
+            await ensureInfoInscripcionTable();
+
             // Procesar cada estudiante
             for (const estudiante of estudiantes) {
                 try {
                     console.log(`🔄 Procesando estudiante: ${estudiante['Nombre de Alumno']} (${estudiante.ID})`);
                     
+                    const matricula = String(getStudentPayloadValue(estudiante, ['ID', 'Matrícula', 'Matricula', 'matricula']) || `AUTO_${Date.now()}_${procesados}`).trim();
+                    const nombre = String(getStudentPayloadValue(estudiante, ['Nombre de Alumno', 'Nombre Completo', 'Nombre', 'nombre']) || 'Sin nombre').trim();
+                    const email = String(getStudentPayloadValue(estudiante, ['Email', 'Correo', 'email']) || '').trim();
+
                     // Buscar si el estudiante ya existe
                     const existingEstudiante = await pool.query(
                         'SELECT id FROM estudiantes WHERE matricula = $1',
-                        [estudiante.ID]
+                        [matricula]
                     );
                     
                     let estudianteId;
@@ -430,7 +629,7 @@ const calificacionController = {
                         const newEstudiante = await pool.query(
                             `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
                              VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id`,
-                            [estudiante.ID, estudiante['Nombre de Alumno'], estudiante.Email || '', 'temporal123', 'alumno', true]
+                            [matricula, nombre, email || '', 'temporal123', 'alumno', true]
                         );
                         estudianteId = newEstudiante.rows[0].id;
                         nuevos++;
@@ -444,11 +643,13 @@ const calificacionController = {
                     }
                     
                     // Guardar calificaciones aplicando ponderaciones y normalización
+                    await upsertInfoInscripcion(materiaIdNum, estudianteId, estudiante);
+
                     const calificaciones = [
-                        { tipo: 'tarea', calificacion: normalizarCalificacion(estudiante.Tareas || 0) },
+                        { tipo: 'tarea', calificacion: parseGradeFromStudent(estudiante, ['Tareas', 'Tarea']) },
                         { tipo: 'examen', calificacion: normalizarCalificacion(estudiante['Exámenes'] || estudiante.Examenes || 0) },
                         { tipo: 'participacion', calificacion: normalizarCalificacion(estudiante['Participación'] || estudiante.Participacion || 0) },
-                        { tipo: 'proyecto', calificacion: normalizarCalificacion(estudiante.Proyectos || 0) },
+                        { tipo: 'proyecto', calificacion: parseGradeFromStudent(estudiante, ['Proyectos', 'Proyecto']) },
                         { tipo: 'practica', calificacion: normalizarCalificacion(estudiante['Prácticas'] || estudiante.Practicas || 0) }
                     ];
                     
@@ -1170,6 +1371,12 @@ const calificacionController = {
                     
                     return {
                         ...alumno,
+                        status: alumno.status_inscripcion || '',
+                        nivel: alumno.nivel || '',
+                        creditos: alumno.creditos || '',
+                        'Status de Inscripción': alumno.status_inscripcion || '',
+                        'Nivel': alumno.nivel || '',
+                        'Créditos': alumno.creditos || '',
                         ...calificacionesObj,
                         calificaciones_detalle: calificaciones
                     };
@@ -2104,6 +2311,297 @@ const calificacionController = {
     },
 
     // Función para procesar archivos HTML con Cheerio
+    async getPonderacionesMap(materiaId) {
+        const ponderacionesQuery = await pool.query(
+            'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',
+            [materiaId]
+        );
+        const ponderaciones = {
+            tarea: 20,
+            examen: 30,
+            participacion: 10,
+            proyecto: 20,
+            practica: 20
+        };
+        ponderacionesQuery.rows.forEach(row => {
+            ponderaciones[row.tipo] = parseFloat(row.peso);
+        });
+        return ponderaciones;
+    },
+
+    async persistirEstudianteNormalizado(estudiante, materiaId, ponderaciones, options = {}) {
+        const { crearSiNoExiste = true, estudianteIdForzado = null } = options;
+        const matricula = String(getStudentPayloadValue(estudiante, ['ID', 'Matrícula', 'Matricula', 'matricula']) || '').trim();
+        const nombreDirecto = String(getStudentPayloadValue(estudiante, ['Nombre de Alumno', 'Nombre Completo', 'Nombre Completo', 'Nombre completo', 'nombre_completo']) || '').trim();
+        const nombreConApellidos = buildNombreCompleto(
+            getStudentPayloadValue(estudiante, ['Nombre', 'nombre']),
+            getStudentPayloadValue(estudiante, ['Apellidos', 'apellidos'])
+        );
+        const nombre = nombreDirecto || nombreConApellidos;
+        const email = String(getStudentPayloadValue(estudiante, ['Email', 'Correo', 'email']) || '').trim();
+
+        if (!matricula && !nombre) return { omitido: true };
+
+        const matriculaFinal = matricula || `AUTO_${Date.now()}_${Math.round(Math.random() * 100000)}`;
+        const nombreFinal = nombre || 'Sin nombre';
+        let existingEstudiante = estudianteIdForzado ? { rows: [{ id: estudianteIdForzado }] } : { rows: [] };
+        if (!estudianteIdForzado && matricula) {
+            existingEstudiante = await pool.query('SELECT id FROM estudiantes WHERE matricula = $1', [matricula]);
+        }
+        if (!estudianteIdForzado && existingEstudiante.rows.length === 0 && email) {
+            existingEstudiante = await pool.query('SELECT id FROM estudiantes WHERE LOWER(email) = LOWER($1)', [email]);
+        }
+        if (!estudianteIdForzado && existingEstudiante.rows.length === 0 && nombre) {
+            existingEstudiante = await pool.query(`
+                SELECT e.id
+                FROM estudiantes e
+                WHERE LOWER(REGEXP_REPLACE(e.nombre, '\\s+', ' ', 'g')) = LOWER(REGEXP_REPLACE($1, '\\s+', ' ', 'g'))
+                  AND (
+                    EXISTS (SELECT 1 FROM materias_estudiantes me WHERE me.estudiante_id = e.id AND me.materia_id = $2)
+                    OR EXISTS (SELECT 1 FROM inscripciones i WHERE i.estudiante_id = e.id AND i.materia_id = $2)
+                  )
+                LIMIT 1
+            `, [nombre, materiaId]);
+        }
+
+        let estudianteId;
+        let nuevo = false;
+        if (existingEstudiante.rows.length > 0) {
+            estudianteId = existingEstudiante.rows[0].id;
+            await pool.query(
+                'UPDATE estudiantes SET nombre = COALESCE(NULLIF($1, \'\'), nombre), email = COALESCE(NULLIF($2, \'\'), email) WHERE id = $3',
+                [nombreFinal, email, estudianteId]
+            );
+        } else if (!crearSiNoExiste) {
+            return { omitido: true, noEncontrado: true };
+        } else {
+            const newEstudiante = await pool.query(
+                `INSERT INTO estudiantes (matricula, nombre, email, password, rol, activo, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id`,
+                [matriculaFinal, nombreFinal, email || '', 'temporal123', 'alumno', true]
+            );
+            estudianteId = newEstudiante.rows[0].id;
+            nuevo = true;
+        }
+
+        await pool.query(
+            `INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion, activo)
+             VALUES ($1, $2, NOW(), true)
+             ON CONFLICT (materia_id, estudiante_id) DO UPDATE SET activo = true`,
+            [materiaId, estudianteId]
+        );
+        await upsertInfoInscripcion(materiaId, estudianteId, estudiante);
+
+        const calificaciones = GRADE_TYPES.map(({ tipo, labels }) => ({
+            tipo,
+            calificacion: parseGradeFromStudent(estudiante, labels)
+        }));
+
+        let calificacionFinal = 0;
+        let totalPeso = 0;
+        for (const cal of calificaciones) {
+            await pool.query(`
+                INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                ON CONFLICT (estudiante_id, materia_id, tipo)
+                DO UPDATE SET calificacion = EXCLUDED.calificacion
+            `, [estudianteId, materiaId, cal.tipo, cal.calificacion]);
+
+            const peso = ponderaciones[cal.tipo] || 0;
+            if (peso > 0) {
+                calificacionFinal += (cal.calificacion * peso) / 100;
+                totalPeso += peso;
+            }
+        }
+
+        if (totalPeso > 0) {
+            if (totalPeso !== 100) calificacionFinal = (calificacionFinal * 100) / totalPeso;
+            const calSinRedondeo = parseFloat(calificacionFinal.toFixed(2));
+            const calRedondeada = redondearCalificacion(calificacionFinal);
+            await pool.query(`
+                INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                VALUES ($1, $2, 'final_sin_redondeo', $3, NOW())
+                ON CONFLICT (estudiante_id, materia_id, tipo)
+                DO UPDATE SET calificacion = EXCLUDED.calificacion
+            `, [estudianteId, materiaId, calSinRedondeo]);
+            await pool.query(`
+                INSERT INTO calificaciones (estudiante_id, materia_id, tipo, calificacion, created_at)
+                VALUES ($1, $2, 'final', $3, NOW())
+                ON CONFLICT (estudiante_id, materia_id, tipo)
+                DO UPDATE SET calificacion = EXCLUDED.calificacion
+            `, [estudianteId, materiaId, calRedondeada]);
+        }
+
+        return { omitido: false, nuevo };
+    },
+
+    async processExcelFile(filePath, materiaId, profesorId) {
+        try {
+            console.log('📄 Procesando archivo Excel:', filePath);
+            const workbook = XLSX.readFile(filePath);
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+            const headerIndex = rawRows.findIndex(row =>
+                row.some(cell => normalizeKey(cell) === 'nombre completo') &&
+                row.some(cell => normalizeKey(cell).includes('direccion de correo'))
+            );
+            const rows = headerIndex >= 0
+                ? XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false, range: headerIndex })
+                : XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+            const ponderaciones = await calificacionController.getPonderacionesMap(materiaId);
+
+            let procesados = 0;
+            let nuevos = 0;
+            let actualizados = 0;
+            const noEncontrados = [];
+            const agrupados = new Map();
+            const alumnosMateria = await getEstudiantesDeMateria(materiaId, true);
+            const alumnosPorMatricula = new Map();
+            const alumnosPorNombre = new Map();
+            const nombresDuplicados = new Set();
+
+            alumnosMateria.forEach((alumno) => {
+                const matriculaKey = normalizeKey(alumno.matricula);
+                if (matriculaKey) alumnosPorMatricula.set(matriculaKey, alumno);
+
+                const nombreKey = normalizePersonName(alumno.nombre);
+                if (!nombreKey) return;
+                if (alumnosPorNombre.has(nombreKey)) {
+                    nombresDuplicados.add(nombreKey);
+                    return;
+                }
+                alumnosPorNombre.set(nombreKey, alumno);
+            });
+
+            rows.forEach((row, index) => {
+                const email = getValueByLabels(row, ['Dirección de correo', 'Direccion de correo', 'Email', 'Correo']);
+                const nombreCompleto = getValueByLabels(row, ['Nombre Completo', 'Nombre de Alumno', 'Nombre completo']);
+                const nombre = getValueByLabels(row, ['Nombre']);
+                const apellidos = getValueByLabels(row, ['Apellidos']);
+                const matricula = getValueByLabels(row, ['Matrícula', 'Matricula', 'ID']);
+                const key = normalizeKey(email || matricula || nombreCompleto || buildNombreCompleto(nombre, apellidos) || `fila ${index}`);
+                if (!key) return;
+
+                const porcentaje = getNumericPayloadValue(row, ['Porcentaje']);
+                const puntos = getNumericPayloadValue(row, ['Puntos']);
+                const puntosMaximos = getNumericPayloadValue(row, ['Puntos máximos', 'Puntos maximos']);
+                let calificacion = null;
+                if (porcentaje !== null) calificacion = porcentaje <= 1 ? porcentaje * 10 : porcentaje;
+                else if (puntos !== null && puntosMaximos && puntosMaximos > 0) calificacion = (puntos / puntosMaximos) * 10;
+                else calificacion = getNumericPayloadValue(row, ['Calificación', 'Calificacion', 'Tareas', 'Exámenes', 'Examenes']);
+
+                if (!agrupados.has(key)) {
+                    agrupados.set(key, {
+                        'Número de Registro': index + 1,
+                        'Nombre de Alumno': nombreCompleto || buildNombreCompleto(nombre, apellidos),
+                        Nombre: nombre,
+                        Apellidos: apellidos,
+                        ID: matricula,
+                        'Status de Inscripción': getValueByLabels(row, ['Status de Inscripción', 'Status']),
+                        Nivel: getValueByLabels(row, ['Nivel']),
+                        'Créditos': getValueByLabels(row, ['Créditos', 'Creditos']),
+                        Email: email,
+                        Tareas: 0,
+                        Examenes: 0,
+                        Participacion: 0,
+                        Proyectos: 0,
+                        Practicas: 0,
+                        _tareasValores: []
+                    });
+                }
+                if (calificacion !== null) {
+                    agrupados.get(key)._tareasValores.push(normalizarCalificacion(calificacion));
+                }
+            });
+
+            const estudiantes = Array.from(agrupados.values()).map(estudiante => {
+                if (estudiante._tareasValores.length > 0) {
+                    const suma = estudiante._tareasValores.reduce((acc, val) => acc + val, 0);
+                    estudiante.Tareas = parseFloat((suma / estudiante._tareasValores.length).toFixed(2));
+                }
+                delete estudiante._tareasValores;
+                return estudiante;
+            }).filter(row => row.ID || row.Email || row['Nombre de Alumno']);
+
+            for (const estudiante of estudiantes) {
+                const matriculaExcel = String(getStudentPayloadValue(estudiante, ['ID', 'Matrícula', 'Matricula', 'matricula']) || '').trim();
+                const nombreExcel = String(getStudentPayloadValue(estudiante, ['Nombre de Alumno', 'Nombre Completo', 'Nombre completo']) || '').trim();
+                const matriculaKey = normalizeKey(matriculaExcel);
+                const nombreKey = normalizePersonName(nombreExcel);
+                let alumnoMatch = null;
+
+                if (matriculaKey) {
+                    alumnoMatch = alumnosPorMatricula.get(matriculaKey);
+                    if (!alumnoMatch) {
+                        noEncontrados.push({
+                            excel: `${nombreExcel || 'Sin nombre'} (${matriculaExcel})`,
+                            htm: 'No existe esa matrícula en la lista HTM procesada',
+                            motivo: 'matricula_no_encontrada'
+                        });
+                        continue;
+                    }
+                    if (nombreExcel && !samePersonName(nombreExcel, alumnoMatch.nombre)) {
+                        noEncontrados.push({
+                            excel: `${nombreExcel} (${matriculaExcel})`,
+                            htm: `${alumnoMatch.nombre} (${alumnoMatch.matricula})`,
+                            motivo: 'matricula_con_nombre_distinto'
+                        });
+                        continue;
+                    }
+                } else if (nombreKey) {
+                    if (nombresDuplicados.has(nombreKey)) {
+                        noEncontrados.push({
+                            excel: nombreExcel,
+                            htm: 'Hay más de un alumno con ese nombre en el HTM',
+                            motivo: 'nombre_duplicado'
+                        });
+                        continue;
+                    }
+                    alumnoMatch = alumnosPorNombre.get(nombreKey);
+                    if (!alumnoMatch) {
+                        noEncontrados.push({
+                            excel: nombreExcel,
+                            htm: 'No existe ese nombre en la lista HTM procesada',
+                            motivo: 'nombre_no_encontrado'
+                        });
+                        continue;
+                    }
+                } else {
+                    noEncontrados.push({
+                        excel: estudiante.Email || 'Fila sin nombre ni matrícula',
+                        htm: 'No se puede comparar con HTM',
+                        motivo: 'sin_identificador'
+                    });
+                    continue;
+                }
+
+                const resultado = await calificacionController.persistirEstudianteNormalizado(
+                    estudiante,
+                    materiaId,
+                    ponderaciones,
+                    { crearSiNoExiste: false, estudianteIdForzado: alumnoMatch.id }
+                );
+                if (resultado.noEncontrado) {
+                    noEncontrados.push({
+                        excel: estudiante['Nombre de Alumno'] || estudiante.ID || estudiante.Email || 'Fila sin identificador',
+                        htm: 'No se encontró en la lista HTM procesada',
+                        motivo: 'no_encontrado'
+                    });
+                    continue;
+                }
+                if (resultado.omitido) continue;
+                procesados++;
+                if (resultado.nuevo) nuevos++;
+                else actualizados++;
+            }
+
+            return { procesados, nuevos, actualizados, noEncontrados, estudiantes };
+        } catch (error) {
+            console.error('❌ Error al procesar archivo Excel:', error);
+            throw error;
+        }
+    },
+
     async processHtmlFile(filePath, materiaId, profesorId) {
         try {
             console.log('📄 Procesando archivo HTML:', filePath);
@@ -2421,6 +2919,8 @@ const calificacionController = {
                         );
                     }
                     
+                    await upsertInfoInscripcion(materiaId, estudianteId, estudiante);
+
                     // Obtener ponderaciones de la materia para aplicarlas
                     const ponderacionesQuery = await pool.query(
                         'SELECT tipo, peso FROM ponderaciones WHERE materia_id = $1',

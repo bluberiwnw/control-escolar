@@ -180,10 +180,11 @@ async function cargarEstudiantes() {
             return;
         }
         
-        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
+        container.innerHTML = `<div class="table-responsive-wrap"><table class="data-table"><thead><tr><th>Matrícula</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Contraseña</th><th>Acciones</th></tr></thead><tbody>
             ${estudiantes
                 .map(
                     (e) => `<tr>
+                <td data-label="Matrícula">${e.matricula || 'N/A'}</td>
                 <td data-label="Nombre">${e.nombre}</td>
                 <td data-label="Email">${e.email}</td>
                 <td data-label="Rol">${e.rol || 'alumno'}</td>
