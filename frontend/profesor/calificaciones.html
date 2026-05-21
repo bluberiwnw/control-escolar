@@ -34,7 +34,7 @@
     <div id="estadisticasGlobalesCalificaciones" class="stats-grid-profesor stats-grid-profesor--compact"></div>
     <div class="upload-area" onclick="document.getElementById('fileInput').click()">
         <i class="fas fa-cloud-upload-alt"></i><h3>Subir lista o calificaciones</h3>
-        <p>Formatos aceptados: HTM de lista de clase BUAP o Excel (.xlsx/.xls). Primero carga el HTM para tomar la lista oficial; despues puedes cargar Excel para asociar calificaciones por matricula.</p>
+        <p>Formatos aceptados: HTM de lista de clase BUAP o Excel (.xlsx/.xls). Primero carga el HTM para tomar la lista oficial; despues puedes cargar Excel para asociar calificaciones por nombre o matricula.</p>
         <input type="file" id="fileInput" style="display:none" accept=".htm,.html,.xlsx,.xls" onchange="previsualizarArchivo(this)">
     </div>
     <div class="form-group-modern" style="margin-top: 15px;">
@@ -103,6 +103,20 @@
     <div id="previewTable" style="margin-top: 20px; overflow-x:auto;"></div>
     <div id="resultadoUpload"></div>
         </div>
+        <div class="calificaciones-charts-grid">
+            <div class="chart-card">
+                <h2 class="chart-card__title">Distribucion de calificaciones</h2>
+                <div class="chart-card__canvas-wrap">
+                    <canvas id="graficoDistribucionProfesor" aria-label="Distribucion de calificaciones por rango"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h2 class="chart-card__title">Promedio por rubro</h2>
+                <div class="chart-card__canvas-wrap">
+                    <canvas id="graficoRubrosProfesor" aria-label="Promedio por rubro de evaluacion"></canvas>
+                </div>
+            </div>
+        </div>
         <div class="historial-archivos"><h3>Archivos subidos</h3><div id="archivosList"></div></div>
         </div>
     </main>
@@ -140,6 +154,7 @@
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/app-shell.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="js/calificaciones.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </body>

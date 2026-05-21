@@ -54,6 +54,21 @@
             </div>
         </div>
 
+        <div class="calificaciones-charts-grid">
+            <div class="chart-card">
+                <h2 class="chart-card__title">Promedio por materia</h2>
+                <div class="chart-card__canvas-wrap">
+                    <canvas id="graficoMateriasAlumno" aria-label="Promedio final por materia"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h2 class="chart-card__title">Estado de materias</h2>
+                <div class="chart-card__canvas-wrap">
+                    <canvas id="graficoEstadoAlumno" aria-label="Materias aprobadas, reprobadas y sin calificacion"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Lista de Materias con Calificaciones -->
         <div id="calificacionesContainer" class="calificaciones-grid"></div>
         
@@ -80,6 +95,7 @@
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/app-shell.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="js/calificaciones.js"></script>
 </body>
 </html>

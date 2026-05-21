@@ -15,6 +15,9 @@ function normalizarCalificacion(valor) {
 
 let eventoChangeAgregado = false;
 let cargaEnProceso = false;
+let chartDistribucionProfesor = null;
+let chartRubrosProfesor = null;
+let ultimosAlumnosGraficas = [];
 document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion();
     mostrarInfoUsuario();
@@ -60,6 +63,7 @@ async function cargarEstadisticasGlobales() {
         ]);
 
         const alumnos = Array.isArray(alumnosMateria) ? alumnosMateria : [];
+        ultimosAlumnosGraficas = alumnos;
         const finales = alumnos
             .map(a => parseFloat(a.calificacion_final ?? a.calificacion_redondeada ?? 0))
             .filter(v => !Number.isNaN(v) && v > 0);
@@ -85,10 +89,116 @@ async function cargarEstadisticasGlobales() {
                 <span class="stat-label">Aprobados materia</span>
                 <strong>${aprobados}/${finales.length || alumnos.length || 0}</strong>
             </div>`;
+        renderGraficasProfesor(alumnos);
     } catch (error) {
         container.innerHTML = '';
+        renderGraficasProfesor([]);
     }
 }
+
+function opcionesGraficaCalificaciones(maxY = 10) {
+    const tc = typeof chartTextColor === 'function' ? chartTextColor() : '#334155';
+    const gc = typeof chartGridColor === 'function' ? chartGridColor() : 'rgba(0,0,0,0.06)';
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { color: tc } }
+        },
+        scales: {
+            x: { ticks: { color: tc }, grid: { color: gc } },
+            y: { ticks: { color: tc }, grid: { color: gc }, beginAtZero: true, max: maxY }
+        }
+    };
+}
+
+function renderGraficasProfesor(alumnos = []) {
+    if (typeof Chart === 'undefined') return;
+
+    const finales = alumnos
+        .map(a => parseFloat(a.calificacion_final ?? a.calificacion_redondeada ?? 0))
+        .filter(v => !Number.isNaN(v) && v > 0);
+
+    const rangos = [
+        { label: '0-5.9', min: 0, max: 5.99 },
+        { label: '6-6.9', min: 6, max: 6.99 },
+        { label: '7-7.9', min: 7, max: 7.99 },
+        { label: '8-8.9', min: 8, max: 8.99 },
+        { label: '9-10', min: 9, max: 10 }
+    ];
+    const distribucion = rangos.map(rango =>
+        finales.filter(valor => valor >= rango.min && valor <= rango.max).length
+    );
+
+    const canvasDistribucion = document.getElementById('graficoDistribucionProfesor');
+    if (canvasDistribucion) {
+        if (chartDistribucionProfesor) chartDistribucionProfesor.destroy();
+        chartDistribucionProfesor = new Chart(canvasDistribucion.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: rangos.map(rango => rango.label),
+                datasets: [{
+                    label: 'Alumnos',
+                    data: distribucion,
+                    backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#3b82f6', '#22c55e'],
+                    borderRadius: 6
+                }]
+            },
+            options: opcionesGraficaCalificaciones(Math.max(5, ...distribucion, alumnos.length || 0))
+        });
+    }
+
+    const rubros = [
+        { label: 'Tareas', key: 'tarea' },
+        { label: 'Examenes', key: 'examen' },
+        { label: 'Participacion', key: 'participacion' },
+        { label: 'Proyectos', key: 'proyecto' },
+        { label: 'Practicas', key: 'practica' }
+    ];
+    const promediosRubros = rubros.map(rubro => {
+        const valores = alumnos
+            .map(alumno => parseFloat(alumno[rubro.key] ?? 0))
+            .filter(valor => !Number.isNaN(valor) && valor > 0);
+        return valores.length
+            ? Number((valores.reduce((sum, valor) => sum + valor, 0) / valores.length).toFixed(2))
+            : 0;
+    });
+
+    const canvasRubros = document.getElementById('graficoRubrosProfesor');
+    if (canvasRubros) {
+        if (chartRubrosProfesor) chartRubrosProfesor.destroy();
+        chartRubrosProfesor = new Chart(canvasRubros.getContext('2d'), {
+            type: 'radar',
+            data: {
+                labels: rubros.map(rubro => rubro.label),
+                datasets: [{
+                    label: 'Promedio',
+                    data: promediosRubros,
+                    backgroundColor: 'rgba(59, 130, 246, 0.18)',
+                    borderColor: '#2563eb',
+                    pointBackgroundColor: '#2563eb'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: typeof chartTextColor === 'function' ? chartTextColor() : '#334155' } } },
+                scales: {
+                    r: {
+                        angleLines: { color: typeof chartGridColor === 'function' ? chartGridColor() : 'rgba(0,0,0,0.06)' },
+                        grid: { color: typeof chartGridColor === 'function' ? chartGridColor() : 'rgba(0,0,0,0.06)' },
+                        pointLabels: { color: typeof chartTextColor === 'function' ? chartTextColor() : '#334155' },
+                        ticks: { color: typeof chartTextColor === 'function' ? chartTextColor() : '#334155', backdropColor: 'transparent' },
+                        suggestedMin: 0,
+                        suggestedMax: 10
+                    }
+                }
+            }
+        });
+    }
+}
+
+window.addEventListener('themechange', () => renderGraficasProfesor(ultimosAlumnosGraficas));
 async function cargarPonderaciones(materia_id) {
     try {
         const ponderaciones = await apiRequest(`/calificaciones/ponderaciones/${materia_id}`);
@@ -250,6 +360,31 @@ function normalizarNombrePersona(valor) {
         .join(' ');
 }
 
+function esFilaEncabezadoExcel(row) {
+    const headers = (row || []).map(normalizarTextoClave).filter(Boolean);
+    const tieneNombre = headers.some(header =>
+        header === 'nombre completo' ||
+        header === 'nombre de alumno' ||
+        header === 'nombre' ||
+        header === 'alumno' ||
+        header === 'estudiante'
+    );
+    const tieneIdentificador = headers.some(header =>
+        header === 'id' ||
+        header.includes('matricula') ||
+        header.includes('correo') ||
+        header.includes('email')
+    );
+    const tieneCalificacion = headers.some(header =>
+        header.includes('calificacion') ||
+        header.includes('porcentaje') ||
+        header.includes('puntos') ||
+        header.includes('tarea') ||
+        header.includes('examen')
+    );
+    return (tieneNombre && (tieneIdentificador || tieneCalificacion)) || (tieneIdentificador && tieneCalificacion);
+}
+
 function buscarValorFila(row, etiquetas) {
     const etiquetasNorm = etiquetas.map(normalizarTextoClave);
     for (const [key, value] of Object.entries(row || {})) {
@@ -264,11 +399,15 @@ function buscarValorFila(row, etiquetas) {
 function validarExcelContraAlumnos(dataRows, alumnos) {
     const alumnosPorMatricula = new Map();
     const alumnosPorNombre = new Map();
+    const matriculasDuplicadas = new Set();
     const nombresDuplicados = new Set();
 
     (alumnos || []).forEach(alumno => {
         const matriculaKey = normalizarTextoClave(alumno.matricula || alumno.ID || alumno['Matrícula']);
-        if (matriculaKey) alumnosPorMatricula.set(matriculaKey, alumno);
+        if (matriculaKey) {
+            if (alumnosPorMatricula.has(matriculaKey)) matriculasDuplicadas.add(matriculaKey);
+            else alumnosPorMatricula.set(matriculaKey, alumno);
+        }
 
         const nombreKey = normalizarNombrePersona(alumno.nombre || alumno['Nombre de Alumno'] || alumno['Nombre']);
         if (!nombreKey) return;
@@ -286,30 +425,40 @@ function validarExcelContraAlumnos(dataRows, alumnos) {
         const matriculaKey = normalizarTextoClave(matricula);
         const nombreKey = normalizarNombrePersona(nombre);
 
-        if (matriculaKey) {
-            const alumno = alumnosPorMatricula.get(matriculaKey);
-            if (!alumno) {
-                errores.push({ excel: `${nombre || 'Sin nombre'} (${matricula})`, htm: 'Matrícula no encontrada en HTM' });
-                return;
-            }
-            const nombreHtm = alumno.nombre || alumno['Nombre de Alumno'] || '';
-            if (nombre && normalizarNombrePersona(nombreHtm) !== nombreKey) {
-                errores.push({ excel: `${nombre} (${matricula})`, htm: `${nombreHtm} (${alumno.matricula || ''})` });
-            }
+        if (!matriculaKey && !nombreKey) {
+            errores.push({ excel: row.Email || 'Fila sin nombre ni matricula', htm: 'Sin datos para comparar' });
             return;
         }
 
-        if (!nombreKey) {
-            errores.push({ excel: row.Email || 'Fila sin nombre ni matrícula', htm: 'Sin datos para comparar' });
+        const alumnoPorMatricula = matriculaKey && !matriculasDuplicadas.has(matriculaKey)
+            ? alumnosPorMatricula.get(matriculaKey)
+            : null;
+        const alumnoPorNombre = nombreKey && !nombresDuplicados.has(nombreKey)
+            ? alumnosPorNombre.get(nombreKey)
+            : null;
+
+        if (alumnoPorMatricula && alumnoPorNombre && alumnoPorMatricula.id !== alumnoPorNombre.id) {
+            errores.push({
+                excel: `${nombre || 'Sin nombre'} (${matricula || 'sin matricula'})`,
+                htm: `La matricula corresponde a ${alumnoPorMatricula.nombre || ''} y el nombre a ${alumnoPorNombre.nombre || ''}`
+            });
             return;
         }
-        if (nombresDuplicados.has(nombreKey)) {
+
+        if (alumnoPorMatricula || alumnoPorNombre) return;
+
+        if (matriculaKey && matriculasDuplicadas.has(matriculaKey)) {
+            errores.push({ excel: `${nombre || 'Sin nombre'} (${matricula})`, htm: 'Matricula duplicada en HTM' });
+            return;
+        }
+        if (nombreKey && nombresDuplicados.has(nombreKey)) {
             errores.push({ excel: nombre, htm: 'Nombre duplicado en HTM' });
             return;
         }
-        if (!alumnosPorNombre.has(nombreKey)) {
-            errores.push({ excel: nombre, htm: 'Nombre no encontrado en HTM' });
-        }
+        errores.push({
+            excel: `${nombre || 'Sin nombre'}${matricula ? ` (${matricula})` : ''}`,
+            htm: 'No existe ese nombre ni esa matricula en el HTM'
+        });
     });
 
     return errores;
@@ -337,10 +486,7 @@ function previsualizarExcel(file, alumnosMateria = []) {
             const workbook = XLSX.read(e.target.result, { type: 'array' });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
-            const headerIndex = rawRows.findIndex(row =>
-                row.some(cell => normalizarTextoClave(cell) === 'nombre completo') &&
-                row.some(cell => normalizarTextoClave(cell).includes('direccion de correo'))
-            );
+            const headerIndex = rawRows.findIndex(esFilaEncabezadoExcel);
             const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false, range: headerIndex >= 0 ? headerIndex : 0 });
             const agrupados = new Map();
 
@@ -350,7 +496,7 @@ function previsualizarExcel(file, alumnosMateria = []) {
                 const nombre = buscarValorFila(row, ['Nombre']);
                 const apellidos = buscarValorFila(row, ['Apellidos']);
                 const id = buscarValorFila(row, ['Matrícula', 'Matricula', 'ID']);
-                const key = normalizarTextoClave(email || id || nombreCompleto || `${nombre} ${apellidos}` || `fila ${index}`);
+                const key = normalizarTextoClave(id || nombreCompleto || `${nombre} ${apellidos}` || email || `fila ${index}`);
                 if (!key) return;
 
                 const porcentaje = numeroSeguro(buscarValorFila(row, ['Porcentaje']));
@@ -415,7 +561,7 @@ function previsualizarExcel(file, alumnosMateria = []) {
             const headers = ['Nombre de Alumno', 'Email', 'Tareas', 'Exámenes', 'Participación', 'Proyectos', 'Prácticas'];
             let html = `<div class="alert alert-info">
                     <strong>Excel detectado correctamente.</strong><br>
-                    Se asociaran ${dataRows.length} alumnos por matricula, correo o nombre. Si ya subiste el HTM, se conservaran Status de Inscripción, Nivel y Créditos.
+                    Se asociaran ${dataRows.length} alumnos por matricula o nombre. Si ya subiste el HTM, se conservaran Status de Inscripción, Nivel y Créditos.
                 </div>
                 <h4>Vista previa del Excel (primeros 10 alumnos)</h4>
                 <table class="asistencia-tabla">
@@ -856,6 +1002,8 @@ async function cargarAlumnos() {
     
     if (!materia_id) {
         document.getElementById('alumnosTable').innerHTML = '<div class="alert alert-info">Selecciona una materia para ver los alumnos.</div>';
+        ultimosAlumnosGraficas = [];
+        renderGraficasProfesor([]);
         return;
     }
 
@@ -863,6 +1011,8 @@ async function cargarAlumnos() {
         console.log('🔄 cargarAlumnos - Solicitando alumnos para materia:', materia_id);
         const alumnos = await apiRequest(`/calificaciones/materia/${materia_id}/alumnos`);
         console.log('🔄 cargarAlumnos - Alumnos recibidos:', alumnos);
+        ultimosAlumnosGraficas = Array.isArray(alumnos) ? alumnos : [];
+        renderGraficasProfesor(ultimosAlumnosGraficas);
         
         let html = `
             <div class="panel-card">
@@ -1254,6 +1404,7 @@ async function actualizarCalificacion(estudianteId, tipo, valor) {
         });
         
         await recalcularCalificacionFinal(estudianteId, materia_id);
+        await cargarEstadisticasGlobales();
         
         mostrarToast('Calificación actualizada', 'success');
     } catch (error) {

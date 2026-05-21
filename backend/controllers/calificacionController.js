@@ -79,6 +79,278 @@ function samePersonName(left, right) {
     return !!a && !!b && a === b;
 }
 
+function isExcelHeaderRow(row) {
+    if (!Array.isArray(row)) return false;
+    const headers = row.map(normalizeKey).filter(Boolean);
+    const hasName = headers.some(header =>
+        header === 'nombre completo' ||
+        header === 'nombre de alumno' ||
+        header === 'alumno' ||
+        header === 'estudiante' ||
+        header === 'nombre'
+    );
+    const hasIdentifier = headers.some(header =>
+        header === 'id' ||
+        header === 'matricula' ||
+        header.includes('matricula') ||
+        header.includes('correo') ||
+        header.includes('email')
+    );
+    const hasGrade = headers.some(header =>
+        header.includes('calificacion') ||
+        header.includes('porcentaje') ||
+        header.includes('puntos') ||
+        header.includes('tarea') ||
+        header.includes('examen')
+    );
+    return (hasName && (hasIdentifier || hasGrade)) || (hasIdentifier && hasGrade);
+}
+
+function buildStudentIndexes(alumnos = []) {
+    const alumnosPorMatricula = new Map();
+    const alumnosPorNombre = new Map();
+    const matriculasDuplicadas = new Set();
+    const nombresDuplicados = new Set();
+
+    alumnos.forEach((alumno) => {
+        const matriculaKey = normalizeKey(alumno.matricula || alumno.ID || alumno.Matricula);
+        if (matriculaKey) {
+            if (alumnosPorMatricula.has(matriculaKey)) {
+                matriculasDuplicadas.add(matriculaKey);
+            } else {
+                alumnosPorMatricula.set(matriculaKey, alumno);
+            }
+        }
+
+        const nombreKey = normalizePersonName(alumno.nombre || alumno['Nombre de Alumno'] || alumno.Nombre);
+        if (!nombreKey) return;
+        if (alumnosPorNombre.has(nombreKey)) {
+            nombresDuplicados.add(nombreKey);
+        } else {
+            alumnosPorNombre.set(nombreKey, alumno);
+        }
+    });
+
+    return { alumnosPorMatricula, alumnosPorNombre, matriculasDuplicadas, nombresDuplicados };
+}
+
+function resolveAlumnoMatch(estudiante, indexes) {
+    const matriculaExcel = String(getStudentPayloadValue(estudiante, ['ID', 'Matricula', 'matricula']) || '').trim();
+    const nombreExcel = String(getStudentPayloadValue(estudiante, ['Nombre de Alumno', 'Nombre Completo', 'Nombre completo', 'nombre_completo', 'Nombre']) || '').trim();
+    const matriculaKey = normalizeKey(matriculaExcel);
+    const nombreKey = normalizePersonName(nombreExcel);
+
+    let matchByMatricula = null;
+    let matchByNombre = null;
+    const errores = [];
+
+    if (matriculaKey) {
+        if (indexes.matriculasDuplicadas.has(matriculaKey)) {
+            errores.push({
+                excel: `${nombreExcel || 'Sin nombre'} (${matriculaExcel})`,
+                htm: 'Hay mas de un alumno con esa matricula en el HTM',
+                motivo: 'matricula_duplicada'
+            });
+        } else {
+            matchByMatricula = indexes.alumnosPorMatricula.get(matriculaKey) || null;
+        }
+    }
+
+    if (nombreKey) {
+        if (indexes.nombresDuplicados.has(nombreKey)) {
+            errores.push({
+                excel: `${nombreExcel || 'Sin nombre'}${matriculaExcel ? ` (${matriculaExcel})` : ''}`,
+                htm: 'Hay mas de un alumno con ese nombre en el HTM',
+                motivo: 'nombre_duplicado'
+            });
+        } else {
+            matchByNombre = indexes.alumnosPorNombre.get(nombreKey) || null;
+        }
+    }
+
+    if (matchByMatricula && matchByNombre && matchByMatricula.id !== matchByNombre.id) {
+        return {
+            alumno: null,
+            error: {
+                excel: `${nombreExcel || 'Sin nombre'} (${matriculaExcel || 'sin matricula'})`,
+                htm: `La matricula corresponde a ${matchByMatricula.nombre} (${matchByMatricula.matricula || 'sin matricula'}) y el nombre corresponde a ${matchByNombre.nombre} (${matchByNombre.matricula || 'sin matricula'})`,
+                motivo: 'identificadores_en_conflicto'
+            }
+        };
+    }
+
+    if (matchByMatricula || matchByNombre) {
+        return { alumno: matchByMatricula || matchByNombre, error: null };
+    }
+
+    if (errores.length > 0) {
+        return { alumno: null, error: errores[0] };
+    }
+
+    if (!matriculaKey && !nombreKey) {
+        return {
+            alumno: null,
+            error: {
+                excel: estudiante.Email || 'Fila sin nombre ni matricula',
+                htm: 'No se puede comparar con el HTM',
+                motivo: 'sin_identificador'
+            }
+        };
+    }
+
+    return {
+        alumno: null,
+        error: {
+            excel: `${nombreExcel || 'Sin nombre'}${matriculaExcel ? ` (${matriculaExcel})` : ''}`,
+            htm: 'No existe ese nombre ni esa matricula en la lista HTM procesada',
+            motivo: 'sin_coincidencia'
+        }
+    };
+}
+
+function getHtmlCellText($, cell) {
+    return $(cell).text().replace(/\s+/g, ' ').trim();
+}
+
+function mapHtmlHeaderToField(header) {
+    const key = normalizeKey(header);
+    if (!key) return '';
+    if (key.includes('numero') && key.includes('registro')) return 'registro';
+    if (key === 'id' || key.includes('matricula') || key.includes('expediente')) return 'matricula';
+    if (key.includes('nombre') || key.includes('alumno') || key.includes('estudiante')) return 'nombre';
+    if (key.includes('status') || key.includes('inscripcion')) return 'status';
+    if (key.includes('nivel')) return 'nivel';
+    if (key.includes('credito')) return 'creditos';
+    if (key.includes('correo') || key.includes('email')) return 'email';
+    if (key.includes('detalle') && key.includes('calificacion')) return 'detalle';
+    if (key.includes('tarea')) return 'tarea';
+    if (key.includes('examen')) return 'examen';
+    if (key.includes('participacion')) return 'participacion';
+    if (key.includes('proyecto')) return 'proyecto';
+    if (key.includes('practica')) return 'practica';
+    if (key.includes('final') || key.includes('promedio') || key.includes('calificacion')) return 'final';
+    return '';
+}
+
+function scoreHtmlStudentHeader(fields, rowCount) {
+    let score = 0;
+    if (fields.includes('nombre')) score += 5;
+    if (fields.includes('matricula')) score += 4;
+    if (fields.includes('registro')) score += 1;
+    if (fields.includes('status')) score += 1;
+    if (fields.includes('nivel')) score += 1;
+    if (fields.includes('creditos')) score += 1;
+    if (rowCount > 2) score += 1;
+    return score;
+}
+
+function findBestHtmlStudentTable($) {
+    let best = null;
+    $('table').each((tableIndex, table) => {
+        const rows = $(table).find('tr').toArray();
+        rows.slice(0, 6).forEach((row, rowIndex) => {
+            const headers = $(row).find('th,td').map((_, cell) => getHtmlCellText($, cell)).get();
+            const fields = headers.map(mapHtmlHeaderToField);
+            const score = scoreHtmlStudentHeader(fields, rows.length);
+            if (!best || score > best.score) {
+                best = { table, tableIndex, rowIndex, headers, fields, score };
+            }
+        });
+    });
+    return best && best.score >= 9 ? best : null;
+}
+
+function inferStudentIdentityFromCells(values) {
+    let matricula = '';
+    let nombre = '';
+    for (const value of values) {
+        const text = String(value || '').trim();
+        if (!text) continue;
+        if (!matricula && /^\d{6,15}$/.test(text.replace(/\s+/g, ''))) {
+            matricula = text;
+            continue;
+        }
+        if (!nombre && /[a-zA-Z]/.test(text) && !text.includes('@') && !normalizeKey(text).includes('inscrito')) {
+            nombre = text;
+        }
+    }
+    return { matricula, nombre };
+}
+
+function extractStudentsFromHtml($) {
+    const best = findBestHtmlStudentTable($);
+    if (!best) return [];
+
+    const indexes = {};
+    best.fields.forEach((field, index) => {
+        if (field && indexes[field] === undefined) indexes[field] = index;
+    });
+
+    const gradeFields = ['tarea', 'examen', 'participacion', 'proyecto', 'practica'];
+    const rows = $(best.table).find('tr').toArray().slice(best.rowIndex + 1);
+    const estudiantes = [];
+
+    rows.forEach((row, rowIndex) => {
+        const cells = $(row).find('td,th').toArray();
+        if (cells.length < 2) return;
+
+        const values = cells.map(cell => getHtmlCellText($, cell));
+        if (!values.some(Boolean)) return;
+
+        const valueAt = (field) => {
+            const index = indexes[field];
+            return index === undefined ? '' : String(values[index] || '').trim();
+        };
+
+        const inferred = inferStudentIdentityFromCells(values);
+        const matricula = valueAt('matricula') || inferred.matricula;
+        const nombre = valueAt('nombre') || inferred.nombre;
+        if (!matricula && !nombre) return;
+
+        let email = valueAt('email');
+        if (!email) {
+            const mailto = cells
+                .map(cell => $(cell).find('a[href^="mailto:"]').attr('href'))
+                .find(Boolean);
+            if (mailto) email = mailto.replace(/^mailto:/i, '').trim();
+        }
+
+        const estudiante = {
+            'Numero de Registro': valueAt('registro') || rowIndex + 1,
+            'Nombre de Alumno': nombre,
+            Nombre: nombre,
+            ID: matricula,
+            Matricula: matricula,
+            'Status de Inscripcion': valueAt('status'),
+            Nivel: valueAt('nivel'),
+            Creditos: valueAt('creditos'),
+            Email: email,
+            Tareas: 0,
+            Examenes: 0,
+            Participacion: 0,
+            Proyectos: 0,
+            Practicas: 0
+        };
+
+        gradeFields.forEach((field) => {
+            const raw = valueAt(field);
+            if (raw === '') return;
+            const parsed = Number.parseFloat(String(raw).replace('%', '').replace(',', '.'));
+            if (Number.isNaN(parsed)) return;
+            const normalized = raw.includes('%') ? normalizarCalificacion(parsed) : normalizarCalificacion(parsed);
+            if (field === 'tarea') estudiante.Tareas = normalized;
+            if (field === 'examen') estudiante.Examenes = normalized;
+            if (field === 'participacion') estudiante.Participacion = normalized;
+            if (field === 'proyecto') estudiante.Proyectos = normalized;
+            if (field === 'practica') estudiante.Practicas = normalized;
+        });
+
+        estudiantes.push(estudiante);
+    });
+
+    return estudiantes;
+}
+
 function getValueByLabels(row, labels) {
     if (!row || typeof row !== 'object') return '';
     const entries = Object.entries(row);
@@ -454,7 +726,7 @@ const calificacionController = {
             if (tipoArchivo === 'excel' && resultado.procesados === 0 && resultado.noEncontrados?.length) {
                 if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
                 return res.status(400).json({
-                    message: 'El Excel no coincide con la lista HTM procesada. Revisa matrícula y nombre en ambos archivos.',
+                    message: 'El Excel no coincide con la lista HTM procesada. Cada fila debe coincidir por nombre o por matricula.',
                     noEncontrados: resultado.noEncontrados.slice(0, 20)
                 });
             }
@@ -2441,10 +2713,7 @@ const calificacionController = {
             const workbook = XLSX.readFile(filePath);
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
-            const headerIndex = rawRows.findIndex(row =>
-                row.some(cell => normalizeKey(cell) === 'nombre completo') &&
-                row.some(cell => normalizeKey(cell).includes('direccion de correo'))
-            );
+            const headerIndex = rawRows.findIndex(isExcelHeaderRow);
             const rows = headerIndex >= 0
                 ? XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false, range: headerIndex })
                 : XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
@@ -2456,22 +2725,7 @@ const calificacionController = {
             const noEncontrados = [];
             const agrupados = new Map();
             const alumnosMateria = await getEstudiantesDeMateria(materiaId, true);
-            const alumnosPorMatricula = new Map();
-            const alumnosPorNombre = new Map();
-            const nombresDuplicados = new Set();
-
-            alumnosMateria.forEach((alumno) => {
-                const matriculaKey = normalizeKey(alumno.matricula);
-                if (matriculaKey) alumnosPorMatricula.set(matriculaKey, alumno);
-
-                const nombreKey = normalizePersonName(alumno.nombre);
-                if (!nombreKey) return;
-                if (alumnosPorNombre.has(nombreKey)) {
-                    nombresDuplicados.add(nombreKey);
-                    return;
-                }
-                alumnosPorNombre.set(nombreKey, alumno);
-            });
+            const alumnoIndexes = buildStudentIndexes(alumnosMateria);
 
             rows.forEach((row, index) => {
                 const email = getValueByLabels(row, ['Dirección de correo', 'Direccion de correo', 'Email', 'Correo']);
@@ -2479,7 +2733,7 @@ const calificacionController = {
                 const nombre = getValueByLabels(row, ['Nombre']);
                 const apellidos = getValueByLabels(row, ['Apellidos']);
                 const matricula = getValueByLabels(row, ['Matrícula', 'Matricula', 'ID']);
-                const key = normalizeKey(email || matricula || nombreCompleto || buildNombreCompleto(nombre, apellidos) || `fila ${index}`);
+                const key = normalizeKey(matricula || nombreCompleto || buildNombreCompleto(nombre, apellidos) || email || `fila ${index}`);
                 if (!key) return;
 
                 const porcentaje = getNumericPayloadValue(row, ['Porcentaje']);
@@ -2523,63 +2777,26 @@ const calificacionController = {
                 return estudiante;
             }).filter(row => row.ID || row.Email || row['Nombre de Alumno']);
 
+            const estudiantesConMatch = [];
             for (const estudiante of estudiantes) {
-                const matriculaExcel = String(getStudentPayloadValue(estudiante, ['ID', 'Matrícula', 'Matricula', 'matricula']) || '').trim();
-                const nombreExcel = String(getStudentPayloadValue(estudiante, ['Nombre de Alumno', 'Nombre Completo', 'Nombre completo']) || '').trim();
-                const matriculaKey = normalizeKey(matriculaExcel);
-                const nombreKey = normalizePersonName(nombreExcel);
-                let alumnoMatch = null;
-
-                if (matriculaKey) {
-                    alumnoMatch = alumnosPorMatricula.get(matriculaKey);
-                    if (!alumnoMatch) {
-                        noEncontrados.push({
-                            excel: `${nombreExcel || 'Sin nombre'} (${matriculaExcel})`,
-                            htm: 'No existe esa matrícula en la lista HTM procesada',
-                            motivo: 'matricula_no_encontrada'
-                        });
-                        continue;
-                    }
-                    if (nombreExcel && !samePersonName(nombreExcel, alumnoMatch.nombre)) {
-                        noEncontrados.push({
-                            excel: `${nombreExcel} (${matriculaExcel})`,
-                            htm: `${alumnoMatch.nombre} (${alumnoMatch.matricula})`,
-                            motivo: 'matricula_con_nombre_distinto'
-                        });
-                        continue;
-                    }
-                } else if (nombreKey) {
-                    if (nombresDuplicados.has(nombreKey)) {
-                        noEncontrados.push({
-                            excel: nombreExcel,
-                            htm: 'Hay más de un alumno con ese nombre en el HTM',
-                            motivo: 'nombre_duplicado'
-                        });
-                        continue;
-                    }
-                    alumnoMatch = alumnosPorNombre.get(nombreKey);
-                    if (!alumnoMatch) {
-                        noEncontrados.push({
-                            excel: nombreExcel,
-                            htm: 'No existe ese nombre en la lista HTM procesada',
-                            motivo: 'nombre_no_encontrado'
-                        });
-                        continue;
-                    }
-                } else {
-                    noEncontrados.push({
-                        excel: estudiante.Email || 'Fila sin nombre ni matrícula',
-                        htm: 'No se puede comparar con HTM',
-                        motivo: 'sin_identificador'
-                    });
+                const match = resolveAlumnoMatch(estudiante, alumnoIndexes);
+                if (!match.alumno) {
+                    noEncontrados.push(match.error);
                     continue;
                 }
+                estudiantesConMatch.push({ estudiante, alumno: match.alumno });
+            }
 
+            if (noEncontrados.length > 0) {
+                return { procesados, nuevos, actualizados, noEncontrados, estudiantes };
+            }
+
+            for (const { estudiante, alumno } of estudiantesConMatch) {
                 const resultado = await calificacionController.persistirEstudianteNormalizado(
                     estudiante,
                     materiaId,
                     ponderaciones,
-                    { crearSiNoExiste: false, estudianteIdForzado: alumnoMatch.id }
+                    { crearSiNoExiste: false, estudianteIdForzado: alumno.id }
                 );
                 if (resultado.noEncontrado) {
                     noEncontrados.push({
@@ -2609,6 +2826,39 @@ const calificacionController = {
             // Leer el archivo HTML
             const htmlContent = fs.readFileSync(filePath, 'utf8');
             const $ = cheerio.load(htmlContent);
+
+            const estudiantesHtml = extractStudentsFromHtml($);
+            if (estudiantesHtml.length > 0) {
+                const ponderaciones = await calificacionController.getPonderacionesMap(materiaId);
+                let procesados = 0;
+                let nuevos = 0;
+                let actualizados = 0;
+
+                for (const estudiante of estudiantesHtml) {
+                    try {
+                        const resultado = await calificacionController.persistirEstudianteNormalizado(
+                            estudiante,
+                            materiaId,
+                            ponderaciones,
+                            { crearSiNoExiste: true }
+                        );
+                        if (resultado.omitido) continue;
+                        procesados++;
+                        if (resultado.nuevo) nuevos++;
+                        else actualizados++;
+                    } catch (error) {
+                        console.error(`Error procesando estudiante ${estudiante.ID || estudiante['Nombre de Alumno']}:`, error.message);
+                    }
+                }
+
+                console.log(`Archivo HTML procesado con parser de lista: ${procesados} estudiantes encontrados`);
+                return {
+                    procesados,
+                    nuevos,
+                    actualizados,
+                    estudiantes: estudiantesHtml
+                };
+            }
             
             let procesados = 0;
             let nuevos = 0;

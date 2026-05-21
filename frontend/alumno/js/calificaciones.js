@@ -4,6 +4,10 @@ function redondearCalificacionAlumno(cal) {
     return (cal - parteEntera) >= 0.6 ? parteEntera + 1 : parteEntera;
 }
 
+let chartMateriasAlumno = null;
+let chartEstadoAlumno = null;
+let ultimasMateriasGraficasAlumno = [];
+
 document.addEventListener('DOMContentLoaded', async () => {
     verificarSesion(); 
     mostrarInfoUsuario(); 
@@ -49,6 +53,8 @@ async function cargarCalificaciones() {
         if (!tieneMaterias && !tieneCalificaciones) {
             console.log('⚠️ No hay materias ni calificaciones en la respuesta');
             mostrarResumenVacio();
+            ultimasMateriasGraficasAlumno = [];
+            renderGraficasAlumno([], data);
             document.getElementById('calificacionesContainer').innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-graduation-cap" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
@@ -63,6 +69,8 @@ async function cargarCalificaciones() {
         
         // Actualizar resumen general
         actualizarResumenGeneral(data);
+        ultimasMateriasGraficasAlumno = data.materias || [];
+        renderGraficasAlumno(ultimasMateriasGraficasAlumno, data);
         
         // Llenar select de materias para darse de baja
         llenarSelectMaterias(data.materias);
@@ -77,6 +85,8 @@ async function cargarCalificaciones() {
         console.error('🔍 Detalles del error:', error.message);
         mostrarToast('Error al cargar calificaciones', 'error');
         mostrarResumenVacio();
+        ultimasMateriasGraficasAlumno = [];
+        renderGraficasAlumno([], {});
     }
 }
 
@@ -189,6 +199,88 @@ function actualizarResumenGeneral(data) {
         }
     }
 }
+
+function opcionesGraficaAlumno(maxY = 10) {
+    const tc = typeof chartTextColor === 'function' ? chartTextColor() : '#334155';
+    const gc = typeof chartGridColor === 'function' ? chartGridColor() : 'rgba(0,0,0,0.06)';
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { color: tc } }
+        },
+        scales: {
+            x: { ticks: { color: tc }, grid: { color: gc } },
+            y: { ticks: { color: tc }, grid: { color: gc }, beginAtZero: true, max: maxY }
+        }
+    };
+}
+
+function renderGraficasAlumno(materias = [], data = {}) {
+    if (typeof Chart === 'undefined') return;
+
+    const materiasConFinal = (materias || []).map(materia => ({
+        nombre: materia.nombre || materia.clave || 'Materia',
+        final: parseFloat(materia.promedio_final ?? materia.calificacion_final ?? 0) || 0
+    }));
+    const labelsMaterias = materiasConFinal.length
+        ? materiasConFinal.map(materia => materia.nombre)
+        : ['Sin datos'];
+    const valoresMaterias = materiasConFinal.length
+        ? materiasConFinal.map(materia => Number(materia.final.toFixed(2)))
+        : [0];
+
+    const canvasMaterias = document.getElementById('graficoMateriasAlumno');
+    if (canvasMaterias) {
+        if (chartMateriasAlumno) chartMateriasAlumno.destroy();
+        chartMateriasAlumno = new Chart(canvasMaterias.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labelsMaterias,
+                datasets: [{
+                    label: 'Promedio final',
+                    data: valoresMaterias,
+                    backgroundColor: '#2563eb',
+                    borderRadius: 6
+                }]
+            },
+            options: opcionesGraficaAlumno(10)
+        });
+    }
+
+    const aprobadas = data.materias_aprobadas ?? materiasConFinal.filter(m => m.final >= 6 && m.final > 0).length;
+    const reprobadas = materiasConFinal.filter(m => m.final > 0 && m.final < 6).length;
+    const sinCalificacion = materiasConFinal.filter(m => m.final === 0).length;
+    const estadoData = materiasConFinal.length ? [aprobadas, reprobadas, sinCalificacion] : [0, 0, 1];
+
+    const canvasEstado = document.getElementById('graficoEstadoAlumno');
+    if (canvasEstado) {
+        if (chartEstadoAlumno) chartEstadoAlumno.destroy();
+        chartEstadoAlumno = new Chart(canvasEstado.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Aprobadas', 'Reprobadas', 'Sin calificacion'],
+                datasets: [{
+                    data: estadoData,
+                    backgroundColor: ['#22c55e', '#ef4444', '#94a3b8'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: typeof chartTextColor === 'function' ? chartTextColor() : '#334155' }
+                    }
+                }
+            }
+        });
+    }
+}
+
+window.addEventListener('themechange', () => renderGraficasAlumno(ultimasMateriasGraficasAlumno, {}));
 
 function mostrarCalificacionesPorMateria(materias) {
     const container = document.getElementById('calificacionesContainer');
