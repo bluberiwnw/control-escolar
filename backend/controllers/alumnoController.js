@@ -9,11 +9,17 @@ const alumnoController = {
         try {
             const alumnoId = req.usuario.id;
             const result = await pool.query(`
-                SELECT m.*, u.nombre as profesor_nombre
-                FROM inscripciones i
-                JOIN materias m ON i.materia_id = m.id
+                SELECT DISTINCT m.*, u.nombre as profesor_nombre
+                FROM materias m
                 LEFT JOIN usuarios u ON m.profesor_id = u.id
-                WHERE i.estudiante_id = $1
+                WHERE EXISTS (
+                    SELECT 1 FROM inscripciones i
+                    WHERE i.materia_id = m.id AND i.estudiante_id = $1
+                )
+                OR EXISTS (
+                    SELECT 1 FROM materias_estudiantes me
+                    WHERE me.materia_id = m.id AND me.estudiante_id = $1 AND me.activo = true
+                )
                 ORDER BY m.nombre
             `, [alumnoId]);
             res.json(result.rows);
@@ -32,8 +38,15 @@ const alumnoController = {
                     e.archivo as archivo_entrega, e.calificacion as calificacion_entrega
                 FROM actividades a
                 JOIN materias m ON a.materia_id = m.id
-                JOIN inscripciones i ON i.materia_id = m.id AND i.estudiante_id = $1
                 LEFT JOIN entregas e ON e.actividad_id = a.id AND e.estudiante_id = $1
+                WHERE EXISTS (
+                    SELECT 1 FROM inscripciones i
+                    WHERE i.materia_id = m.id AND i.estudiante_id = $1
+                )
+                OR EXISTS (
+                    SELECT 1 FROM materias_estudiantes me
+                    WHERE me.materia_id = m.id AND me.estudiante_id = $1 AND me.activo = true
+                )
                 ORDER BY a.fecha_entrega ASC
             `, [alumnoId]);
             res.json(
@@ -200,7 +213,15 @@ const alumnoController = {
                 return res.status(400).json({ error: 'Materia y fecha válidas son obligatorias' });
             }
             const insc = await pool.query(
-                'SELECT 1 FROM inscripciones WHERE materia_id = $1 AND estudiante_id = $2',
+                `SELECT 1
+                 WHERE EXISTS (
+                    SELECT 1 FROM inscripciones
+                    WHERE materia_id = $1 AND estudiante_id = $2
+                 )
+                 OR EXISTS (
+                    SELECT 1 FROM materias_estudiantes
+                    WHERE materia_id = $1 AND estudiante_id = $2 AND activo = true
+                 )`,
                 [mid, alumnoId]
             );
             if (insc.rowCount === 0) {

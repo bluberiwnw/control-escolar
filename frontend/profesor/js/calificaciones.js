@@ -253,6 +253,8 @@ async function subirArchivo(input) {
     }
     cargaEnProceso = true;
     setBotonProcesarArchivo(true);
+    const previewTable = document.getElementById('previewTable');
+    if (previewTable) previewTable.innerHTML = '';
     const formData = new FormData();
     formData.append('archivo', file);
     formData.append('materia_id', materia_id);
@@ -469,6 +471,28 @@ function numeroSeguro(valor) {
     return Number.isNaN(num) ? null : num;
 }
 
+const TIPOS_CALIFICACION_EXCEL = [
+    { tipo: 'tarea', labels: ['Tareas', 'Tarea'], campo: 'Tareas' },
+    { tipo: 'examen', labels: ['Exámenes', 'Examenes', 'Examen'], campo: 'Exámenes' },
+    { tipo: 'participacion', labels: ['Participación', 'Participacion'], campo: 'Participación' },
+    { tipo: 'proyecto', labels: ['Proyectos', 'Proyecto'], campo: 'Proyectos' },
+    { tipo: 'practica', labels: ['Prácticas', 'Practicas', 'Practica'], campo: 'Prácticas' }
+];
+
+function valorDirectoCalificacion(row, labels) {
+    for (const label of labels) {
+        const value = buscarValorFila(row, [label]);
+        if (value !== undefined && value !== null && String(value).trim() !== '') {
+            return value;
+        }
+    }
+    return null;
+}
+
+function asignarCalificacion(row, campo, value) {
+    row[campo] = normalizarCalificacion(value);
+}
+
 function setBotonProcesarArchivo(procesando) {
     const btn = document.getElementById('btnProcesarArchivo');
     if (!btn) return;
@@ -499,6 +523,12 @@ function previsualizarExcel(file, alumnosMateria = []) {
                 const key = normalizarTextoClave(id || nombreCompleto || `${nombre} ${apellidos}` || email || `fila ${index}`);
                 if (!key) return;
 
+                const calificacionesDirectas = [];
+                TIPOS_CALIFICACION_EXCEL.forEach(({ labels, campo }) => {
+                    const value = valorDirectoCalificacion(row, labels);
+                    if (value !== null) calificacionesDirectas.push({ campo, value });
+                });
+
                 const porcentaje = numeroSeguro(buscarValorFila(row, ['Porcentaje']));
                 const puntos = numeroSeguro(buscarValorFila(row, ['Puntos']));
                 const puntosMaximos = numeroSeguro(buscarValorFila(row, ['Puntos máximos', 'Puntos maximos']));
@@ -524,7 +554,13 @@ function previsualizarExcel(file, alumnosMateria = []) {
                         _valores: []
                     });
                 }
-                if (calificacion !== null) agrupados.get(key)._valores.push(normalizarCalificacion(calificacion));
+                calificacionesDirectas.forEach(({ campo, value }) => {
+                    asignarCalificacion(agrupados.get(key), campo, value);
+                });
+
+                if (calificacion !== null && calificacionesDirectas.length === 0) {
+                    agrupados.get(key)._valores.push(normalizarCalificacion(calificacion));
+                }
             });
 
             const dataRows = Array.from(agrupados.values()).map(row => {

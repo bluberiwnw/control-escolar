@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const cheerio = require('cheerio');
 const XLSX = require('xlsx');
 const pool = require('../database/connection');
@@ -391,6 +392,48 @@ function parseGradeFromStudent(student, labels) {
     return normalizarCalificacion(value || 0);
 }
 
+function assignGrade(estudiante, tipo, value) {
+    const normalized = normalizarCalificacion(value);
+    if (tipo === 'tarea') estudiante.Tareas = normalized;
+    if (tipo === 'examen') estudiante.Examenes = normalized;
+    if (tipo === 'participacion') estudiante.Participacion = normalized;
+    if (tipo === 'proyecto') estudiante.Proyectos = normalized;
+    if (tipo === 'practica') estudiante.Practicas = normalized;
+}
+
+function getDirectGradeValue(row, labels) {
+    for (const label of labels) {
+        const value = getValueByLabels(row, [label]);
+        if (value !== undefined && value !== null && String(value).trim() !== '') {
+            return value;
+        }
+    }
+    return null;
+}
+
+function buildIncomingGrades(estudiante) {
+    return GRADE_TYPES.map(({ tipo, labels }) => ({
+        tipo,
+        calificacion: parseGradeFromStudent(estudiante, labels)
+    }));
+}
+
+function buildHtmlStudentFingerprint(estudiantes = []) {
+    const canonical = estudiantes
+        .map(estudiante => {
+            const matricula = normalizeKey(getStudentPayloadValue(estudiante, ['ID', 'Matricula', 'Matrícula', 'matricula']));
+            const nombre = normalizePersonName(getStudentPayloadValue(estudiante, ['Nombre de Alumno', 'Nombre Completo', 'Nombre', 'nombre']));
+            const email = normalizeKey(getStudentPayloadValue(estudiante, ['Email', 'Correo', 'email']));
+            return [matricula, nombre, email].join('|');
+        })
+        .filter(value => value.replace(/\|/g, '').trim())
+        .sort()
+        .join('\n');
+
+    if (!canonical) return '';
+    return crypto.createHash('sha256').update(canonical).digest('hex');
+}
+
 function buildNombreCompleto(nombre, apellidos) {
     const nombreLimpio = String(nombre || '').replace(/\s+/g, ' ').trim();
     const apellidosLimpio = String(apellidos || '').replace(/\s+/g, ' ').trim();
@@ -431,6 +474,7 @@ async function ensureInfoInscripcionTable() {
 
 async function ensureArchivosCalificacionesExcel() {
     try {
+        await pool.query(`ALTER TABLE archivos_calificaciones ADD COLUMN IF NOT EXISTS huella_contenido VARCHAR(128);`);
         await pool.query(`ALTER TABLE archivos_calificaciones DROP CONSTRAINT IF EXISTS archivos_calificaciones_tipo_check;`);
         await pool.query(`
             ALTER TABLE archivos_calificaciones
@@ -723,6 +767,14 @@ const calificacionController = {
                 ? await calificacionController.processExcelFile(req.file.path, materiaIdNum, req.usuario.id)
                 : await calificacionController.processHtmlFile(req.file.path, materiaIdNum, req.usuario.id);
             
+            if (resultado.duplicado) {
+                if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                return res.status(400).json({
+                    message: resultado.message || 'Ya existe un archivo con la misma información para esta materia.',
+                    duplicado: true
+                });
+            }
+
             if (tipoArchivo === 'excel' && resultado.procesados === 0 && resultado.noEncontrados?.length) {
                 if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
                 return res.status(400).json({
@@ -738,10 +790,11 @@ const calificacionController = {
             try {
                 await ensureArchivosCalificacionesExcel();
                 await pool.query(
-                    `INSERT INTO archivos_calificaciones (profesor_id, materia_id, nombre_archivo, tipo, estado, detalles)
-                     VALUES ($1, $2, $3, $4, 'Procesado', $5)`,
+                    `INSERT INTO archivos_calificaciones (profesor_id, materia_id, nombre_archivo, tipo, estado, detalles, huella_contenido)
+                     VALUES ($1, $2, $3, $4, 'Procesado', $5, $6)`,
                     [req.usuario.id, materiaIdNum, req.file.filename, tipoArchivo === 'excel' ? 'excel' : 'htm',
-                     `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}${resultado.noEncontrados?.length ? `, No encontrados en HTM: ${resultado.noEncontrados.length}` : ''}`]
+                     `Estudiantes procesados: ${resultado.procesados}, Nuevos: ${resultado.nuevos}, Actualizados: ${resultado.actualizados}${resultado.noEncontrados?.length ? `, No encontrados en HTM: ${resultado.noEncontrados.length}` : ''}`,
+                     resultado.fingerprint || null]
                 );
             } catch (regErr) {
                 console.log('⚠️ No se pudo registrar en archivos_calificaciones:', regErr.message);
@@ -1687,7 +1740,8 @@ const calificacionController = {
             }
 
             const { matricula, nombre, email, materia_id } = req.body;
-            console.log('📡 createAlumno - Datos extraídos:', { matricula, nombre, email, materia_id });
+            const materiaIdFinal = materia_id || req.query?.materia_id;
+            console.log('📡 createAlumno - Datos extraídos:', { matricula, nombre, email, materia_id: materiaIdFinal });
             
             if (!matricula || !nombre) {
                 return res.status(400).json({ 
@@ -1710,10 +1764,10 @@ const calificacionController = {
                 console.log('📡 Alumno existente encontrado:', alumnoExistente);
                 
                 // Verificar si ya está inscrito en esta materia
-                if (materia_id) {
+                if (materiaIdFinal) {
                     const materiaCheck = await pool.query(
                         'SELECT id FROM materias_estudiantes WHERE estudiante_id = $1 AND materia_id = $2',
-                        [alumnoExistente.id, materia_id]
+                        [alumnoExistente.id, materiaIdFinal]
                     );
                     
                     if (materiaCheck.rows.length > 0) {
@@ -1722,7 +1776,7 @@ const calificacionController = {
                         // Obtener información de la materia para mostrar mensaje más claro
                         const materiaInfo = await pool.query(
                             'SELECT nombre FROM materias WHERE id = $1',
-                            [materia_id]
+                            [materiaIdFinal]
                         );
                         
                         const materiaNombre = materiaInfo.rows[0]?.nombre || 'esta materia';
@@ -1730,7 +1784,7 @@ const calificacionController = {
                         return res.status(400).json({ 
                             message: `El alumno ya está inscrito en ${materiaNombre}`,
                             alumno: alumnoExistente,
-                            materia_id: materia_id,
+                            materia_id: materiaIdFinal,
                             materia_nombre: materiaNombre,
                             ya_inscrito: true
                         });
@@ -1757,12 +1811,14 @@ const calificacionController = {
                 console.log('✅ Alumno creado:', alumnoExistente);
             }
 
-            // Si se proporcionó materia_id, asociar el alumno a la materia
-            if (materia_id) {
-                console.log('📡 Asociando alumno a materia:', materia_id);
+            // Asociar el alumno a la materia seleccionada en el módulo de calificaciones.
+            if (materiaIdFinal) {
+                console.log('📡 Asociando alumno a materia:', materiaIdFinal);
                 await pool.query(
-                    'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion) VALUES ($1, $2, NOW())',
-                    [materia_id, alumnoExistente.id]
+                    `INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion, activo)
+                     VALUES ($1, $2, NOW(), true)
+                     ON CONFLICT (materia_id, estudiante_id) DO UPDATE SET activo = true`,
+                    [materiaIdFinal, alumnoExistente.id]
                 );
                 console.log('✅ Alumno asociado a materia');
             }
@@ -2366,8 +2422,6 @@ const calificacionController = {
             if (hasMateriasEstudiantes) {
                 conditions.push(`EXISTS (SELECT 1 FROM materias_estudiantes me WHERE me.materia_id = m.id AND me.estudiante_id = $1 AND me.activo = true)`);
             }
-            // Siempre buscar por materia_id directo en estudiantes y calificaciones
-            conditions.push(`EXISTS (SELECT 1 FROM estudiantes e WHERE e.id = $1 AND e.materia_id = m.id)`);
             conditions.push(`EXISTS (SELECT 1 FROM calificaciones c WHERE c.materia_id = m.id AND c.estudiante_id = $1)`);
             
             const whereClause = conditions.join(' OR ');
@@ -2707,6 +2761,60 @@ const calificacionController = {
         return { omitido: false, nuevo };
     },
 
+    async excelYaSincronizado(materiaId, estudiantesConMatch) {
+        if (!Array.isArray(estudiantesConMatch) || estudiantesConMatch.length === 0) return false;
+        const ids = estudiantesConMatch.map(({ alumno }) => alumno.id).filter(Boolean);
+        if (ids.length === 0) return false;
+
+        const existentes = await pool.query(
+            `SELECT estudiante_id, tipo, calificacion
+             FROM calificaciones
+             WHERE materia_id = $1
+               AND estudiante_id = ANY($2::int[])
+               AND tipo = ANY($3::text[])`,
+            [materiaId, ids, GRADE_TYPES.map(({ tipo }) => tipo)]
+        );
+
+        if (existentes.rows.length < ids.length * GRADE_TYPES.length) return false;
+
+        const actuales = new Map();
+        existentes.rows.forEach(row => {
+            actuales.set(`${row.estudiante_id}:${row.tipo}`, Number.parseFloat(row.calificacion));
+        });
+
+        return estudiantesConMatch.every(({ estudiante, alumno }) =>
+            buildIncomingGrades(estudiante).every(({ tipo, calificacion }) => {
+                const actual = actuales.get(`${alumno.id}:${tipo}`);
+                return actual !== undefined && Math.abs(actual - calificacion) < 0.001;
+            })
+        );
+    },
+
+    async htmlYaCargado(materiaId, estudiantesHtml) {
+        if (!Array.isArray(estudiantesHtml) || estudiantesHtml.length === 0) return false;
+        const alumnosMateria = await getEstudiantesDeMateria(materiaId, true);
+        if (alumnosMateria.length !== estudiantesHtml.length) return false;
+
+        const indexes = buildStudentIndexes(alumnosMateria);
+        return estudiantesHtml.every((estudiante) => resolveAlumnoMatch(estudiante, indexes).alumno);
+    },
+
+    async htmlFingerprintYaRegistrado(materiaId, profesorId, fingerprint) {
+        if (!fingerprint) return false;
+        await ensureArchivosCalificacionesExcel();
+        const result = await pool.query(
+            `SELECT id
+             FROM archivos_calificaciones
+             WHERE materia_id = $1
+               AND profesor_id = $2
+               AND tipo = 'htm'
+               AND (huella_contenido = $3 OR detalles LIKE $4)
+             LIMIT 1`,
+            [materiaId, profesorId, fingerprint, `%HTM_FINGERPRINT:${fingerprint}%`]
+        );
+        return result.rowCount > 0;
+    },
+
     async processExcelFile(filePath, materiaId, profesorId) {
         try {
             console.log('📄 Procesando archivo Excel:', filePath);
@@ -2736,13 +2844,19 @@ const calificacionController = {
                 const key = normalizeKey(matricula || nombreCompleto || buildNombreCompleto(nombre, apellidos) || email || `fila ${index}`);
                 if (!key) return;
 
+                const directGrades = {};
+                GRADE_TYPES.forEach(({ tipo, labels }) => {
+                    const directValue = getDirectGradeValue(row, labels);
+                    if (directValue !== null) directGrades[tipo] = directValue;
+                });
+
                 const porcentaje = getNumericPayloadValue(row, ['Porcentaje']);
                 const puntos = getNumericPayloadValue(row, ['Puntos']);
                 const puntosMaximos = getNumericPayloadValue(row, ['Puntos máximos', 'Puntos maximos']);
                 let calificacion = null;
                 if (porcentaje !== null) calificacion = porcentaje <= 1 ? porcentaje * 10 : porcentaje;
                 else if (puntos !== null && puntosMaximos && puntosMaximos > 0) calificacion = (puntos / puntosMaximos) * 10;
-                else calificacion = getNumericPayloadValue(row, ['Calificación', 'Calificacion', 'Tareas', 'Exámenes', 'Examenes']);
+                else calificacion = getNumericPayloadValue(row, ['Calificación', 'Calificacion']);
 
                 if (!agrupados.has(key)) {
                     agrupados.set(key, {
@@ -2763,7 +2877,11 @@ const calificacionController = {
                         _tareasValores: []
                     });
                 }
-                if (calificacion !== null) {
+                Object.entries(directGrades).forEach(([tipo, value]) => {
+                    assignGrade(agrupados.get(key), tipo, value);
+                });
+
+                if (calificacion !== null && Object.keys(directGrades).length === 0) {
                     agrupados.get(key)._tareasValores.push(normalizarCalificacion(calificacion));
                 }
             });
@@ -2789,6 +2907,22 @@ const calificacionController = {
 
             if (noEncontrados.length > 0) {
                 return { procesados, nuevos, actualizados, noEncontrados, estudiantes };
+            }
+
+            const yaSincronizado = await calificacionController.excelYaSincronizado(
+                materiaId,
+                estudiantesConMatch
+            );
+            if (yaSincronizado) {
+                return {
+                    procesados,
+                    nuevos,
+                    actualizados,
+                    noEncontrados,
+                    estudiantes,
+                    duplicado: true,
+                    message: 'Este Excel ya fue cargado para esta materia y las calificaciones son identicas.'
+                };
             }
 
             for (const { estudiante, alumno } of estudiantesConMatch) {
@@ -2829,6 +2963,22 @@ const calificacionController = {
 
             const estudiantesHtml = extractStudentsFromHtml($);
             if (estudiantesHtml.length > 0) {
+                const fingerprint = buildHtmlStudentFingerprint(estudiantesHtml);
+                const htmRepetido = await calificacionController.htmlFingerprintYaRegistrado(materiaId, profesorId, fingerprint)
+                    || await calificacionController.htmlYaCargado(materiaId, estudiantesHtml);
+
+                if (htmRepetido) {
+                    return {
+                        procesados: 0,
+                        nuevos: 0,
+                        actualizados: 0,
+                        estudiantes: estudiantesHtml,
+                        duplicado: true,
+                        fingerprint,
+                        message: 'Este archivo HTM ya fue cargado para esta materia. La lista de alumnos es la misma.'
+                    };
+                }
+
                 const ponderaciones = await calificacionController.getPonderacionesMap(materiaId);
                 let procesados = 0;
                 let nuevos = 0;
@@ -2856,7 +3006,8 @@ const calificacionController = {
                     procesados,
                     nuevos,
                     actualizados,
-                    estudiantes: estudiantesHtml
+                    estudiantes: estudiantesHtml,
+                    fingerprint
                 };
             }
             
@@ -3138,6 +3289,22 @@ const calificacionController = {
             });
             
             console.log(`✅ Archivo HTML procesado: ${procesados} estudiantes encontrados`);
+
+            const fingerprint = buildHtmlStudentFingerprint(estudiantes);
+            const htmRepetido = await calificacionController.htmlFingerprintYaRegistrado(materiaId, profesorId, fingerprint)
+                || await calificacionController.htmlYaCargado(materiaId, estudiantes);
+
+            if (htmRepetido) {
+                return {
+                    procesados: 0,
+                    nuevos: 0,
+                    actualizados: 0,
+                    estudiantes,
+                    duplicado: true,
+                    fingerprint,
+                    message: 'Este archivo HTM ya fue cargado para esta materia. La lista de alumnos es la misma.'
+                };
+            }
             
             // Guardar en base de datos
             for (const estudiante of estudiantes) {
@@ -3152,6 +3319,12 @@ const calificacionController = {
                     if (existingEstudiante.rows.length > 0) {
                         estudianteId = existingEstudiante.rows[0].id;
                         actualizados++;
+                        await pool.query(
+                            `INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion, activo)
+                             VALUES ($1, $2, NOW(), true)
+                             ON CONFLICT (materia_id, estudiante_id) DO UPDATE SET activo = true`,
+                            [materiaId, estudianteId]
+                        );
                     } else {
                         // Crear nuevo estudiante
                         const newEstudiante = await pool.query(
@@ -3164,7 +3337,9 @@ const calificacionController = {
                         
                         // Asociar estudiante a la materia
                         await pool.query(
-                            'INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion) VALUES ($1, $2, NOW())',
+                            `INSERT INTO materias_estudiantes (materia_id, estudiante_id, fecha_inscripcion, activo)
+                             VALUES ($1, $2, NOW(), true)
+                             ON CONFLICT (materia_id, estudiante_id) DO UPDATE SET activo = true`,
                             [materiaId, estudianteId]
                         );
                     }
@@ -3248,7 +3423,8 @@ const calificacionController = {
                 procesados,
                 nuevos,
                 actualizados,
-                estudiantes
+                estudiantes,
+                fingerprint
             };
             
         } catch (error) {
